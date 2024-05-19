@@ -1,0 +1,306 @@
+[{
+  "_id": {
+    "$oid": "65fed60ed80ce9bed9f4fb8d"
+  },
+  "name": "Group 1",
+  "description": "A comprehensive security system for residential properties, featuring smart cameras, motion sensors, and door/window sensors. Provides real-time alerts and remote monitoring capabilities to enhance home security and peace of mind."
+},
+{
+  "_id": {
+    "$oid": "65fed60ed80ce9bed9f4fb8f"
+  },
+  "name": "Group 3",
+  "description": "A web-based platform for managing tasks, projects, and team collaboration. Includes features such as task assignment, progress tracking, and file sharing to streamline workflow and improve productivity.",
+  "__v": 9,
+  "items": [
+    {
+      "idx": 0,
+      "itemId": {
+        "$oid": "660137326c9782c3a48bc7f5"
+      },
+      "_id": {
+        "$oid": "660256c86c9782c3a48bcb5e"
+      }
+    },
+    {
+      "idx": 1,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47246"
+      },
+      "_id": {
+        "$oid": "6602616d5f415e62083d70ec"
+      }
+    },
+    {
+      "idx": 2,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "6602616e5f415e62083d70f3"
+      }
+    },
+    {
+      "idx": 3,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "6602616f5f415e62083d70fb"
+      }
+    },
+    {
+      "idx": 4,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47248"
+      },
+      "_id": {
+        "$oid": "660261705f415e62083d7104"
+      }
+    },
+    {
+      "idx": 5,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "6603cd71e7800ddbc2cfd05c"
+      }
+    },
+    {
+      "idx": 6,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "6603cd74e7800ddbc2cfd067"
+      }
+    },
+    {
+      "idx": 7,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "6603cfede7800ddbc2cfd1e2"
+      }
+    },
+    {
+      "idx": 7,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "6603cfefe7800ddbc2cfd1ea"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65fed60ed80ce9bed9f4fb8e"
+  },
+  "name": "Group 2",
+  "description": "A mobile application for online shopping, offering a user-friendly interface, product search functionality, and secure payment options. Enables users to browse, purchase, and track orders conveniently from their smartphones.",
+  "__v": 3,
+  "items": [
+    {
+      "idx": 0,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "660251646c9782c3a48bca44"
+      }
+    },
+    {
+      "idx": 1,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "660251856c9782c3a48bca54"
+      }
+    },
+    {
+      "idx": 2,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47248"
+      },
+      "_id": {
+        "$oid": "6602518a6c9782c3a48bca65"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65fed60ed80ce9bed9f4fb90"
+  },
+  "name": "Group 4",
+  "description": "An online platform for sharing and discovering recipes, cooking tips, and culinary inspiration. Allows users to create profiles, post recipes, and engage with a community of food enthusiasts to explore new flavors and cooking techniques.",
+  "__v": 4,
+  "items": [
+    {
+      "idx": 0,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47246"
+      },
+      "_id": {
+        "$oid": "6602614a5f415e62083d7012"
+      }
+    },
+    {
+      "idx": 1,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "6602614b5f415e62083d7018"
+      }
+    },
+    {
+      "idx": 2,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "6602614c5f415e62083d701f"
+      }
+    },
+    {
+      "idx": 3,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47248"
+      },
+      "_id": {
+        "$oid": "6602614c5f415e62083d7027"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "660137866c9782c3a48bc7fd"
+  },
+  "name": "newGroup",
+  "description": "The best",
+  "items": [
+    {
+      "idx": 0,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47248"
+      },
+      "_id": {
+        "$oid": "660261555f415e62083d705d"
+      }
+    },
+    {
+      "idx": 1,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "660261555f415e62083d7063"
+      }
+    },
+    {
+      "idx": 2,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "660261565f415e62083d706a"
+      }
+    },
+    {
+      "idx": 3,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47246"
+      },
+      "_id": {
+        "$oid": "660261575f415e62083d7072"
+      }
+    },
+    {
+      "idx": 4,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "6603eb7ce7800ddbc2cfd9c7"
+      }
+    },
+    {
+      "idx": 5,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "6603eb7ee7800ddbc2cfd9d8"
+      }
+    },
+    {
+      "idx": 6,
+      "itemId": {
+        "$oid": "66053bf32161f539ec248f0b"
+      },
+      "_id": {
+        "$oid": "660591f42161f539ec249f33"
+      }
+    },
+    {
+      "idx": 7,
+      "itemId": {
+        "$oid": "66053bf32161f539ec248f0b"
+      },
+      "_id": {
+        "$oid": "660591fe2161f539ec249f69"
+      }
+    },
+    {
+      "idx": 8,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724c"
+      },
+      "_id": {
+        "$oid": "660592052161f539ec249fa3"
+      }
+    }
+  ],
+  "createdBy": {
+    "$oid": "660018e5048a65b422dae396"
+  },
+  "__v": 9
+},
+{
+  "_id": {
+    "$oid": "660252506c9782c3a48bcadc"
+  },
+  "name": "Ella",
+  "description": "The best",
+  "items": [
+    {
+      "idx": 0,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea47248"
+      },
+      "_id": {
+        "$oid": "660252576c9782c3a48bcaed"
+      }
+    },
+    {
+      "idx": 1,
+      "itemId": {
+        "$oid": "65fae383a0ef3a331ea4724a"
+      },
+      "_id": {
+        "$oid": "660252586c9782c3a48bcaf3"
+      }
+    }
+  ],
+  "createdBy": {
+    "$oid": "660018e5048a65b422dae396"
+  },
+  "__v": 2
+}]

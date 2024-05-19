@@ -1,0 +1,18 @@
+[
+    {
+      "name": "Smart Home Security System",
+      "description": "A comprehensive security system for residential properties, featuring smart cameras, motion sensors, and door/window sensors. Provides real-time alerts and remote monitoring capabilities to enhance home security and peace of mind."
+    },
+    {
+      "name": "E-commerce Mobile App",
+      "description": "A mobile application for online shopping, offering a user-friendly interface, product search functionality, and secure payment options. Enables users to browse, purchase, and track orders conveniently from their smartphones."
+    },
+    {
+      "name": "Task Management Web Application",
+      "description": "A web-based platform for managing tasks, projects, and team collaboration. Includes features such as task assignment, progress tracking, and file sharing to streamline workflow and improve productivity."
+    },
+    {
+      "name": "Recipe Sharing Community Website",
+      "description": "An online platform for sharing and discovering recipes, cooking tips, and culinary inspiration. Allows users to create profiles, post recipes, and engage with a community of food enthusiasts to explore new flavors and cooking techniques."
+    }
+  ]
