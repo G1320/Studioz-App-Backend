@@ -26,6 +26,8 @@ const corsOptions = {
   credentials: true,
 };
 
+app.use(logRequestsMw);
+
 app.use(cors(corsOptions));
 
 app.use(mongoSanitize());
@@ -40,7 +42,6 @@ app.use('/api/cart', cartRoutes);
 
 app.use('/api/auth', authRoutes);
 
-app.use(logRequestsMw);
 app.use(handleDbErrorMw);
 app.use(handleErrorMw);
 
