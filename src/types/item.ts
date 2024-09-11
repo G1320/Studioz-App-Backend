@@ -1,19 +1,20 @@
-import { Types } from 'mongoose';
 
 export default interface Item {
-  _id?: Types.ObjectId;
-  itemId: Types.ObjectId;
-  studio: Types.ObjectId;
+  _id: string;
+  studio: string;
   name: string;
   description?: string;
   category?: string;
   subcategory?: string;
   price?: number;
-  imgUrl?: string;
+  imageUrl?: string;
   idx?: number;
   inStock: boolean;
-  studioId: Types.ObjectId;
+  studioId: string;
   studioName: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+
+

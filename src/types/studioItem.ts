@@ -1,9 +1,7 @@
-import { Types } from 'mongoose';
-
 export default interface StudioItem {
     idx: number;
-    itemId: Types.ObjectId;
-    studioId: Types.ObjectId;
+    itemId: string;
+    studioId: string;
     studioName: string;
     studioImgUrl?: string;
 }

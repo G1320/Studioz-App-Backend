@@ -5,7 +5,6 @@ import { StudioModel } from'../../models/studioModel.js'
 import { ItemModel } from'../../models/itemModel.js'
 import ExpressError from'../../utils/expressError.js'
 import handleRequest from'../../utils/requestHandler.js'
-import { Types } from 'mongoose';
 
 const createItem = handleRequest(async (req: Request) => {
   const item = new ItemModel(req.body);
@@ -70,19 +69,16 @@ const addItemToStudio = handleRequest(async (req: Request) => {
   const itemId = req.params.itemId;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
 
-  const studioObjectId = new Types.ObjectId(studioId);
-  const itemObjectId = new Types.ObjectId(itemId);
-
-  const studio = await StudioModel.findById(studioObjectId);
+  const studio = await StudioModel.findById(studioId);
   if (!studio) throw new ExpressError('studio not found', 404);
   if (!studio.items) studio.items = [];
 
-  const item = await ItemModel.findById(itemObjectId);
+  const item = await ItemModel.findById(itemId);
   if (!item) throw new ExpressError('item not found', 404);
 
   item.updatedAt = new Date();
 
-  if (!item.studioId) item.studioId = studioObjectId;
+  if (!item.studioId) item.studioId = studioId;
 
   await item.save();
 
@@ -94,7 +90,7 @@ const addItemToStudio = handleRequest(async (req: Request) => {
   studio.items.push({
     idx: studio.items.length,
     itemId: item._id,
-    studioId: studioObjectId,
+    studioId: studioId,
     studioName: studio.name,
   });
   await studio.save();
@@ -167,29 +163,22 @@ const removeItemFromWishlist = handleRequest(async (req: Request) => {
 
   const wishlist = await WishlistModel.findById(wishlistId);
   if (!wishlist) throw new ExpressError('Wishlist not found', 404);
-
-  // Convert itemIdToRemove to ObjectId
-  const itemObjectId = new Types.ObjectId(itemIdToRemove);
-
+  
+  if (!wishlist.items || wishlist.items.length === 0) {
+    throw new ExpressError('Wishlist is empty', 404);
+  }
   // Find the index of the item with the specified itemId in wishlist.items
-  const itemIndex = wishlist.items.findIndex((wishlistItem: WishlistItem) =>
-    wishlistItem.itemId.equals(itemObjectId)
-  );
+  const itemIndex = wishlist.items.findIndex((wishlistItem) => wishlistItem.itemId.toString() === itemIdToRemove);
 
   if (itemIndex === -1) throw new ExpressError('Item not found in the wishlist', 404);
-
-  // Remove the item at the found index
   wishlist.items.splice(itemIndex, 1);
 
   // Re-map the idx values for the remaining items
-  wishlist.items.forEach((wishlistItem: WishlistItem, index: number) => {
-    wishlistItem.idx = index;
-  });
+  wishlist.items.forEach((wishlistItem, index) => (wishlistItem.idx = index));
 
-  // Save the wishlist
   await wishlist.save();
 
-  return itemIdToRemove; // Return the removed itemId
+  return itemIdToRemove; 
 });
 
 const getItemById = handleRequest(async (req: Request) => {
@@ -212,12 +201,24 @@ const updateItemById = handleRequest(async (req: Request) => {
   return req.body;
 });
 
+
 const deleteItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
 
   const item = await ItemModel.findByIdAndDelete(itemId);
   if (!item) throw new ExpressError('item not found', 404);
+
+  // Remove item references from studios
+  await StudioModel.updateMany(
+    { 'items.itemId': itemId }, 
+    { $pull: { items: { itemId: itemId } } }
+  );
+  // Remove item references from wishlists
+  await WishlistModel.updateMany(
+    { 'items.itemId': itemId }, 
+    { $pull: { items: { itemId: itemId } } }
+  );
 
   return item;
 });

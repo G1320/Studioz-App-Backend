@@ -1,7 +1,6 @@
-import { Types } from 'mongoose';
-
+import Wishlist from "./wishlist.js";
 export default interface User {
-  _id: Types.ObjectId;
+  _id: string;
   username: string;
   firstName?: string;
   lastName?: string;
@@ -10,10 +9,11 @@ export default interface User {
   password?: string; 
   picture?: string;
   sub: string;
+  isAdmin?: boolean;
   updatedAt?: Date;
   email?: string;
-  studios?: Types.ObjectId[];
-  wishlists?: Types.ObjectId[];
-  cart?: Types.ObjectId[];
+  studios?: string[];
+  wishlists?:  Wishlist[];
+  cart?: string[];
   __v?: number;
 }

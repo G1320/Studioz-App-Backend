@@ -1,9 +1,8 @@
-// shared/types/studio.ts
-import { Types } from 'mongoose';
+
 import StudioItem from './studioItem.js';
 
 export default interface Studio {
-  _id?: Types.ObjectId;
+  _id: string;
   name: string;
   description: string;
   category?: string;
@@ -17,11 +16,10 @@ export default interface Studio {
   galleryAudioFiles?: string[];
   coverAudioFile?: string;
   isSelfService?: boolean;
-  createdAt?: Date;
-  createdBy: Types.ObjectId;
+  createdAt: Date;
+  createdBy: string;
   isFeatured?: boolean;
   subCategory?: string;
-  items: StudioItem[]
-  ;
+  items: StudioItem[];
 }
 

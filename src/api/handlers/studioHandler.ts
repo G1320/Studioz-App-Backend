@@ -1,7 +1,6 @@
 import { Request } from 'express';
-import  { Types } from 'mongoose';
 import  { StudioModel } from '../../models/studioModel.js'
-import {StudioItem, Item} from '../../types/index.js';
+import { Item} from '../../types/index.js';
 import  { ItemModel } from '../../models/itemModel.js'
 import  ExpressError from '../../utils/expressError.js'
 import  handleRequest from '../../utils/requestHandler.js'
@@ -10,17 +9,13 @@ const createStudio = handleRequest(async (req:Request) => {
   const { userId } = req.params;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
-  const userObjectId = new Types.ObjectId(userId);
-  
   const studio = new StudioModel(req.body);
-  studio.createdBy = userObjectId ;
+  studio.createdBy = userId ;
 
   await studio.save(); 
 
   return studio;
 });
-
-
 
 const getStudios = handleRequest(async (req:Request) => {
   let query = StudioModel.find();
@@ -57,27 +52,6 @@ const getStudioById = handleRequest(async (req:Request) => {
   return { currStudio, prevStudio, nextStudio };
 });
 
-const getStudioItems = handleRequest(async (req:Request) => {
-  const { studioId } = req.params;
-
-  const studio = await StudioModel.findById(studioId);
-  if (!studio) throw new ExpressError('Studio not found', 404);
-
-  // Sorting the items in the studio based on the idx field then extracting itemIds from the sorted studio.items
-  const itemIds = studio.items.sort((a:StudioItem, b:StudioItem) => (a.idx ?? 0) - (b.idx ?? 0)).map((item:StudioItem) => item.itemId);
-
-  // Retrieving items from the ItemModel based on the sorted itemIds's order
-  const items = await ItemModel.aggregate([
-    { $match: { _id: { $in: itemIds } } },
-    { $addFields: { __order: { $indexOfArray: [itemIds, '$_id'] } } },
-    { $sort: { __order: 1 } },
-    { $project: { __order: 0 } }, // used to exclude the __order field from the final output.
-  ]);
-  if (!items) throw new ExpressError('No items found for this studio', 404);
-
-  return items;
-});
-
 const updateStudioItem = handleRequest(async (req:Request) => {
   const { studioId } = req.params;
   if (!studioId) throw new ExpressError('Studio ID not found', 404);
@@ -91,9 +65,7 @@ const updateStudioItem = handleRequest(async (req:Request) => {
   if (studio.items) studio.items = [];
 
   const updatedItems = await ItemModel.find({ _id: { $in: items } }).select('_id');
-  const updatedItemIds = updatedItems.map((item:Item) => item._id)
-  .filter((id): id is Types.ObjectId => id !== undefined);
-  ;
+  const updatedItemIds = updatedItems.map((item:Item) => item._id).filter((id) => id !== undefined);
 
   // Update the items for the studio
   studio.items = updatedItemIds as [];
@@ -129,7 +101,6 @@ export default{
   createStudio,
   getStudios,
   getStudioById,
-  getStudioItems,
   updateStudioItem,
   updateStudioById,
   deleteStudioById,

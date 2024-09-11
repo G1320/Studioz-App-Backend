@@ -1,11 +1,11 @@
-import { Request } from "express.js";
-import { Types } from "mongoose";
+import { Request } from "../../types/express.js";
 import { WishlistModel } from '../../models/wishlistModel.js'
 import { UserModel } from '../../models/userModel.js'
 import { StudioModel } from '../../models/studioModel.js'
 import { ItemModel } from '../../models/itemModel.js'
 import handleRequest from '../../utils/requestHandler.js'
 import ExpressError from '../../utils/expressError.js'
+import Wishlist from "../../types/wishlist.js";
 
 const createWishlistAndAddToUser = handleRequest(async (req:Request) => {
   const userId = req.params.userId;
@@ -62,11 +62,18 @@ const getUserWishlistById = handleRequest(async (req: Request) => {
   const user = await UserModel.findById(req.params.userId).populate('wishlists');
   if (!user) throw new ExpressError('User not found', 404);
   if (!user.wishlists) user.wishlists = [];
-
-  // Find the index of the wishlist by comparing ObjectId strings
-  const wishlistIndex = user.wishlists.findIndex(
-    (wishlistId: Types.ObjectId) => wishlistId.toString() === req.params.wishlistId
+  console.log('user.wishlists: ', user.wishlists);
+  console.log('req.params.wishlistId: ', req.params);
+  if (!user._id || !req.params.wishlistId) {
+    throw new ExpressError('Invalid request parameters', 400);
+  }
+  
+  const wishlists = user.wishlists as Wishlist[];
+  
+  const wishlistIndex = wishlists.findIndex(
+    (wishlist) => wishlist._id === req.params.wishlistId
   );
+ 
   if (wishlistIndex === -1) throw new ExpressError('Wishlist not found', 404);
 
   // Get the current, previous, and next wishlists using the index
