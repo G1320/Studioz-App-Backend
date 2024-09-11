@@ -68,10 +68,10 @@ const getUserWishlistById = handleRequest(async (req: Request) => {
     throw new ExpressError('Invalid request parameters', 400);
   }
   
-  const wishlists = user.wishlists as Wishlist[];
+  const wishlists = user.wishlists ;
   
   const wishlistIndex = wishlists.findIndex(
-    (wishlist) => wishlist._id === req.params.wishlistId
+    (wishlist) => wishlist === req.params.wishlistId
   );
  
   if (wishlistIndex === -1) throw new ExpressError('Wishlist not found', 404);
