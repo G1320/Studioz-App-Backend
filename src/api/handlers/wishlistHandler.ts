@@ -15,7 +15,7 @@ const createWishlistAndAddToUser = handleRequest(async (req:Request) => {
   const wishlist = new WishlistModel(req.body);
 
   await wishlist.save();
-  user.wishlists?.push(wishlist._id);
+  user.wishlists?.push({_id: wishlist._id} as Wishlist);
   await user.save();
 
   return wishlist;
@@ -58,29 +58,19 @@ const getUserWishlists = handleRequest(async (req:Request) => {
   return user.wishlists;
 });
 
-const getUserWishlistById = handleRequest(async (req: Request) => {
-  const user = await UserModel.findById(req.params.userId).populate('wishlists');
-  if (!user) throw new ExpressError('User not found', 404);
-  if (!user.wishlists) user.wishlists = [];
-  console.log('user.wishlists: ', user.wishlists);
-  console.log('req.params.wishlistId: ', req.params);
-  if (!user._id || !req.params.wishlistId) {
-    throw new ExpressError('Invalid request parameters', 400);
-  }
-  
-  const wishlists = user.wishlists ;
-  
-  const wishlistIndex = wishlists.findIndex(
-    (wishlist) => wishlist === req.params.wishlistId
-  );
- 
-  if (wishlistIndex === -1) throw new ExpressError('Wishlist not found', 404);
+const getUserWishlistById = handleRequest(async (req:Request) => {
+  const { wishlistId } = req.params;
 
-  // Get the current, previous, and next wishlists using the index
-  const currWishlist = user.wishlists[wishlistIndex];
-  const prevWishlist = wishlistIndex > 0 ? user.wishlists[wishlistIndex - 1] : null;
-  const nextWishlist =
-    wishlistIndex < user.wishlists.length - 1 ? user.wishlists[wishlistIndex + 1] : null;
+  const currWishlist = await WishlistModel.findById(wishlistId);
+  if (!currWishlist) throw new ExpressError('Wishlist not found', 404);
+
+  const prevWishlist = await WishlistModel.findOne({ _id: { $lt: wishlistId } })
+    .sort({ _id: -1 })
+    .limit(1);
+
+  const nextWishlist = await WishlistModel.findOne({ _id: { $gt: wishlistId } })
+    .sort({ _id: 1 })
+    .limit(1);
 
   return { currWishlist, prevWishlist, nextWishlist };
 });

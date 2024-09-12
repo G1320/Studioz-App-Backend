@@ -13,7 +13,7 @@ export default interface User {
   updatedAt?: Date;
   email?: string;
   studios?: string[];
-  wishlists?:  string[];
+  wishlists?: Wishlist[]  ;
   cart?: string[];
   __v?: number;
 }
