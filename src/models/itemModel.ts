@@ -12,6 +12,7 @@ const itemSchema: Schema = new Schema({
   inStock: { type: Boolean, required: true },
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   studioName: { type: String, required: true },
+  studioImgUrl: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

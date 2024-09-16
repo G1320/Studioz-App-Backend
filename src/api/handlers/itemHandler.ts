@@ -26,6 +26,7 @@ const createItem = handleRequest(async (req: Request) => {
   item.updatedAt = new Date();
 
   if (!item.studioId) item.studioId = studioId;
+  if (!item.studioImgUrl) item.studioImgUrl = studio.coverImage;
 
   await item.save();
 

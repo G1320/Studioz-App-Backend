@@ -12,6 +12,7 @@ export default interface Item {
   inStock: boolean;
   studioId: string;
   studioName: string;
+  studioImgUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

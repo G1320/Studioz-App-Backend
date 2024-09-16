@@ -19,7 +19,24 @@ const port = process.env.PORT || PORT;
 connectToDb();
 
 const app: Application = express();
-app.use(helmet());
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        imgSrc: [
+          "'self'",
+        ],
+        defaultSrc: ["'self'", ...ALLOWED_ORIGINS],
+        scriptSrc: ["'self'", ...ALLOWED_ORIGINS],
+        connectSrc: ["'self'", ...ALLOWED_ORIGINS],
+        workerSrc: ["'self'", 'blob:'],
+        mediaSrc: ["'self'", ...ALLOWED_ORIGINS],
+      },
+    },
+  })
+);
+
 
 const corsOptions = {
   origin: ALLOWED_ORIGINS,
