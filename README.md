@@ -42,9 +42,13 @@ Fill in the values for the environment variables in your .env file. Here's an ex
 
 DB_URL: The connection string for your MongoDB instance (e.g., mongodb://localhost:{PORT}/studioz-app).
 JWT_SECRET_KEY: A secret key for signing JWTs.
+
 JWT_REFRESH_KEY: A separate secret key for refreshing JWTs.
+
 NODE_ENV: The environment in which the app is running (development, production).
+
 ALLOWED_ORIGINS: A comma-separated list of allowed origins for CORS and the Helmet CSP (e.g., http://localhost:3000,http://localhost:5173).
+
 PORT: The port on which the server will run (default: 5000).
 
 ### Scripts
