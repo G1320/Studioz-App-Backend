@@ -69,10 +69,6 @@ dist/: Contains the compiled TypeScript files.
 src/: Contains the source TypeScript files.
 server.ts: Entry point for the backend application.
 
-### License
-
-This project is licensed under the ISC License. See the LICENSE file for more details.
-
 ### Author
 
 Developed by Darnell Green.
