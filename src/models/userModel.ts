@@ -4,6 +4,7 @@ import { User } from '../types/index.js';
 const cartItemSchema = new Schema({
   name: { type: String, required: false }, 
   price: { type: Number, required: false },
+  total: { type: Number, required: false },
   itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false }, 
   quantity: { type: Number, required: false, default: 1 },
   bookingDate: { type: Date, required: false },

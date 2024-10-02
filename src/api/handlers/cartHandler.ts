@@ -24,20 +24,22 @@ const addItemToCart = handleRequest(async (req: Request) => {
     user.cart = { items: [] };
   }  // Check if the item with the same itemId and bookingDate already exists in the cart
   const existingCartItem = user.cart?.items?.find(
-    
     (cartItem: CartItem) => cartItem.itemId.toString() === itemId 
     );
     
+
     if (existingCartItem) {
-      if (!existingCartItem.quantity) {
-        existingCartItem.quantity = 0
-      }
-      existingCartItem.quantity += 1;
+      // If the item exists, increment the quantity
+      existingCartItem.quantity = (existingCartItem.quantity || 0) + 1;
+  
+      // Recalculate total for the existing item based on new quantity
+      existingCartItem.total = (existingCartItem.price || 0 ) * existingCartItem.quantity;
     } else {
-    
+      // If it's a new item, add it to the cart with an initial quantity of 1
       user.cart?.items?.push({
         name: item.name,
         price: item.price,
+        total: item.price,  
         itemId: item._id,
         quantity: 1,
         bookingDate: bookingDate,
@@ -74,7 +76,7 @@ const addItemsToCart = handleRequest(async (req: Request) => {
 
 const removeItemFromCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
-  
+
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
 
   const user = await UserModel.findById(userId);
@@ -92,7 +94,10 @@ const removeItemFromCart = handleRequest(async (req: Request) => {
   if (cartItem.quantity && cartItem.quantity > 1) {
     // Decrease the quantity by 1
     cartItem.quantity -= 1;
+    // Recalculate total for the existing item based on new quantity
+    cartItem.total = (cartItem.price || 0) * cartItem.quantity;
   } else {
+    // If quantity is 1, remove the item from the cart
     user.cart.items.splice(itemIndex, 1);
   }
 
