@@ -1,4 +1,4 @@
-import Wishlist from "./wishlist.js";
+import {Cart, Wishlist} from './index.js';
 export default interface User {
   _id: string;
   username: string;
@@ -14,6 +14,6 @@ export default interface User {
   email?: string;
   studios?: string[];
   wishlists?: Wishlist[]  ;
-  cart?: string[];
+  cart?: Cart;
   __v?: number;
 }

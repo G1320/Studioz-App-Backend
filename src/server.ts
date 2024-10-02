@@ -24,9 +24,7 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        imgSrc: [
-          "'self'",
-        ],
+        imgSrc: ["'self'"],
         defaultSrc: ["'self'", ...ALLOWED_ORIGINS],
         scriptSrc: ["'self'", ...ALLOWED_ORIGINS],
         connectSrc: ["'self'", ...ALLOWED_ORIGINS],

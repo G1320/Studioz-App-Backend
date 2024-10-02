@@ -1,6 +1,17 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import { User } from '../types/index.js';
 
+const cartItemSchema = new Schema({
+  name: { type: String, required: false }, 
+  price: { type: Number, required: false },
+  itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false }, 
+  quantity: { type: Number, required: false, default: 1 },
+  bookingDate: { type: Date, required: false },
+  studioName: { type: String, required: false }, 
+  studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false }, 
+});
+
+
 const userSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
@@ -15,7 +26,9 @@ const userSchema = new Schema(
     isAdmin: { type: Boolean, default: false },
     studios: [{ type: Schema.Types.ObjectId, ref: 'Studio' }],
     wishlists: [{ type: Schema.Types.ObjectId, ref: 'Wishlist' }],
-    cart: [{ type: Schema.Types.ObjectId, ref: 'Item' }],
+    cart: { 
+      items: [cartItemSchema]
+    },
   },
   { timestamps: true }
 );
