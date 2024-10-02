@@ -40,7 +40,8 @@ cp .env.example .env
 
 Fill in the values for the environment variables in your .env file. Here's an explanation of each:
 
-DB_URL: The connection string for your MongoDB instance (e.g., mongodb://localhost:{PORT}/studioz-app).
+DB_URL: The connection string for your MongoDB instance.
+
 JWT_SECRET_KEY: A secret key for signing JWTs.
 
 JWT_REFRESH_KEY: A separate secret key for refreshing JWTs.
