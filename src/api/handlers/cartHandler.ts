@@ -92,12 +92,9 @@ const removeItemFromCart = handleRequest(async (req: Request) => {
   const cartItem: CartItem = user.cart.items[itemIndex];
 
   if (cartItem.quantity && cartItem.quantity > 1) {
-    // Decrease the quantity by 1
     cartItem.quantity -= 1;
-    // Recalculate total for the existing item based on new quantity
     cartItem.total = (cartItem.price || 0) * cartItem.quantity;
   } else {
-    // If quantity is 1, remove the item from the cart
     user.cart.items.splice(itemIndex, 1);
   }
 

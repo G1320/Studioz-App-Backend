@@ -12,7 +12,7 @@ import cors from'cors'
 import cookieParser from'cookie-parser'
 import mongoSanitize from'express-mongo-sanitize'
 import helmet from'helmet'
-import express , {type Application} from "express";
+import express , { type Application } from "express";
 
 const port = process.env.PORT || PORT;
 
