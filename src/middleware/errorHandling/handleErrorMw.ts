@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 
 interface ErrorWithStatusCode extends Error {
   statusCode?: number;
@@ -8,7 +8,6 @@ const handleErrorMw = (
   err: ErrorWithStatusCode,
   req: Request,
   res: Response,
-  next: NextFunction
 ): void => {
   const { statusCode, message } = err;
   console.error(message);

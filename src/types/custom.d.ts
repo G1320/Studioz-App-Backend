@@ -1,17 +1,17 @@
 declare module 'cors' {
     import { RequestHandler } from 'express';
-    function cors(options?: any): RequestHandler;
+    function cors(options?: unknown): RequestHandler;
     export = cors;
   }
   
   declare module 'cookie-parser' {
     import { RequestHandler } from 'express';
-    function cookieParser(secret?: string | string[], options?: any): RequestHandler;
+    function cookieParser(secret?: string | string[], options?: unknown): RequestHandler;
     export = cookieParser;
   }
   
   declare module 'morgan' {
     import { Handler } from 'express';
-    function morgan(format: string, options?: any): Handler;
+    function morgan(format: string, options?: unknown): Handler;
     export = morgan;
   }

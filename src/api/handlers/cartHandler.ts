@@ -64,14 +64,48 @@ const addItemsToCart = handleRequest(async (req: Request) => {
   const { items } = req.body;
   if (!Array.isArray(items)) throw new ExpressError('Invalid items data', 400);
 
-  if (!user.cart) user.cart = { items: [] };
+  if (!user.cart || !user.cart.items) {
+    user.cart = { items: [] };
+  }
 
-  items.forEach((item) => user.cart?.items.push(item.itemId));
+  items.forEach(async (itemData) => {
+    const { itemId, bookingDate } = itemData;
+
+    if (!itemId || !bookingDate) {
+      throw new ExpressError('Item ID and booking date are required', 400);
+    }
+
+    const item = await ItemModel.findById(itemId);
+    if (!item) throw new ExpressError(`Item not found for ID ${itemId}`, 404);
+
+    // Check if the item with the same itemId already exists in the cart
+    const existingCartItem = user.cart?.items?.find(
+      (cartItem: CartItem) => cartItem.itemId.toString() === itemId && cartItem.bookingDate === bookingDate
+    );
+
+    if (existingCartItem) {
+      // If the item exists, increment the quantity
+      existingCartItem.quantity = (existingCartItem.quantity || 0) + 1;
+      existingCartItem.total = (existingCartItem.price || 0) * existingCartItem.quantity;
+    } else {
+      // If it's a new item, add it to the cart with an initial quantity of 1
+      user.cart?.items?.push({
+        name: item.name,
+        price: item.price,
+        total: item.price,
+        itemId: item._id,
+        quantity: 1,
+        bookingDate: bookingDate,
+        studioName: item.studioName,
+        studioId: item.studioId,
+      });
+    }
+  });
 
   await user.save();
-
   return user.cart;
 });
+
 
 
 const removeItemFromCart = handleRequest(async (req: Request) => {
@@ -148,7 +182,7 @@ const getUserCart = handleRequest(async (req: Request) => {
   const user = await UserModel.findById(userId);
   if (!user) throw new ExpressError('User not found', 404);
 
-  if (!user.cart) user.cart = { items: [] };;
+  if (!user.cart) user.cart = { items: [] };
 
   return user.cart;
 });
@@ -161,7 +195,7 @@ const deleteUserCart = handleRequest(async (req: Request) => {
   if (!user) throw new ExpressError('User not found', 404);
 
 
-  user.cart = { items: [] };;
+  user.cart = { items: [] };
   await user.save();
 
   return ;

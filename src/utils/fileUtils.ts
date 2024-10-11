@@ -1,4 +1,4 @@
-const fs = require('fs');
+import fs from 'fs';
 
 const readAndParseJsonFile = (filePath:string) => {
   console.log(`Reading and parsing JSON file from: ${filePath}`);

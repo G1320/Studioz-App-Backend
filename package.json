@@ -41,6 +41,11 @@
     "@types/express-serve-static-core": "^4.19.5",
     "@types/mongoose": "^5.11.96",
     "@types/morgan": "^1.9.9",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
     "ts-node": "^10.9.2"
   }
 }

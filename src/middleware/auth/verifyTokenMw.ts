@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
 import { JWT_SECRET_KEY } from '../../config/index.js';
 
-const {TokenExpiredError} = jwt;
+const { TokenExpiredError } = jwt;
 
 interface CustomRequest extends Request {
   decodedJwt?: JwtPayload;

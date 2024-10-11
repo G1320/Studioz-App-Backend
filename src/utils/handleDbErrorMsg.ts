@@ -17,14 +17,13 @@ type ErrorType = {
     },
   },
 };
-
 export const handleDbErrorMsg = (error: ErrorType): string => {
   switch (error.name) {
     case 'CastError':
       console.error('Invalid ID format:', error);
       return `Invalid request data: ${error.message}`;
 
-    case 'ValidationError':
+    case 'ValidationError': {
       console.error('Validation Error:', error);
 
       const errors = error.errors
@@ -42,6 +41,7 @@ export const handleDbErrorMsg = (error: ErrorType): string => {
       } else {
         return `${errors[0].label} is ${errors[0].message}`;
       }
+    }
 
     case 'DisconnectedError':
       console.error('Disconnected from database:', error);
@@ -56,6 +56,7 @@ export const handleDbErrorMsg = (error: ErrorType): string => {
       return `An unknown error occurred: ${error.message}`;
   }
 };
+
 
 export function capitalizeFirstLetter(string: string): string {
   return string.charAt(0).toUpperCase() + string.slice(1);
