@@ -2,16 +2,15 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 import { User } from '../types/index.js';
 
 const cartItemSchema = new Schema({
-  name: { type: String, required: false }, 
+  name: { type: String, required: false },
   price: { type: Number, required: false },
   total: { type: Number, required: false },
-  itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false }, 
+  itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false },
   quantity: { type: Number, required: false, default: 1 },
   bookingDate: { type: Date, required: false },
-  studioName: { type: String, required: false }, 
-  studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false }, 
+  studioName: { type: String, required: false },
+  studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false }
 });
-
 
 const userSchema = new Schema(
   {
@@ -27,9 +26,9 @@ const userSchema = new Schema(
     isAdmin: { type: Boolean, default: false },
     studios: [{ type: Schema.Types.ObjectId, ref: 'Studio' }],
     wishlists: [{ type: Schema.Types.ObjectId, ref: 'Wishlist' }],
-    cart: { 
+    cart: {
       items: [cartItemSchema]
-    },
+    }
   },
   { timestamps: true }
 );

@@ -2,29 +2,29 @@ import { Request, Response } from 'express';
 import { NODE_ENV, JWT_REFRESH_KEY, JWT_SECRET_KEY } from '../../config/index.js';
 import { UserModel } from '../../models/userModel.js';
 import ExpressError from '../../utils/expressError.js';
-import  handleRequest  from '../../utils/requestHandler.js';
+import handleRequest from '../../utils/requestHandler.js';
 import jwt from 'jsonwebtoken';
 
 const createAndRegisterUser = handleRequest(async (req: Request, res: Response) => {
   try {
     const user = await new UserModel(req.body).save();
     const accessToken = jwt.sign({ _id: user._id }, JWT_SECRET_KEY as string, {
-      expiresIn: '15m',
+      expiresIn: '15m'
     });
     const refreshToken = jwt.sign({ _id: user._id }, JWT_REFRESH_KEY as string, {
-      expiresIn: '7d',
+      expiresIn: '7d'
     });
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: NODE_ENV === 'production',
       maxAge: 36000000,
-      signed: true,
+      signed: true
     });
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: NODE_ENV === 'production',
       maxAge: 604800000,
-      signed: true,
+      signed: true
     });
     return { accessToken: accessToken, user: user };
   } catch (error) {
@@ -45,13 +45,13 @@ const loginUser = handleRequest(async (req: Request, res: Response) => {
     httpOnly: true,
     signed: true,
     secure: NODE_ENV === 'production',
-    maxAge: 36000000,
+    maxAge: 36000000
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     signed: true,
     secure: NODE_ENV === 'production',
-    maxAge: 604800000,
+    maxAge: 604800000
   });
   return { accessToken: accessToken, user: user };
 });
@@ -68,7 +68,7 @@ const refreshAccessToken = handleRequest(async (req: Request, res: Response) => 
       httpOnly: true,
       signed: true,
       secure: NODE_ENV === 'production',
-      maxAge: 36000000,
+      maxAge: 36000000
     });
     console.log('Generated new access token');
 
@@ -94,5 +94,5 @@ export default {
   createAndRegisterUser,
   loginUser,
   refreshAccessToken,
-  logoutUser,
+  logoutUser
 };

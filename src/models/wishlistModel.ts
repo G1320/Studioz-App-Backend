@@ -9,13 +9,14 @@ const wishlistSchema = new Schema(
     items: [
       {
         idx: { type: Number, required: true },
-        itemId: { type: Schema.Types.ObjectId, ref: 'Item' },
-      },
-    ],
+        itemId: { type: Schema.Types.ObjectId, ref: 'Item' }
+      }
+    ]
   },
   { timestamps: true }
 );
 
-const WishlistModel: Model<Wishlist & Document> = mongoose.models.Wishlist || mongoose.model<Wishlist & Document>('Wishlist', wishlistSchema);
+const WishlistModel: Model<Wishlist & Document> =
+  mongoose.models.Wishlist || mongoose.model<Wishlist & Document>('Wishlist', wishlistSchema);
 
 export { WishlistModel };

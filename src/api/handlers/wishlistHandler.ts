@@ -1,13 +1,13 @@
-import { Request } from "../../types/express.js";
-import { WishlistModel } from '../../models/wishlistModel.js'
-import { UserModel } from '../../models/userModel.js'
-import { StudioModel } from '../../models/studioModel.js'
-import { ItemModel } from '../../models/itemModel.js'
-import handleRequest from '../../utils/requestHandler.js'
-import ExpressError from '../../utils/expressError.js'
-import Wishlist from "../../types/wishlist.js";
+import { Request } from '../../types/express.js';
+import { WishlistModel } from '../../models/wishlistModel.js';
+import { UserModel } from '../../models/userModel.js';
+import { StudioModel } from '../../models/studioModel.js';
+import { ItemModel } from '../../models/itemModel.js';
+import handleRequest from '../../utils/requestHandler.js';
+import ExpressError from '../../utils/expressError.js';
+import Wishlist from '../../types/wishlist.js';
 
-const createWishlistAndAddToUser = handleRequest(async (req:Request) => {
+const createWishlistAndAddToUser = handleRequest(async (req: Request) => {
   const userId = req.params.userId;
   const user = await UserModel.findById(userId).populate('wishlists');
   if (!user) throw new ExpressError('User not found', 404);
@@ -15,13 +15,13 @@ const createWishlistAndAddToUser = handleRequest(async (req:Request) => {
   const wishlist = new WishlistModel(req.body);
 
   await wishlist.save();
-  user.wishlists?.push({_id: wishlist._id} as Wishlist);
+  user.wishlists?.push({ _id: wishlist._id } as Wishlist);
   await user.save();
 
   return wishlist;
 });
 
-const addStudioToWishlist = handleRequest(async (req:Request) => {
+const addStudioToWishlist = handleRequest(async (req: Request) => {
   const { wishlistId } = req.params;
   const { studioId } = req.body;
 
@@ -36,7 +36,7 @@ const addStudioToWishlist = handleRequest(async (req:Request) => {
   return wishlist;
 });
 
-const addItemToWishlist = handleRequest(async (req:Request) => {
+const addItemToWishlist = handleRequest(async (req: Request) => {
   const { wishlistId, itemId } = req.body;
 
   const wishlist = await WishlistModel.findById(wishlistId);
@@ -50,7 +50,7 @@ const addItemToWishlist = handleRequest(async (req:Request) => {
   return wishlist;
 });
 
-const getUserWishlists = handleRequest(async (req:Request) => {
+const getUserWishlists = handleRequest(async (req: Request) => {
   const user = await UserModel.findById(req.params.userId).populate('wishlists');
 
   if (!user) throw new ExpressError('User not found', 404);
@@ -58,7 +58,7 @@ const getUserWishlists = handleRequest(async (req:Request) => {
   return user.wishlists;
 });
 
-const getUserWishlistById = handleRequest(async (req:Request) => {
+const getUserWishlistById = handleRequest(async (req: Request) => {
   const { wishlistId } = req.params;
 
   const currWishlist = await WishlistModel.findById(wishlistId);
@@ -75,7 +75,7 @@ const getUserWishlistById = handleRequest(async (req:Request) => {
   return { currWishlist, prevWishlist, nextWishlist };
 });
 
-const updateUserWishlist = handleRequest(async (req:Request) => {
+const updateUserWishlist = handleRequest(async (req: Request) => {
   const { wishlistId } = req.params;
 
   const updatedWishlist = await WishlistModel.findByIdAndUpdate(wishlistId, req.body, { new: true });
@@ -93,7 +93,7 @@ const deleteUserWishlist = handleRequest(async (req: Request) => {
   if (!user) throw new ExpressError('User not found', 404);
 
   if (user.wishlists) {
-    user.wishlists = user.wishlists.filter(wId => wId.toString() !== wishlistId);
+    user.wishlists = user.wishlists.filter((wId) => wId.toString() !== wishlistId);
     await user.save();
   }
 
@@ -107,5 +107,5 @@ export default {
   getUserWishlists,
   getUserWishlistById,
   updateUserWishlist,
-  deleteUserWishlist,
+  deleteUserWishlist
 };

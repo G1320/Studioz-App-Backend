@@ -8,7 +8,7 @@ const itemSchema = Joi.object({
   studioId: Joi.string().optional().label('Studio'),
   studioName: Joi.string().optional(),
   studioImgUrl: Joi.string().optional(),
-  quantity: Joi.number().optional(),
+  quantity: Joi.number().optional()
 });
 
 const schema = Joi.object({
@@ -34,7 +34,7 @@ const schema = Joi.object({
   isSelfService: Joi.boolean().optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
   isFeatured: Joi.boolean().optional(),
-  subCategory: Joi.string().optional(),
+  subCategory: Joi.string().optional()
 });
 
 const validateStudio = (req: Request, res: Response, next: NextFunction): void => {

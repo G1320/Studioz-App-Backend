@@ -1,4 +1,4 @@
-import {Cart, Wishlist} from './index.js';
+import { Cart, Wishlist } from './index.js';
 export default interface User {
   _id: string;
   username: string;
@@ -6,14 +6,14 @@ export default interface User {
   lastName?: string;
   name: string;
   avatar?: string;
-  password?: string; 
+  password?: string;
   picture?: string;
   sub: string;
   isAdmin?: boolean;
   updatedAt?: Date;
   email?: string;
   studios?: string[];
-  wishlists?: Wishlist[]  ;
+  wishlists?: Wishlist[];
   cart?: Cart;
   __v?: number;
 }

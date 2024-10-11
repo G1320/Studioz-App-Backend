@@ -3,7 +3,7 @@ import { Item } from '../types/index.js';
 
 const availabilitySchema: Schema = new Schema({
   date: { type: String, required: true },
-  times: { type: [String], required: true },
+  times: { type: [String], required: true }
 });
 
 const itemSchema: Schema = new Schema({
@@ -20,8 +20,7 @@ const itemSchema: Schema = new Schema({
   studioImgUrl: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  availability: { type: [availabilitySchema], required: false },
-
+  availability: { type: [availabilitySchema], required: false }
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);

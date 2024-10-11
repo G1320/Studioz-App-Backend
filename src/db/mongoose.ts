@@ -1,5 +1,5 @@
 import mongoose, { Error } from 'mongoose';
-import  { DB_URL } from'../config/index.js';
+import { DB_URL } from '../config/index.js';
 
 const connectToDb = async () => {
   if (!DB_URL) {
@@ -22,6 +22,6 @@ const connectToDb = async () => {
 mongoose.connection.on('connected', () => console.log('Mongoose connected'));
 mongoose.connection.on('disconnected', () => console.log('Mongoose disconnected'));
 mongoose.connection.on('reconnected', () => console.log('Mongoose reconnected'));
-mongoose.connection.on('error', (err:Error) => console.log('Mongoose connection error:', err));
+mongoose.connection.on('error', (err: Error) => console.log('Mongoose connection error:', err));
 
 export default connectToDb;

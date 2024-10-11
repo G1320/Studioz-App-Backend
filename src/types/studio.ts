@@ -1,4 +1,3 @@
-
 import StudioItem from './studioItem.js';
 
 export default interface Studio {
@@ -22,4 +21,3 @@ export default interface Studio {
   subCategory?: string;
   items: StudioItem[];
 }
-

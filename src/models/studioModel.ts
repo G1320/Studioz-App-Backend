@@ -25,11 +25,12 @@ const studioSchema = new Schema({
       idx: { type: Number, required: true },
       itemId: { type: Schema.Types.ObjectId, ref: 'Item' },
       studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
-      studioImgUrl: { type: String, required: false },
-    },
-  ],
+      studioImgUrl: { type: String, required: false }
+    }
+  ]
 });
 
-const StudioModel: Model<Studio & Document> = mongoose.models.Studio || mongoose.model<Studio & Document>('Studio', studioSchema);
+const StudioModel: Model<Studio & Document> =
+  mongoose.models.Studio || mongoose.model<Studio & Document>('Studio', studioSchema);
 
 export { StudioModel };

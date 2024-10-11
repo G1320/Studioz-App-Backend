@@ -2,8 +2,7 @@ import Joi from 'joi';
 import handleJoiError from '../../utils/joiErrorHandler.js';
 import { Request, Response, NextFunction } from '../../types/express.js';
 
-
-const validateUser = (req:Request, res:Response, next:NextFunction) => {
+const validateUser = (req: Request, res: Response, next: NextFunction) => {
   const schema = Joi.object({
     username: Joi.string().label('Username').optional(),
     firstName: Joi.string().label('First Name').optional(),
@@ -16,7 +15,7 @@ const validateUser = (req:Request, res:Response, next:NextFunction) => {
     updatedAt: Joi.date().default(Date.now).label('Last Update'),
     picture: Joi.string().label('Picture').optional(),
     sub: Joi.string().label('Sub').optional(),
-    updated_at: Joi.date().default(Date.now).label('Last Update'),
+    updated_at: Joi.date().default(Date.now).label('Last Update')
   });
 
   const { error } = schema.validate(req.body);

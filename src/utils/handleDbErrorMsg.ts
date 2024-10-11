@@ -1,21 +1,21 @@
 type ValidationLabels = {
-  [key: string]: string,
+  [key: string]: string;
 };
 
 const validationLabels: ValidationLabels = {
   name: 'Studio name',
-  description: 'Studio description',
+  description: 'Studio description'
 };
 
 type ErrorType = {
-  name: string,
-  message: string,
+  name: string;
+  message: string;
   errors?: {
     [key: string]: {
-      path: string,
-      message: string,
-    },
-  },
+      path: string;
+      message: string;
+    };
+  };
 };
 export const handleDbErrorMsg = (error: ErrorType): string => {
   switch (error.name) {
@@ -56,7 +56,6 @@ export const handleDbErrorMsg = (error: ErrorType): string => {
       return `An unknown error occurred: ${error.message}`;
   }
 };
-
 
 export function capitalizeFirstLetter(string: string): string {
   return string.charAt(0).toUpperCase() + string.slice(1);

@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-const readAndParseJsonFile = (filePath:string) => {
+const readAndParseJsonFile = (filePath: string) => {
   console.log(`Reading and parsing JSON file from: ${filePath}`);
   try {
     const rawData = fs.readFileSync(filePath, 'utf8');
@@ -11,5 +11,4 @@ const readAndParseJsonFile = (filePath:string) => {
   }
 };
 
-
-export default  { readAndParseJsonFile };
+export default { readAndParseJsonFile };

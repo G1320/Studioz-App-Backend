@@ -1,6 +1,6 @@
-import express from 'express'
-import userHandler from '../handlers/userHandler.js'
-import { validateUser, verifyTokenMw } from '../../middleware/index.js'
+import express from 'express';
+import userHandler from '../handlers/userHandler.js';
+import { validateUser, verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 

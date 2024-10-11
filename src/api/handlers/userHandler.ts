@@ -1,11 +1,11 @@
-import { Request} from 'express';
+import { Request } from 'express';
 
-import { UserModel } from '../../models/userModel.js'
-import { StudioModel } from '../../models/studioModel.js'
-import handleRequest from '../../utils/requestHandler.js'
-import ExpressError from '../../utils/expressError.js'
+import { UserModel } from '../../models/userModel.js';
+import { StudioModel } from '../../models/studioModel.js';
+import handleRequest from '../../utils/requestHandler.js';
+import ExpressError from '../../utils/expressError.js';
 
-const createUser = handleRequest(async (req:Request) => {
+const createUser = handleRequest(async (req: Request) => {
   const { username, name } = req.body;
 
   // Check if username or email already exist in the database
@@ -17,7 +17,7 @@ const createUser = handleRequest(async (req:Request) => {
   return user;
 });
 
-const getUserBySub = handleRequest(async (req:Request) => {
+const getUserBySub = handleRequest(async (req: Request) => {
   const user = await UserModel.findOne({ sub: req.params.sub });
 
   if (!user) return null;
@@ -25,7 +25,7 @@ const getUserBySub = handleRequest(async (req:Request) => {
   return user;
 });
 
-const getUserStudios = handleRequest(async (req:Request) => {
+const getUserStudios = handleRequest(async (req: Request) => {
   const user = await UserModel.findById(req.params.id);
   if (!user) throw new ExpressError('User not found', 404);
 
@@ -35,7 +35,7 @@ const getUserStudios = handleRequest(async (req:Request) => {
   return studios;
 });
 
-const addStudioToUser = handleRequest(async (req:Request) => {
+const addStudioToUser = handleRequest(async (req: Request) => {
   const userId = req.params.id;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
@@ -58,7 +58,7 @@ const addStudioToUser = handleRequest(async (req:Request) => {
   return studio;
 });
 
-const removeStudioFromUser = handleRequest(async (req:Request) => {
+const removeStudioFromUser = handleRequest(async (req: Request) => {
   const userId = req.params.id;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
@@ -85,14 +85,14 @@ const getAllUsers = handleRequest(async () => {
   return users;
 });
 
-const updateUser = handleRequest(async (req:Request) => {
+const updateUser = handleRequest(async (req: Request) => {
   const user = await UserModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
   if (!user) throw new ExpressError('User not found', 404);
 
   return user;
 });
 
-const deleteUser = handleRequest(async (req:Request) => {
+const deleteUser = handleRequest(async (req: Request) => {
   const user = await UserModel.findByIdAndDelete(req.params.id);
   if (!user) throw new ExpressError('User not found', 404);
 
@@ -108,5 +108,5 @@ export default {
   removeStudioFromUser,
   getAllUsers,
   updateUser,
-  deleteUser,
+  deleteUser
 };

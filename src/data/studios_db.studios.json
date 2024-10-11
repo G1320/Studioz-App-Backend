@@ -1,306 +1,308 @@
-[{
-  "_id": {
-    "$oid": "663a24a3d5ef92120fae7051"
-  },
-  "name": "Le Snare",
-  "description": "Studio oasis, designed to elevate your recording experience, using our recording experience.",
-  "maxOccupancy": 32,
-  "isSmokingAllowed": true,
-  "city": "Tel Aviv",
-  "address": "Menachem Begin 53",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-07T12:54:59.074Z"
-  },
-  "items": [
-    {
-      "idx": 0,
-      "itemId": {
-        "$oid": "6644498a23dd0fe97bbbd8bc"
-      },
-      "studioId": {
-        "$oid": "663a24a3d5ef92120fae7051"
-      },
-      "_id": {
-        "$oid": "6644498a23dd0fe97bbbd8d0"
-      }
-    }
-  ],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
-  },
-  "__v": 1,
-  "category": "Music",
-  "subcategory": "mastering",
-  "coverImage": "https://www.themotormuseum.com/wp-content/uploads/2022/11/DSC_7106-2.jpg",
-  "galleryImages": [
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/rgapwtkd8xzv4jjhorhk.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/iwgpkocmqzkkchow7b0n.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/hee4xzetzqfjw4lethbg.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/kjssput1ujx0bfoutyms.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/xlyjqjnkcbycbdvpbpya.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/vsbbdo33oirfad1ithnn.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/adphsex4hqikxmecxs0d.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/spvxzithtdut5nfznsgd.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/o4vxcadmh53gtk7sy9mx.jpg",
-    "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/c34bi8emjdka6tnh7xnn.jpg"
-  ],
-  "subCategory": "Mastering"
-},
-{
-  "_id": {
-    "$oid": "663a1eb1d5ef92120fae6e94"
-  },
-  "name": "The Studio",
-  "description": "Meticulously crafted studio space, equipped with top-of-the-line audio gear. ",
-  "maxOccupancy": 12,
-  "isSmokingAllowed": true,
-  "city": "Tel Aviv",
-  "address": "Menachem Begin 53",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-07T12:29:37.113Z"
-  },
-  "items": [
-    {
-      "idx": 0,
-      "itemId": {
-        "$oid": "663a2202d5ef92120fae6f3b"
-      },
-      "collectionId": {
-        "$oid": "663a1eb1d5ef92120fae6e94"
-      },
-      "_id": {
-        "$oid": "663a2203d5ef92120fae6f49"
-      }
+[
+  {
+    "_id": {
+      "$oid": "663a24a3d5ef92120fae7051"
     },
-    {
-      "idx": 1,
-      "itemId": {
-        "$oid": "663a2221d5ef92120fae6f64"
-      },
-      "collectionId": {
-        "$oid": "663a1eb1d5ef92120fae6e94"
-      },
-      "_id": {
-        "$oid": "663a2221d5ef92120fae6f74"
-      }
+    "name": "Le Snare",
+    "description": "Studio oasis, designed to elevate your recording experience, using our recording experience.",
+    "maxOccupancy": 32,
+    "isSmokingAllowed": true,
+    "city": "Tel Aviv",
+    "address": "Menachem Begin 53",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-07T12:54:59.074Z"
     },
-    {
-      "idx": 2,
-      "itemId": {
-        "$oid": "663a2272d5ef92120fae6f91"
-      },
-      "collectionId": {
-        "$oid": "663a1eb1d5ef92120fae6e94"
-      },
-      "_id": {
-        "$oid": "663a2272d5ef92120fae6fa3"
+    "items": [
+      {
+        "idx": 0,
+        "itemId": {
+          "$oid": "6644498a23dd0fe97bbbd8bc"
+        },
+        "studioId": {
+          "$oid": "663a24a3d5ef92120fae7051"
+        },
+        "_id": {
+          "$oid": "6644498a23dd0fe97bbbd8d0"
+        }
       }
-    }
-  ],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
-  },
-  "__v": 3,
-  "category": "Music",
-  "subcategory": "recording",
-  "coverImage": "https://149354043.v2.pressablecdn.com/wp-content/uploads/2022/12/IMGL3085-1536x864.jpg",
-  "galleryImages": [],
-  "subCategory": "Mixing"
-},
-{
-  "_id": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "name": "Studio 1320",
-  "description": "Discover an unparalleled recording environment, available now and tailored to perfection.",
-  "maxOccupancy": 4,
-  "isSmokingAllowed": false,
-  "city": "Jerusalem",
-  "address": "Agripas 88",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-07T12:53:22.321Z"
-  },
-  "items": [
-    {
-      "idx": 0,
-      "itemId": {
-        "$oid": "663a29d7d5ef92120fae7113"
-      },
-      "collectionId": {
-        "$oid": "663a2442d5ef92120fae7031"
-      },
-      "_id": {
-        "$oid": "663a29d7d5ef92120fae7123"
-      }
+    ],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
     },
-    {
-      "idx": 1,
-      "itemId": {
-        "$oid": "663a2a45d5ef92120fae714e"
-      },
-      "collectionId": {
-        "$oid": "663a2442d5ef92120fae7031"
-      },
-      "_id": {
-        "$oid": "663a2a45d5ef92120fae7160"
-      }
+    "__v": 1,
+    "category": "Music",
+    "subcategory": "mastering",
+    "coverImage": "https://www.themotormuseum.com/wp-content/uploads/2022/11/DSC_7106-2.jpg",
+    "galleryImages": [
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/rgapwtkd8xzv4jjhorhk.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/iwgpkocmqzkkchow7b0n.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/hee4xzetzqfjw4lethbg.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/kjssput1ujx0bfoutyms.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/xlyjqjnkcbycbdvpbpya.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/vsbbdo33oirfad1ithnn.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/adphsex4hqikxmecxs0d.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442072/my-react-file-upload/spvxzithtdut5nfznsgd.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/o4vxcadmh53gtk7sy9mx.jpg",
+      "https://res.cloudinary.com/dg2ane5el/image/upload/v1716442073/my-react-file-upload/c34bi8emjdka6tnh7xnn.jpg"
+    ],
+    "subCategory": "Mastering"
+  },
+  {
+    "_id": {
+      "$oid": "663a1eb1d5ef92120fae6e94"
     },
-    {
-      "idx": 2,
-      "itemId": {
-        "$oid": "663a2a62d5ef92120fae7186"
-      },
-      "collectionId": {
-        "$oid": "663a2442d5ef92120fae7031"
-      },
-      "_id": {
-        "$oid": "663a2a63d5ef92120fae7193"
-      }
+    "name": "The Studio",
+    "description": "Meticulously crafted studio space, equipped with top-of-the-line audio gear. ",
+    "maxOccupancy": 12,
+    "isSmokingAllowed": true,
+    "city": "Tel Aviv",
+    "address": "Menachem Begin 53",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-07T12:29:37.113Z"
     },
-    {
-      "idx": 3,
-      "itemId": {
-        "$oid": "663a2a77d5ef92120fae71c3"
+    "items": [
+      {
+        "idx": 0,
+        "itemId": {
+          "$oid": "663a2202d5ef92120fae6f3b"
+        },
+        "collectionId": {
+          "$oid": "663a1eb1d5ef92120fae6e94"
+        },
+        "_id": {
+          "$oid": "663a2203d5ef92120fae6f49"
+        }
       },
-      "collectionId": {
-        "$oid": "663a2442d5ef92120fae7031"
+      {
+        "idx": 1,
+        "itemId": {
+          "$oid": "663a2221d5ef92120fae6f64"
+        },
+        "collectionId": {
+          "$oid": "663a1eb1d5ef92120fae6e94"
+        },
+        "_id": {
+          "$oid": "663a2221d5ef92120fae6f74"
+        }
       },
-      "_id": {
-        "$oid": "663a2a78d5ef92120fae71d9"
+      {
+        "idx": 2,
+        "itemId": {
+          "$oid": "663a2272d5ef92120fae6f91"
+        },
+        "collectionId": {
+          "$oid": "663a1eb1d5ef92120fae6e94"
+        },
+        "_id": {
+          "$oid": "663a2272d5ef92120fae6fa3"
+        }
       }
+    ],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
     },
-    {
-      "idx": 4,
-      "itemId": {
-        "$oid": "66d871e33f7fddfc001694b7"
-      },
-      "studioId": {
-        "$oid": "663a2442d5ef92120fae7031"
-      },
-      "_id": {
-        "$oid": "66d871e33f7fddfc001694bf"
-      }
-    }
-  ],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
+    "__v": 3,
+    "category": "Music",
+    "subcategory": "recording",
+    "coverImage": "https://149354043.v2.pressablecdn.com/wp-content/uploads/2022/12/IMGL3085-1536x864.jpg",
+    "galleryImages": [],
+    "subCategory": "Mixing"
   },
-  "__v": 44,
-  "category": "Music",
-  "subcategory": "mastering",
-  "coverImage": "https://i.imgur.com/fVznUWg.jpeg",
-  "galleryAudioFiles": [],
-  "galleryImages": [],
-  "subCategory": "Recording"
-},
-{
-  "_id": {
-    "$oid": "663e35c4fa45a2eb4e402c3b"
-  },
-  "name": "Studio C",
-  "description": "Where every note, rhythm, and melody comes to life with unparalleled clarity and precision.",
-  "maxOccupancy": 18,
-  "isSmokingAllowed": true,
-  "city": "Haifa",
-  "address": "Rehov Kaze 66",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-10T14:57:08.904Z"
-  },
-  "items": [],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "recording",
-  "coverImage": "https://atc.audio/wp-content/uploads/2023/10/Startstruck_ATC_Atmos_Front.jpg",
-  "galleryImages": [],
-  "subCategory": "Recording"
-},
-{
-  "_id": {
-    "$oid": "663c4bafd5ef92120fae878b"
-  },
-  "name": "Pluto Studios",
-  "description": " Premier recording space in Tel Aviv. Elevate your sound quality with the best of the best.",
-  "maxOccupancy": 45,
-  "isSmokingAllowed": false,
-  "city": "Tel Aviv",
-  "address": "Lavenda 53",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-09T04:06:07.313Z"
-  },
-  "items": [
-    {
-      "idx": 0,
-      "itemId": {
-        "$oid": "663dcba842fcc22373e4b128"
-      },
-      "collectionId": {
-        "$oid": "663c4bafd5ef92120fae878b"
-      },
-      "collectionName": "Pluto Studios",
-      "_id": {
-        "$oid": "663dcba842fcc22373e4b137"
-      }
+  {
+    "_id": {
+      "$oid": "663a2442d5ef92120fae7031"
     },
-    {
-      "idx": 1,
-      "itemId": {
-        "$oid": "663dcbd81334cb9074d32884"
+    "name": "Studio 1320",
+    "description": "Discover an unparalleled recording environment, available now and tailored to perfection.",
+    "maxOccupancy": 4,
+    "isSmokingAllowed": false,
+    "city": "Jerusalem",
+    "address": "Agripas 88",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-07T12:53:22.321Z"
+    },
+    "items": [
+      {
+        "idx": 0,
+        "itemId": {
+          "$oid": "663a29d7d5ef92120fae7113"
+        },
+        "collectionId": {
+          "$oid": "663a2442d5ef92120fae7031"
+        },
+        "_id": {
+          "$oid": "663a29d7d5ef92120fae7123"
+        }
       },
-      "collectionId": {
-        "$oid": "663c4bafd5ef92120fae878b"
+      {
+        "idx": 1,
+        "itemId": {
+          "$oid": "663a2a45d5ef92120fae714e"
+        },
+        "collectionId": {
+          "$oid": "663a2442d5ef92120fae7031"
+        },
+        "_id": {
+          "$oid": "663a2a45d5ef92120fae7160"
+        }
       },
-      "collectionName": "Pluto Studios",
-      "_id": {
-        "$oid": "663dcbd91334cb9074d32895"
+      {
+        "idx": 2,
+        "itemId": {
+          "$oid": "663a2a62d5ef92120fae7186"
+        },
+        "collectionId": {
+          "$oid": "663a2442d5ef92120fae7031"
+        },
+        "_id": {
+          "$oid": "663a2a63d5ef92120fae7193"
+        }
+      },
+      {
+        "idx": 3,
+        "itemId": {
+          "$oid": "663a2a77d5ef92120fae71c3"
+        },
+        "collectionId": {
+          "$oid": "663a2442d5ef92120fae7031"
+        },
+        "_id": {
+          "$oid": "663a2a78d5ef92120fae71d9"
+        }
+      },
+      {
+        "idx": 4,
+        "itemId": {
+          "$oid": "66d871e33f7fddfc001694b7"
+        },
+        "studioId": {
+          "$oid": "663a2442d5ef92120fae7031"
+        },
+        "_id": {
+          "$oid": "66d871e33f7fddfc001694bf"
+        }
       }
-    }
-  ],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
+    ],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
+    },
+    "__v": 44,
+    "category": "Music",
+    "subcategory": "mastering",
+    "coverImage": "https://i.imgur.com/fVznUWg.jpeg",
+    "galleryAudioFiles": [],
+    "galleryImages": [],
+    "subCategory": "Recording"
   },
-  "__v": 7,
-  "category": "Music",
-  "subcategory": "Recording",
-  "coverImage": "https://i.ytimg.com/vi/sEivZ5KaT0Y/sddefault.jpg",
-  "galleryImages": [],
-  "subCategory": "Recording",
-  "galleryAudioFiles": []
-},
-{
-  "_id": {
-    "$oid": "6641e6d6bcd14bfae67bfdcc"
+  {
+    "_id": {
+      "$oid": "663e35c4fa45a2eb4e402c3b"
+    },
+    "name": "Studio C",
+    "description": "Where every note, rhythm, and melody comes to life with unparalleled clarity and precision.",
+    "maxOccupancy": 18,
+    "isSmokingAllowed": true,
+    "city": "Haifa",
+    "address": "Rehov Kaze 66",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-10T14:57:08.904Z"
+    },
+    "items": [],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "recording",
+    "coverImage": "https://atc.audio/wp-content/uploads/2023/10/Startstruck_ATC_Atmos_Front.jpg",
+    "galleryImages": [],
+    "subCategory": "Recording"
   },
-  "name": "Studio Noche",
-  "description": "Modern recording space with breathtaking views, perfect for capturing artistic brilliance.",
-  "maxOccupancy": 26,
-  "isSmokingAllowed": false,
-  "city": "Eilat",
-  "address": "Dolphin Way 33",
-  "isWheelchairAccessible": true,
-  "isSelfService": true,
-  "createdAt": {
-    "$date": "2024-05-13T10:09:26.962Z"
+  {
+    "_id": {
+      "$oid": "663c4bafd5ef92120fae878b"
+    },
+    "name": "Pluto Studios",
+    "description": " Premier recording space in Tel Aviv. Elevate your sound quality with the best of the best.",
+    "maxOccupancy": 45,
+    "isSmokingAllowed": false,
+    "city": "Tel Aviv",
+    "address": "Lavenda 53",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-09T04:06:07.313Z"
+    },
+    "items": [
+      {
+        "idx": 0,
+        "itemId": {
+          "$oid": "663dcba842fcc22373e4b128"
+        },
+        "collectionId": {
+          "$oid": "663c4bafd5ef92120fae878b"
+        },
+        "collectionName": "Pluto Studios",
+        "_id": {
+          "$oid": "663dcba842fcc22373e4b137"
+        }
+      },
+      {
+        "idx": 1,
+        "itemId": {
+          "$oid": "663dcbd81334cb9074d32884"
+        },
+        "collectionId": {
+          "$oid": "663c4bafd5ef92120fae878b"
+        },
+        "collectionName": "Pluto Studios",
+        "_id": {
+          "$oid": "663dcbd91334cb9074d32895"
+        }
+      }
+    ],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
+    },
+    "__v": 7,
+    "category": "Music",
+    "subcategory": "Recording",
+    "coverImage": "https://i.ytimg.com/vi/sEivZ5KaT0Y/sddefault.jpg",
+    "galleryImages": [],
+    "subCategory": "Recording",
+    "galleryAudioFiles": []
   },
-  "items": [],
-  "createdBy": {
-    "$oid": "6633a75d79151612ec3ad5de"
-  },
-  "__v": 0,
-  "coverImage": "https://wsdg.com/wp-content/uploads/Tim-Mosley-Timbaland-Studios-4.jpg",
-  "category": "Music",
-  "galleryImages": [],
-  "subCategory": "Recording"
-}]
+  {
+    "_id": {
+      "$oid": "6641e6d6bcd14bfae67bfdcc"
+    },
+    "name": "Studio Noche",
+    "description": "Modern recording space with breathtaking views, perfect for capturing artistic brilliance.",
+    "maxOccupancy": 26,
+    "isSmokingAllowed": false,
+    "city": "Eilat",
+    "address": "Dolphin Way 33",
+    "isWheelchairAccessible": true,
+    "isSelfService": true,
+    "createdAt": {
+      "$date": "2024-05-13T10:09:26.962Z"
+    },
+    "items": [],
+    "createdBy": {
+      "$oid": "6633a75d79151612ec3ad5de"
+    },
+    "__v": 0,
+    "coverImage": "https://wsdg.com/wp-content/uploads/Tim-Mosley-Timbaland-Studios-4.jpg",
+    "category": "Music",
+    "galleryImages": [],
+    "subCategory": "Recording"
+  }
+]

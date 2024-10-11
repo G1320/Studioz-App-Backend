@@ -1,18 +1,18 @@
-import { PORT, ALLOWED_ORIGINS, JWT_SECRET_KEY } from'./config/index.js'
-import { handleErrorMw, handleDbErrorMw, logRequestsMw } from'./middleware/index.js'
-import connectToDb from'./db/mongoose.js'
+import { PORT, ALLOWED_ORIGINS, JWT_SECRET_KEY } from './config/index.js';
+import { handleErrorMw, handleDbErrorMw, logRequestsMw } from './middleware/index.js';
+import connectToDb from './db/mongoose.js';
 
-import authRoutes from'./api/routes/authRoutes.js'
-import userRoutes from'./api/routes/userRoutes.js'
-import studioRoutes from'./api/routes/studioRoutes.js'
-import wishlistRoutes from'./api/routes/wishlistRoutes.js'
-import itemRoutes from'./api/routes/itemRoutes.js'
-import cartRoutes from'./api/routes/cartRoutes.js'
-import cors from'cors'
-import cookieParser from'cookie-parser'
-import mongoSanitize from'express-mongo-sanitize'
-import helmet from'helmet'
-import express , { type Application } from "express";
+import authRoutes from './api/routes/authRoutes.js';
+import userRoutes from './api/routes/userRoutes.js';
+import studioRoutes from './api/routes/studioRoutes.js';
+import wishlistRoutes from './api/routes/wishlistRoutes.js';
+import itemRoutes from './api/routes/itemRoutes.js';
+import cartRoutes from './api/routes/cartRoutes.js';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
+import helmet from 'helmet';
+import express, { type Application } from 'express';
 
 const port = process.env.PORT || PORT;
 
@@ -29,16 +29,15 @@ app.use(
         scriptSrc: ["'self'", ...ALLOWED_ORIGINS],
         connectSrc: ["'self'", ...ALLOWED_ORIGINS],
         workerSrc: ["'self'", 'blob:'],
-        mediaSrc: ["'self'", ...ALLOWED_ORIGINS],
-      },
-    },
+        mediaSrc: ["'self'", ...ALLOWED_ORIGINS]
+      }
+    }
   })
 );
 
-
 const corsOptions = {
   origin: ALLOWED_ORIGINS,
-  credentials: true,
+  credentials: true
 };
 
 app.use(logRequestsMw);

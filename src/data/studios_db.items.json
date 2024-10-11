@@ -1,256 +1,258 @@
-[{
-  "_id": {
-    "$oid": "663a2202d5ef92120fae6f3b"
+[
+  {
+    "_id": {
+      "$oid": "663a2202d5ef92120fae6f3b"
+    },
+    "name": "Mixing ",
+    "description": " Elevate your tracks with our professional mixing expertise for polished, radio-ready sound.",
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a1eb1d5ef92120fae6e94"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T12:43:46.902Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-12T15:52:28.479Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "mixing",
+    "studioName": "The Studio",
+    "price": "249.99"
   },
-  "name": "Mixing ",
-  "description": " Elevate your tracks with our professional mixing expertise for polished, radio-ready sound.",
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a1eb1d5ef92120fae6e94"
+  {
+    "_id": {
+      "$oid": "663a2221d5ef92120fae6f64"
+    },
+    "name": "Mastering",
+    "description": "Put the final polish on your music with our precision mastering service.",
+    "price": 119.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a1eb1d5ef92120fae6e94"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T12:44:17.740Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-12T04:18:23.653Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Mastering",
+    "studioName": "The Studio"
   },
-  "createdAt": {
-    "$date": "2024-05-07T12:43:46.902Z"
+  {
+    "_id": {
+      "$oid": "663a2272d5ef92120fae6f91"
+    },
+    "name": "Recording",
+    "description": "Capture your music in pristine quality at our state-of-the-art recording studio.",
+    "price": 499.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a1eb1d5ef92120fae6e94"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T12:45:38.237Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-09T13:55:40.073Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Recording",
+    "studioName": "The Studio"
   },
-  "updatedAt": {
-    "$date": "2024-09-12T15:52:28.479Z"
+  {
+    "_id": {
+      "$oid": "663a29d7d5ef92120fae7113"
+    },
+    "name": "Recording",
+    "description": "Capture your sound in pristine detail with our professional recording service.",
+    "price": 279.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T13:17:11.240Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-05T17:13:43.637Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Recording",
+    "studioName": "Studio 1320"
   },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "mixing",
-  "studioName": "The Studio",
-  "price": "249.99"
-},
-{
-  "_id": {
-    "$oid": "663a2221d5ef92120fae6f64"
+  {
+    "_id": {
+      "$oid": "663a2a45d5ef92120fae714e"
+    },
+    "name": "Mixing ",
+    "description": "Dive into the art of mixing in our state-of-the-art studio.",
+    "price": 179.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T13:19:01.290Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-12T07:51:54.041Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Mixing",
+    "studioName": "Studio 1320"
   },
-  "name": "Mastering",
-  "description": "Put the final polish on your music with our precision mastering service.",
-  "price": 119.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a1eb1d5ef92120fae6e94"
+  {
+    "_id": {
+      "$oid": "663a2a62d5ef92120fae7186"
+    },
+    "name": "Mastering",
+    "description": "Perfect your tracks with our mastering service, where precision meets passion.",
+    "price": 109.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T13:19:30.944Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-13T04:21:48.694Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Mastering",
+    "studioName": "Studio 1320"
   },
-  "createdAt": {
-    "$date": "2024-05-07T12:44:17.740Z"
+  {
+    "_id": {
+      "$oid": "663a2a77d5ef92120fae71c3"
+    },
+    "name": "Studio hr",
+    "description": "Make the most of your studio time in our well-equipped space.",
+    "price": 49.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "createdAt": {
+      "$date": "2024-05-07T13:19:51.669Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-04T13:19:12.822Z"
+    },
+    "__v": 0,
+    "studioName": "Studio 1320"
   },
-  "updatedAt": {
-    "$date": "2024-09-12T04:18:23.653Z"
+  {
+    "_id": {
+      "$oid": "663dcf17af673c588d2e280b"
+    },
+    "name": "Recording",
+    "description": "Capture pristine sound in the heart of a vibrant creative hub.",
+    "price": 349.99,
+    "inStock": true,
+    "collectionId": {
+      "$oid": "663c4bafd5ef92120fae878b"
+    },
+    "createdAt": {
+      "$date": "2024-05-10T07:39:03.481Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-12T14:50:46.145Z"
+    },
+    "__v": 0,
+    "studioName": "Pluto Studios"
   },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Mastering",
-  "studioName": "The Studio"
-},
-{
-  "_id": {
-    "$oid": "663a2272d5ef92120fae6f91"
+  {
+    "_id": {
+      "$oid": "6641cb16bcd14bfae67bf953"
+    },
+    "name": "Chit Chat",
+    "description": "Talk audio with the pros.",
+    "price": 550,
+    "inStock": true,
+    "studioId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "studioName": "Studio 1320",
+    "createdAt": {
+      "$date": "2024-05-13T08:11:02.474Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-12T16:38:16.836Z"
+    },
+    "__v": 0
   },
-  "name": "Recording",
-  "description": "Capture your music in pristine quality at our state-of-the-art recording studio.",
-  "price": 499.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a1eb1d5ef92120fae6e94"
+  {
+    "_id": {
+      "$oid": "6644498a23dd0fe97bbbd8bc"
+    },
+    "name": "Mastering",
+    "description": "Experience professional mastering service at our beautiful boutique Tel Aviv recording studio.",
+    "price": 179,
+    "inStock": true,
+    "studioId": {
+      "$oid": "663a24a3d5ef92120fae7051"
+    },
+    "studioName": "Le Snare",
+    "createdAt": {
+      "$date": "2024-05-15T05:35:06.410Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-05T17:15:13.565Z"
+    },
+    "__v": 0,
+    "category": "Music",
+    "subcategory": "Mastering"
   },
-  "createdAt": {
-    "$date": "2024-05-07T12:45:38.237Z"
+  {
+    "_id": {
+      "$oid": "66d871e33f7fddfc001694b7"
+    },
+    "name": "Chit Chat",
+    "description": "Talk audio with the pros",
+    "category": "Music",
+    "price": 220,
+    "inStock": true,
+    "studioId": {
+      "$oid": "663a2442d5ef92120fae7031"
+    },
+    "studioName": "Studio 1320",
+    "createdAt": {
+      "$date": "2024-09-04T14:42:43.317Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-04T14:42:43.486Z"
+    },
+    "__v": 0
   },
-  "updatedAt": {
-    "$date": "2024-09-09T13:55:40.073Z"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Recording",
-  "studioName": "The Studio"
-},
-{
-  "_id": {
-    "$oid": "663a29d7d5ef92120fae7113"
-  },
-  "name": "Recording",
-  "description": "Capture your sound in pristine detail with our professional recording service.",
-  "price": 279.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "createdAt": {
-    "$date": "2024-05-07T13:17:11.240Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-05T17:13:43.637Z"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Recording",
-  "studioName": "Studio 1320"
-},
-{
-  "_id": {
-    "$oid": "663a2a45d5ef92120fae714e"
-  },
-  "name": "Mixing ",
-  "description": "Dive into the art of mixing in our state-of-the-art studio.",
-  "price": 179.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "createdAt": {
-    "$date": "2024-05-07T13:19:01.290Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-12T07:51:54.041Z"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Mixing",
-  "studioName": "Studio 1320"
-},
-{
-  "_id": {
-    "$oid": "663a2a62d5ef92120fae7186"
-  },
-  "name": "Mastering",
-  "description": "Perfect your tracks with our mastering service, where precision meets passion.",
-  "price": 109.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "createdAt": {
-    "$date": "2024-05-07T13:19:30.944Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-13T04:21:48.694Z"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Mastering",
-  "studioName": "Studio 1320"
-},
-{
-  "_id": {
-    "$oid": "663a2a77d5ef92120fae71c3"
-  },
-  "name": "Studio hr",
-  "description": "Make the most of your studio time in our well-equipped space.",
-  "price": 49.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "createdAt": {
-    "$date": "2024-05-07T13:19:51.669Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-04T13:19:12.822Z"
-  },
-  "__v": 0,
-  "studioName": "Studio 1320"
-},
-{
-  "_id": {
-    "$oid": "663dcf17af673c588d2e280b"
-  },
-  "name": "Recording",
-  "description": "Capture pristine sound in the heart of a vibrant creative hub.",
-  "price": 349.99,
-  "inStock": true,
-  "collectionId": {
-    "$oid": "663c4bafd5ef92120fae878b"
-  },
-  "createdAt": {
-    "$date": "2024-05-10T07:39:03.481Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-12T14:50:46.145Z"
-  },
-  "__v": 0,
-  "studioName": "Pluto Studios"
-},
-{
-  "_id": {
-    "$oid": "6641cb16bcd14bfae67bf953"
-  },
-  "name": "Chit Chat",
-  "description": "Talk audio with the pros.",
-  "price": 550,
-  "inStock": true,
-  "studioId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "studioName": "Studio 1320",
-  "createdAt": {
-    "$date": "2024-05-13T08:11:02.474Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-12T16:38:16.836Z"
-  },
-  "__v": 0
-},
-{
-  "_id": {
-    "$oid": "6644498a23dd0fe97bbbd8bc"
-  },
-  "name": "Mastering",
-  "description": "Experience professional mastering service at our beautiful boutique Tel Aviv recording studio.",
-  "price": 179,
-  "inStock": true,
-  "studioId": {
-    "$oid": "663a24a3d5ef92120fae7051"
-  },
-  "studioName": "Le Snare",
-  "createdAt": {
-    "$date": "2024-05-15T05:35:06.410Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-05T17:15:13.565Z"
-  },
-  "__v": 0,
-  "category": "Music",
-  "subcategory": "Mastering"
-},
-{
-  "_id": {
-    "$oid": "66d871e33f7fddfc001694b7"
-  },
-  "name": "Chit Chat",
-  "description": "Talk audio with the pros",
-  "category": "Music",
-  "price": 220,
-  "inStock": true,
-  "studioId": {
-    "$oid": "663a2442d5ef92120fae7031"
-  },
-  "studioName": "Studio 1320",
-  "createdAt": {
-    "$date": "2024-09-04T14:42:43.317Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-04T14:42:43.486Z"
-  },
-  "__v": 0
-},
-{
-  "_id": {
-    "$oid": "66d9946b3f7fddfc00169cf5"
-  },
-  "name": "Mixing",
-  "description": "Unleash your sounds full potential with our custom tailored service",
-  "category": "Music",
-  "price": 250,
-  "inStock": true,
-  "studioId": {
-    "$oid": "663c4bafd5ef92120fae878b"
-  },
-  "studioName": "Pluto Studios",
-  "createdAt": {
-    "$date": "2024-09-05T11:22:19.334Z"
-  },
-  "updatedAt": {
-    "$date": "2024-09-05T11:22:19.519Z"
-  },
-  "__v": 0
-}]
+  {
+    "_id": {
+      "$oid": "66d9946b3f7fddfc00169cf5"
+    },
+    "name": "Mixing",
+    "description": "Unleash your sounds full potential with our custom tailored service",
+    "category": "Music",
+    "price": 250,
+    "inStock": true,
+    "studioId": {
+      "$oid": "663c4bafd5ef92120fae878b"
+    },
+    "studioName": "Pluto Studios",
+    "createdAt": {
+      "$date": "2024-09-05T11:22:19.334Z"
+    },
+    "updatedAt": {
+      "$date": "2024-09-05T11:22:19.519Z"
+    },
+    "__v": 0
+  }
+]
