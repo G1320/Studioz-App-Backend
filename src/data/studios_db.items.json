@@ -17,7 +17,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "mixing",
+    "subCategory": "mixing",
     "studioName": "The Studio",
     "price": "249.99"
   },
@@ -40,7 +40,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Mastering",
+    "subCategory": "Mastering",
     "studioName": "The Studio"
   },
   {
@@ -62,7 +62,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Recording",
+    "subCategory": "Recording",
     "studioName": "The Studio"
   },
   {
@@ -84,7 +84,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Recording",
+    "subCategory": "Recording",
     "studioName": "Studio 1320"
   },
   {
@@ -106,7 +106,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Mixing",
+    "subCategory": "Mixing",
     "studioName": "Studio 1320"
   },
   {
@@ -128,7 +128,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Mastering",
+    "subCategory": "Mastering",
     "studioName": "Studio 1320"
   },
   {
@@ -211,7 +211,7 @@
     },
     "__v": 0,
     "category": "Music",
-    "subcategory": "Mastering"
+    "subCategory": "Mastering"
   },
   {
     "_id": {

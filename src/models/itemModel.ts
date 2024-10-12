@@ -10,7 +10,7 @@ const itemSchema: Schema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: false },
   category: { type: String, required: false },
-  subcategory: { type: String, required: false },
+  subCategory: { type: String, required: false },
   price: { type: Number, required: false },
   imgUrl: { type: String, required: false },
   idx: { type: Number, required: false },
