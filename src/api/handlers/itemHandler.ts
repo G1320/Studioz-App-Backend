@@ -26,8 +26,8 @@ const createItem = handleRequest(async (req: Request) => {
   item.updatedAt = new Date();
 
   if (!item.studioId) item.studioId = studioId;
-  if (!item.studioImgUrl) item.studioImgUrl = studio.coverImage;
-
+  if (studio.coverImage) item.studioImgUrl = studio.coverImage;
+  
   await item.save();
 
   if (studio.items.length > 31) throw new ExpressError('Oops, Studio is full!', 400);
