@@ -63,6 +63,18 @@ const getItems = handleRequest(async (req: Request) => {
   return items;
 });
 
+const updateItemAvailability = async (itemId: string, availability: any[]) => {
+
+  const item = await ItemModel.updateOne(
+    { _id: itemId },
+    { $set: { availability } }
+  );
+
+  if (!item) throw new ExpressError('item not found', 404);
+
+  return item
+};
+
 const addItemToStudio = handleRequest(async (req: Request) => {
   const studioId = req.params.studioId;
   if (!studioId) throw new ExpressError('studio ID not provided', 400);
@@ -204,6 +216,9 @@ const updateItemById = handleRequest(async (req: Request) => {
   return req.body;
 });
 
+
+
+
 const deleteItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
@@ -223,6 +238,7 @@ export default {
   createItem,
   getItems,
   getItemById,
+  updateItemAvailability,
   addItemToStudio,
   removeItemFromStudio,
   addItemToWishlist,

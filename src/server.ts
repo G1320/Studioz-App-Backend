@@ -8,6 +8,7 @@ import studioRoutes from './api/routes/studioRoutes.js';
 import wishlistRoutes from './api/routes/wishlistRoutes.js';
 import itemRoutes from './api/routes/itemRoutes.js';
 import cartRoutes from './api/routes/cartRoutes.js';
+import bookingRoutes from './api/routes/bookingRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -53,6 +54,18 @@ app.use('/api/studios', studioRoutes);
 app.use('/api/wishlists', wishlistRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
+
+app.post('/:userId/book-item', (req, res) => {
+  console.log('Booking route hit!'); // This should print
+  console.log('Request body:', req.body); // Log the incoming request body
+  console.log('User ID:', req.params.userId); // Log the user ID from params
+
+  res.status(200).json({ message: 'Item booked successfully!' });
+});
+app.use('/api/bookings',() =>{
+console.log('bookingRoutes');
+} 
+);
 
 app.use('/api/auth', authRoutes);
 

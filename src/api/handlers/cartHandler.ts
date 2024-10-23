@@ -8,7 +8,9 @@ import CartItem from '../../types/cartItem.js';
 
 const addItemToCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
-  const { bookingDate } = req.body;
+  const { bookingDate, startTime } = req.body ;
+  console.log('req.body: ', req.body);
+  
 
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
   if (!bookingDate) throw new ExpressError('Booking date is required', 400);
@@ -38,7 +40,8 @@ const addItemToCart = handleRequest(async (req: Request) => {
       total: item.price,
       itemId: item._id,
       quantity: 1,
-      bookingDate: bookingDate,
+      bookingDate: bookingDate.toString(),
+      startTime: startTime.toString(),
       studioName: item.studioName,
       studioId: item.studioId
     });
