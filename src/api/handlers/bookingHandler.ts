@@ -5,50 +5,49 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 
 const createBooking = handleRequest(async (req: Request) => {
-    // const item = new ItemModel(req.body);
-    
-    // await item.save();
     
     const userId = req.params.userId;
     console.log('studioId: ', userId);
 
     const itemId = req.body
     console.log('itemId: ', itemId);
-    // if (!studioId) throw new ExpressError('studio ID not provided', 400);
-    
-    // const itemId = item._id;
-    // if (!itemId) throw new ExpressError('item ID not provided', 400);
-    
-    // const studio = await StudioModel.findById(studioId);
-    // if (!studio) throw new ExpressError('studio not found', 404);
-    // if (!studio.items) studio.items = [];
-    
-    // if (!item) throw new ExpressError('item not found', 404);
-    
-    // item.updatedAt = new Date();
-    
-    // if (!item.studioId) item.studioId = studioId;
-    // if (studio.coverImage) item.studioImgUrl = studio.coverImage;
-    
-    // await item.save();
-    
-    // if (studio.items.length > 31) throw new ExpressError('Oops, Studio is full!', 400);
-    // if (studio.items.some((studioItem: StudioItem) => studioItem.itemId.toString() === item._id.toString())) {
-    //     throw new ExpressError('Studio already includes this item!', 400);
-    // }
-    
-    // studio.items.push({
-    //     idx: studio.items.length,
-    //     itemId: item._id,
-    //     studioId,
-    //     studioName: item.studioName
-    // });
-    // await studio.save();
-    
-    // return item;
+
 }
 )
 
 export default {
     createBooking,
 }
+
+
+// // Helper to generate consecutive time slots (e.g., ['10:00', '11:00'])
+// const getConsecutiveTimeSlots = (start: string, hours: number): string[] => {
+//   const [startHour] = start.split(':').map(Number);
+//   return Array.from({ length: hours }, (_, i) => `${String(startHour + i).padStart(2, '0')}:00`);
+// };
+
+// // Function to book an item
+// export const bookItem = (item: Item, bookingDate: string, startTime: string, quantity: number): boolean => {
+//   const availability = item.availability?.find((a) => a.date === bookingDate);
+
+//   if (!availability) {
+//     console.error('No availability for the selected date.');
+//     return false;
+//   }
+
+//   const requestedSlots = getConsecutiveTimeSlots(startTime, quantity);
+
+//   // Check if all requested slots are available
+//   const allAvailable = requestedSlots.every((slot) => availability.times.includes(slot));
+
+//   if (!allAvailable) {
+//     console.error('One or more time slots are unavailable.');
+//     return false;
+//   }
+
+//   // Remove the booked time slots
+//   availability.times = availability.times.filter((time) => !requestedSlots.includes(time));
+
+//   console.log(`Booked ${item.name} from ${startTime} for ${quantity} hours.`);
+//   return true;
+// };

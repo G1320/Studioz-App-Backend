@@ -7,7 +7,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     username: Joi.string().label('Username').optional(),
     firstName: Joi.string().label('First Name').optional(),
     lastName: Joi.string().label('Last Name').optional(),
-    name: Joi.string().required().label('Last Name'),
+    name: Joi.string().optional().label('Last Name'),
     avatar: Joi.string().label('Avatar').optional(),
     password: Joi.string().min(6).label('Password').optional(),
     isAdmin: Joi.boolean().label('Admin access').optional(),
@@ -15,9 +15,22 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     updatedAt: Joi.date().default(Date.now).label('Last Update'),
     picture: Joi.string().label('Picture').optional(),
     sub: Joi.string().label('Sub').optional(),
-    cart: Joi.object().label('Cart').optional(),
-    updated_at: Joi.date().default(Date.now).label('Last Update')
-  });
+    cart: Joi.object({
+      items: Joi.array().items(
+        Joi.object({
+          name: Joi.string().optional(),
+          price: Joi.number().optional(),
+          total: Joi.number().optional(),
+          itemId: Joi.string().optional(),
+          quantity: Joi.number().optional().default(1),
+          bookingDate: Joi.string().optional(),
+          startTime: Joi.string().optional(),
+          studioName: Joi.string().optional(),
+          studioId: Joi.string().optional()
+        })
+      )
+    }).optional(),
+    });
 
   const { error } = schema.validate(req.body);
   error ? handleJoiError(error) : next();
