@@ -54,6 +54,7 @@ app.use('/api/studios', studioRoutes);
 app.use('/api/wishlists', wishlistRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.post('/:userId/book-item', (req, res) => {
   console.log('Booking route hit!'); // This should print
@@ -62,10 +63,6 @@ app.post('/:userId/book-item', (req, res) => {
 
   res.status(200).json({ message: 'Item booked successfully!' });
 });
-app.use('/api/bookings',() =>{
-console.log('bookingRoutes');
-} 
-);
 
 app.use('/api/auth', authRoutes);
 

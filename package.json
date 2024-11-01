@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm i && tsc",
     "start": "node ./dist/server.js",
-    "start:dev": "node --w server.js"
+    "start:dev": "ts-node src/server.ts"
+
   },
   "engines": {
     "node": ">=18.x"

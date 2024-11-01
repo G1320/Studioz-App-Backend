@@ -1,53 +1,47 @@
 import { Request } from 'express';
-
-// import { BookingModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { ItemModel } from '../../models/itemModel.js';
+import Availability from '../../types/availability.js';
 
-const createBooking = handleRequest(async (req: Request) => {
-    
+const bookStudioItem = handleRequest(async (req: Request) => {
+    const { itemId, bookingDate, startTime } = req.body;
     const userId = req.params.userId;
-    console.log('studioId: ', userId);
 
-    const itemId = req.body
-    console.log('itemId: ', itemId);
+    const item = await ItemModel.findOne({ _id: itemId });
+    if (!item) throw new ExpressError('Item not found', 404);
 
-}
-)
+    // Initialize availability if undefined
+    item.availability = item.availability || [];
+    
+    // Define default hours for availability
+    const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    
+    // Locate or create availability entry for the booking date
+    let dateAvailability = item.availability.find(avail => avail.date === bookingDate) ||
+        { date: bookingDate, times: [...defaultHours] };
+    
+    // If a new dateAvailability is created, push it to the array
+    if (!item.availability.some(avail => avail.date === bookingDate)) {
+        item.availability.push(dateAvailability);
+    }
+
+    // Check if the time slot is available
+    const timeIndex = dateAvailability.times.indexOf(startTime);
+    if (timeIndex === -1) throw new ExpressError('Time slot not available', 400);
+
+    // Remove the selected time slot
+    dateAvailability.times.splice(timeIndex, 1);
+
+    // Update item.availability with the modified dateAvailability
+    item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+    );
+    await item.save();
+
+    return item;
+});
 
 export default {
-    createBooking,
-}
-
-
-// // Helper to generate consecutive time slots (e.g., ['10:00', '11:00'])
-// const getConsecutiveTimeSlots = (start: string, hours: number): string[] => {
-//   const [startHour] = start.split(':').map(Number);
-//   return Array.from({ length: hours }, (_, i) => `${String(startHour + i).padStart(2, '0')}:00`);
-// };
-
-// // Function to book an item
-// export const bookItem = (item: Item, bookingDate: string, startTime: string, quantity: number): boolean => {
-//   const availability = item.availability?.find((a) => a.date === bookingDate);
-
-//   if (!availability) {
-//     console.error('No availability for the selected date.');
-//     return false;
-//   }
-
-//   const requestedSlots = getConsecutiveTimeSlots(startTime, quantity);
-
-//   // Check if all requested slots are available
-//   const allAvailable = requestedSlots.every((slot) => availability.times.includes(slot));
-
-//   if (!allAvailable) {
-//     console.error('One or more time slots are unavailable.');
-//     return false;
-//   }
-
-//   // Remove the booked time slots
-//   availability.times = availability.times.filter((time) => !requestedSlots.includes(time));
-
-//   console.log(`Booked ${item.name} from ${startTime} for ${quantity} hours.`);
-//   return true;
-// };
+    bookStudioItem,
+};
