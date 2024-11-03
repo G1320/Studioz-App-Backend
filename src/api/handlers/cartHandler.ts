@@ -25,26 +25,25 @@ const addItemToCart = handleRequest(async (req: Request) => {
   } // Check if the item with the same itemId and bookingDate already exists in the cart
   const existingCartItem = user.cart?.items?.find((cartItem: CartItem) => cartItem.itemId.toString() === itemId);
 
-  if (existingCartItem) {
-    // If the item exists, increment the quantity
-    existingCartItem.quantity = hours || (existingCartItem.quantity || 0) + 1;
 
-    // Recalculate total for the existing item based on new quantity
-    existingCartItem.total = (existingCartItem.price || 0) * hours || existingCartItem.quantity;
-  } else {
-    // If it's a new item, add it to the cart with an initial quantity of 1
-    user.cart?.items?.push({
-      name: item.name,
-      price: item.price,
-      total: item.price,
-      itemId: item._id,
-      quantity: hours || 1,
-      bookingDate: bookingDate.toString(),
-      startTime: startTime.toString(),
-      studioName: item.studioName,
-      studioId: item.studioId
-    });
-  }
+if (existingCartItem) {
+  // If the item exists, update the quantity and recalculate total
+  existingCartItem.quantity = (existingCartItem.quantity || 0) + (hours || 1);
+  existingCartItem.total = (existingCartItem.price || 0) * (hours || existingCartItem.quantity);
+} else {
+  // If it’s a new item, add it to the cart
+  user.cart.items.push({
+    name: item.name,
+    price: item.price,
+    total: (item.price || 0) * (hours || 1),
+    itemId: item._id,
+    quantity: hours || 1,
+    bookingDate: bookingDate.toString(),
+    startTime: startTime.toString(),
+    studioName: item.studioName,
+    studioId: item.studioId
+  });
+}
   await user.save();
 
   return user.cart;

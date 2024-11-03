@@ -25,7 +25,7 @@ const bookStudioItem = handleRequest(async (req: Request) => {
     }
 
     // Generate array of consecutive time slots needed
-    const startHour = parseInt(startTime.split(':')[0]);
+    const startHour = parseInt(startTime?.split(':')[0]);
     const timeSlots = Array.from(
         { length: hours }, 
         (_, i) => `${String(startHour + i).padStart(2, '0')}:00`
