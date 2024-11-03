@@ -8,7 +8,8 @@ import CartItem from '../../types/cartItem.js';
 
 const addItemToCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
-  const { bookingDate, startTime } = req.body ;  
+  const { bookingDate, startTime, hours } = req.body ;
+  
 
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
   if (!bookingDate) throw new ExpressError('Booking date is required', 400);
@@ -26,10 +27,10 @@ const addItemToCart = handleRequest(async (req: Request) => {
 
   if (existingCartItem) {
     // If the item exists, increment the quantity
-    existingCartItem.quantity = (existingCartItem.quantity || 0) + 1;
+    existingCartItem.quantity = hours || (existingCartItem.quantity || 0) + 1;
 
     // Recalculate total for the existing item based on new quantity
-    existingCartItem.total = (existingCartItem.price || 0) * existingCartItem.quantity;
+    existingCartItem.total = (existingCartItem.price || 0) * hours || existingCartItem.quantity;
   } else {
     // If it's a new item, add it to the cart with an initial quantity of 1
     user.cart?.items?.push({
@@ -37,7 +38,7 @@ const addItemToCart = handleRequest(async (req: Request) => {
       price: item.price,
       total: item.price,
       itemId: item._id,
-      quantity: 1,
+      quantity: hours || 1,
       bookingDate: bookingDate.toString(),
       startTime: startTime.toString(),
       studioName: item.studioName,
