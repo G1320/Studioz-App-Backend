@@ -5,7 +5,6 @@ import { ItemModel } from '../../models/itemModel.js';
 
 const bookStudioItem = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
-    const userId = req.params.userId;
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
