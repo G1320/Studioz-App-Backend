@@ -32,3 +32,12 @@ export const areAllSlotsAvailable = (timeSlots: string[], availableTimes: string
 export const removeTimeSlots = (availableTimes: string[], timeSlots: string[]) => {
     return availableTimes.filter(time => !timeSlots.includes(time));
 };
+
+
+export const addTimeSlots = (currentTimes: string[], timeSlotsToAdd: string[]): string[] => {
+    // Combine and remove duplicates to ensure time slots are unique
+    const updatedTimes = Array.from(new Set([...currentTimes, ...timeSlotsToAdd]));
+    // Sort times in ascending order
+    updatedTimes.sort();
+    return updatedTimes;
+}

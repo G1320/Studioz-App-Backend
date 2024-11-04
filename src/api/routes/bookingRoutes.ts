@@ -3,7 +3,8 @@ import bookingHandler from '../handlers/bookingHandler.js';
 import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
-router.post('/book-item/:userId?', bookingHandler.bookStudioItem);
+router.post('/reserve-time-slot/:userId?', bookingHandler.reserveItemTimeSlots);
+router.post('/release-time-slot/:userId?', bookingHandler.reserveItemTimeSlots);
 
 
 export default router;

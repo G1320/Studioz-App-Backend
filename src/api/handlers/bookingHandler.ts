@@ -7,10 +7,11 @@ import {
     findOrCreateDateAvailability,
     generateTimeSlots,
     areAllSlotsAvailable,
-    removeTimeSlots
+    removeTimeSlots,
+    addTimeSlots
 } from '../../utils/timeSlotUtils.js';
 
-const bookStudioItem = handleRequest(async (req: Request) => {
+const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
@@ -46,6 +47,38 @@ const bookStudioItem = handleRequest(async (req: Request) => {
     return item;
 });
 
+const releaseItemTimeSlots = handleRequest(async (req: Request) => {
+    const { itemId, bookingDate, startTime, hours } = req.body;
+
+    const item = await ItemModel.findOne({ _id: itemId });
+    if (!item) throw new ExpressError('Item not found', 404);
+
+    // Initialize availability
+    item.availability = initializeAvailability(item.availability);
+    
+    // Define default hours for availability
+    const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    
+    // Find or create availability entry for the booking date
+    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+    // Generate array of consecutive time slots needed
+    const timeSlots = generateTimeSlots(startTime, hours);
+
+    // Add the time slots back to availability
+    dateAvailability.times = addTimeSlots(dateAvailability.times, timeSlots);
+
+    // Update item.availability with the modified dateAvailability
+    item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+    );
+
+    await item.save();
+
+    return item;
+});
+
 export default {
-    bookStudioItem,
+    releaseItemTimeSlots,
+    reserveItemTimeSlots,
 };
