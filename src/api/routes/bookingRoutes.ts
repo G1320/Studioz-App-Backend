@@ -4,7 +4,7 @@ import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 router.post('/reserve-time-slot/:userId?', bookingHandler.reserveItemTimeSlots);
-router.post('/release-time-slot/:userId?', bookingHandler.reserveItemTimeSlots);
+router.delete('/release-time-slot', bookingHandler.releaseItemTimeSlots);
 
 
 export default router;
