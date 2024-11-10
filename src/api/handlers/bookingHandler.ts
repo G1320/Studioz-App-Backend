@@ -14,6 +14,79 @@ import {
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
 
+export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
+    const { itemId, bookingDate, startTime, hours } = req.body;
+
+    const item = await ItemModel.findOne({ _id: itemId });
+    if (!item) throw new ExpressError('Item not found', 404);
+
+    // Initialize availability if needed
+    item.availability = initializeAvailability(item.availability);
+
+    // Find or create the availability entry for the specified date
+    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+    // Generate all booked time slots for the current quantity (e.g., `11:00`, `12:00` for 2 hours)
+    const currentSlots = generateTimeSlots(startTime, hours);
+    const lastBookedSlot = currentSlots[currentSlots.length - 2]; // Get the last booked slot
+    const lastBookedHour = parseInt(lastBookedSlot.split(':')[0]);
+
+    // Calculate the next hour to book
+    const nextHour = String(lastBookedHour + 1).padStart(2, '0') + ':00';
+    const nextSlot = generateTimeSlots(nextHour, 1); // Only generate the next single hour slot
+
+    // Check if the next slot is available
+    if (!areAllSlotsAvailable(nextSlot, dateAvailability.times)) {
+        throw new ExpressError('The next requested time slot is not available', 400);
+    }
+
+    // Reserve the next slot
+    dateAvailability.times = removeTimeSlots(dateAvailability.times, nextSlot);
+
+    // Update item availability with the modified dateAvailability
+    item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+    );
+
+    await item.save();
+
+    return item;
+});
+
+export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
+    const { itemId, bookingDate, startTime, hours } = req.body;
+
+    const item = await ItemModel.findOne({ _id: itemId });
+    if (!item) throw new ExpressError('Item not found', 404);
+
+    // Initialize availability if needed
+    item.availability = initializeAvailability(item.availability);
+
+    // Find or create the availability entry for the specified date
+    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+    // Generate all booked time slots based on the current quantity
+    const currentSlots = generateTimeSlots(startTime, hours + 1);
+
+    // Ensure currentSlots contains the correct slots based on hours booked
+    const lastBookedSlot = currentSlots[currentSlots.length - 1]; // Get the last booked slot
+
+    // Add the last slot back to available times
+    dateAvailability.times = addTimeSlots(dateAvailability.times, [lastBookedSlot]);
+
+    // Ensure times are deduplicated and sorted
+    dateAvailability.times = Array.from(new Set(dateAvailability.times));
+
+    // Update item availability with the modified dateAvailability
+    item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+    );
+
+    await item.save();
+
+    return item;
+});
+
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
 
@@ -47,12 +120,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     return item;
 });
 
-
 const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
-    console.log('item availability before: ', item?.availability);
     if (!item) throw new ExpressError('Item not found', 404);
 
     // Initialize availability if necessary
@@ -63,9 +134,6 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
 
     // Generate all time slots for the day starting from `startTime` for the item duration
     const allBookedSlots = generateTimeSlots(startTime, hours);
-
-    // Calculate the slots to keep booked (first `hours` slots)
-    const slotsToRemainBooked = allBookedSlots.slice(0, hours);
 
     // Determine which slots to release (slots after `hours`)
     const slotsToRelease = allBookedSlots.slice(hours);
@@ -84,7 +152,6 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
         avail.date === bookingDate ? dateAvailability : avail
     );
 
-    console.log('item availability after: ', item?.availability);
 
     await item.save();
 
@@ -95,5 +162,7 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
 
 export default {
     reserveItemTimeSlots,
+    reserveNextItemTimeSlot,
+    releaseLastItemTimeSlot,
     releaseItemTimeSlots,
 };
