@@ -89,6 +89,7 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
+    console.log('itemId, bookingDate, startTime, hours: ', itemId, bookingDate, startTime, hours);
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
