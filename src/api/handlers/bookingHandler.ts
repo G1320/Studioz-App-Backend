@@ -10,6 +10,7 @@ import {
     removeTimeSlots,
     addTimeSlots
 } from '../../utils/timeSlotUtils.js';
+import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
@@ -49,6 +50,7 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
     );
 
     await item.save();
+    emitAvailabilityUpdate(itemId);
 
     return item;
 });
@@ -83,6 +85,7 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     );
 
     await item.save();
+    emitAvailabilityUpdate(itemId);
 
     return item;
 });
@@ -117,6 +120,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     );
 
     await item.save();
+    emitAvailabilityUpdate(itemId);
 
     return item;
 });
@@ -155,11 +159,10 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
 
 
     await item.save();
+    emitAvailabilityUpdate(itemId);
 
     return item;
 });
-
-
 
 export default {
     reserveItemTimeSlots,

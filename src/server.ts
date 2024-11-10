@@ -14,12 +14,31 @@ import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
 import express, { type Application } from 'express';
+import { initializeSocket } from './webSockets/socket.js';
+import { createServer } from 'node:http';
+
 
 const port = process.env.PORT || PORT;
 
 connectToDb();
 
 const app: Application = express();
+const httpServer = createServer(app);
+
+// Initialize socket before other middleware
+const io = initializeSocket(httpServer);
+
+process.on('SIGINT', () => {
+  if (io) {
+      io.close(() => {
+          console.log('Socket.io server closed');
+          process.exit(0); 
+      });
+  } else {
+      process.exit(0);
+  }
+});
+
 
 app.use(
   helmet({
@@ -56,14 +75,6 @@ app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
 
-app.post('/:userId/book-item', (req, res) => {
-  console.log('Booking route hit!'); // This should print
-  console.log('Request body:', req.body); // Log the incoming request body
-  console.log('User ID:', req.params.userId); // Log the user ID from params
-
-  res.status(200).json({ message: 'Item booked successfully!' });
-});
-
 app.use('/api/auth', authRoutes);
 
 app.use(handleDbErrorMw);
@@ -73,6 +84,11 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Studioz.co.il API!');
 });
 
-app.listen(port, () => {
-  console.log(`App listening on port ${port}`);
+// app.listen(port, () => {
+//   console.log(`App listening on port ${port}`);
+// });
+
+httpServer.listen(PORT, () => {
+  console.log(`HTTP Server is running on port ${PORT}`);
 });
+
