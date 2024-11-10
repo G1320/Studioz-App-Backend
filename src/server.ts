@@ -17,28 +17,16 @@ import express, { type Application } from 'express';
 import { initializeSocket } from './webSockets/socket.js';
 import { createServer } from 'node:http';
 
-
-const port = process.env.PORT || PORT;
-
 connectToDb();
 
 const app: Application = express();
 const httpServer = createServer(app);
 
-// Initialize socket before other middleware
 const io = initializeSocket(httpServer);
 
 process.on('SIGINT', () => {
-  if (io) {
-      io.close(() => {
-          console.log('Socket.io server closed');
-          process.exit(0); 
-      });
-  } else {
-      process.exit(0);
-  }
+  io ? io.close(() => process.exit(0)) : process.exit(0);
 });
-
 
 app.use(
   helmet({
@@ -83,10 +71,6 @@ app.use(handleErrorMw);
 app.get('/', (req, res) => {
   res.send('Welcome to the Studioz.co.il API!');
 });
-
-// app.listen(port, () => {
-//   console.log(`App listening on port ${port}`);
-// });
 
 httpServer.listen(PORT, () => {
   console.log(`HTTP Server is running on port ${PORT}`);

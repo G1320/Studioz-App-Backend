@@ -14,21 +14,12 @@ export const initializeSocket = (httpServer: HttpServer) => {
     path: '/socket.io/'
   });
 
-  io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
-
-    socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
-    });
-  });
-
   return io;
 };
 
 export const emitAvailabilityUpdate = (itemId: string) => {
   if (io) {
-    console.log('Emitting availability update for itemId:', itemId);
-    io.emit('availabilityUpdated', { itemId });  // Changed to broadcast to all
+    io.emit('availabilityUpdated', { itemId }); 
   }
 };
 
