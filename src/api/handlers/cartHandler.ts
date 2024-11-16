@@ -8,8 +8,7 @@ import CartItem from '../../types/cartItem.js';
 
 const addItemToCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
-  const { bookingDate, startTime, hours } = req.body ;
-  
+  const { bookingDate, startTime, hours } = req.body ;  
 
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
   if (!bookingDate) throw new ExpressError('Booking date is required', 400);
@@ -22,8 +21,13 @@ const addItemToCart = handleRequest(async (req: Request) => {
 
   if (!user.cart || !user.cart.items) {
     user.cart = { items: [] };
-  } // Check if the item with the same itemId and bookingDate already exists in the cart
-  const existingCartItem = user.cart?.items?.find((cartItem: CartItem) => cartItem.itemId.toString() === itemId);
+  }
+
+  const existingCartItem = user.cart.items.find(
+    (cartItem: CartItem) =>
+      cartItem.itemId.toString() === itemId &&
+      cartItem.bookingDate === bookingDate 
+  );
 
 
 if (existingCartItem) {
@@ -103,6 +107,7 @@ const addItemsToCart = handleRequest(async (req: Request) => {
 
 const removeItemFromCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
+  const { bookingDate } = req.body;
 
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
 
@@ -112,7 +117,7 @@ const removeItemFromCart = handleRequest(async (req: Request) => {
   if (!user.cart) throw new ExpressError('Cart is empty', 404);
 
   // Find the index of the item in the cart using string comparison
-  const itemIndex = user.cart.items.findIndex((cartItem: CartItem) => cartItem.itemId.toString() === itemId);
+  const itemIndex = user.cart.items.findIndex((cartItem: CartItem) => cartItem.itemId.toString() === itemId && cartItem.bookingDate === bookingDate);
 
   if (itemIndex === -1) throw new ExpressError('Item not found in the cart', 404);
 
@@ -149,7 +154,7 @@ const removeItemsFromCart = handleRequest(async (req: Request) => {
       throw new ExpressError(`Item ${itemId} not found in the cart`, 404);
     }
 
-    const itemIndex = user.cart.items.findIndex((cartItem: CartItem) => cartItem.itemId === itemId);
+    const itemIndex = user.cart.items.findIndex((cartItem: CartItem) => cartItem.itemId === itemId );
     if (itemIndex === -1) throw new ExpressError(`Item ${itemId} not found in the cart`, 404);
 
     const currentItemQuantity = quantityMap.get(itemId) || 0;
