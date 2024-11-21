@@ -25,7 +25,8 @@ const schema = Joi.object({
   coverAudioFile: Joi.string().optional().label('Cover audio'),
   galleryAudioFiles: Joi.array().items(Joi.string()).optional().label('Gallery audio files'),
   items: Joi.array().items(itemSchema).optional().label('Items array'),
-  category: Joi.string().optional(),
+  categories: Joi.array().items(Joi.string()),
+  subCategories: Joi.array().items(Joi.string()),
   maxOccupancy: Joi.number().optional(),
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional(),
@@ -33,8 +34,7 @@ const schema = Joi.object({
   isWheelchairAccessible: Joi.boolean().optional(),
   isSelfService: Joi.boolean().optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
-  isFeatured: Joi.boolean().optional(),
-  subCategory: Joi.string().optional()
+  isFeatured: Joi.boolean().optional()
 });
 
 const validateStudio = (req: Request, res: Response, next: NextFunction): void => {

@@ -4,7 +4,8 @@ import { Studio } from '../types/index.js';
 const studioSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
-  category: { type: String, required: false },
+  categories: [{ type: String, required: false }],
+  subCategories: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
   isSmokingAllowed: { type: Boolean, required: false },
   city: { type: String, required: true },
@@ -18,7 +19,6 @@ const studioSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   isFeatured: { type: Boolean, required: false },
-  subCategory: { type: String, required: false },
 
   items: [
     {

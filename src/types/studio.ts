@@ -4,7 +4,8 @@ export default interface Studio {
   _id: string;
   name: string;
   description: string;
-  category?: string;
+  categories?: string[];
+  subCategories?: string[];
   maxOccupancy?: number;
   isSmokingAllowed?: boolean;
   city: string;
@@ -18,6 +19,5 @@ export default interface Studio {
   createdAt: Date;
   createdBy: string;
   isFeatured?: boolean;
-  subCategory?: string;
   items: StudioItem[];
 }

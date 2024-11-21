@@ -9,6 +9,7 @@ import wishlistRoutes from './api/routes/wishlistRoutes.js';
 import itemRoutes from './api/routes/itemRoutes.js';
 import cartRoutes from './api/routes/cartRoutes.js';
 import bookingRoutes from './api/routes/bookingRoutes.js';
+import searchRoutes from './api/routes/searchRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -62,6 +63,7 @@ app.use('/api/wishlists', wishlistRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/search', searchRoutes);
 
 app.use('/api/auth', authRoutes);
 
