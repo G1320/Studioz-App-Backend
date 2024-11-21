@@ -4,14 +4,12 @@ import { StudioModel } from "../../models/studioModel.js";
 import { UserModel } from "../../models/userModel.js";
 import { Request, Response } from 'express';  // Importing Request and Response for type safety
 
-// Generic search function
 const performSearch = async <T>(
-    model: Model<T>, // Mongoose model with a generic schema T
+    model: Model<T>,
     searchTerm: string,
-    paths: string[], // Array of strings representing the search paths
+    paths: string[],
     indexName = "default"
-): Promise<T[]> => {
-    console.log('searchTerm: ', searchTerm);
+    ): Promise<T[]> => {
     try {
         return await model.aggregate([
             {
@@ -26,7 +24,7 @@ const performSearch = async <T>(
             { $limit: 20 },
             {
                 $project: {
-                    title: 1,
+                    name: 1,
                     description: 1,
                     score: { $meta: "searchScore" },
                 },
@@ -40,15 +38,18 @@ const performSearch = async <T>(
 
 // Item search
 export const searchItems = async (req: Request, res: Response) => {
-    const searchTerm = req.query.q; // Getting search term from query parameter
-    console.log('searchTerm: ', searchTerm);
+    const searchTerm = req.query.q; 
     if (!searchTerm) {
         return res.status(400).json({ error: "Search term is required" });
     }
 
     try {
-        const items = await performSearch(ItemModel, searchTerm as string, ["title", "description"]);
-        console.log('items: ', items);
+        const items = await performSearch(
+            ItemModel,
+            searchTerm as string,
+            ["name", "description"],
+            "items" 
+        );        console.log('items: ', items);
         return res.status(200).json(items);
     } catch (error) {
         return res.status(500).json({ error: "Search operation failed" });
@@ -58,14 +59,18 @@ export const searchItems = async (req: Request, res: Response) => {
 // Studio search
 export const searchStudios = async (req: Request, res: Response) => {
     console.log('searchStudios: ', searchStudios);
-    const searchTerm = req.query.q; // Getting search term from query parameter
+    const searchTerm = req.query.q; 
     if (!searchTerm) {
         return res.status(400).json({ error: "Search term is required" });
     }
 
     try {
-        const studios = await performSearch(StudioModel, searchTerm as string, ["title", "description"]);
-        console.log('studios: ', studios);
+        const studios = await performSearch(
+            StudioModel,
+            searchTerm as string,
+            ["name", "description"],
+            "studios" 
+        );        console.log('studios: ', studios);
         return res.status(200).json(studios);
     } catch (error) {
         return res.status(500).json({ error: "Search operation failed" });
@@ -74,15 +79,18 @@ export const searchStudios = async (req: Request, res: Response) => {
 
 // User search
 export const searchUsers = async (req: Request, res: Response) => {
-    const searchTerm = req.query.q; // Getting search term from query parameter
-    console.log('searchTerm: ', searchTerm);
+    const searchTerm = req.query.q; 
     if (!searchTerm) {
         return res.status(400).json({ error: "Search term is required" });
     }
 
     try {
-        const users = await performSearch(UserModel, searchTerm as string, ["name", "email"]);
-        console.log('users: ', users);
+        const users = await performSearch(
+            UserModel,
+            searchTerm as string,
+            ["name", "description"],
+            "users" 
+        );        console.log('users: ', users);
         return res.status(200).json(users);
     } catch (error) {
         return res.status(500).json({ error: "Search operation failed" });
