@@ -36,6 +36,29 @@ const performSearch = async <T>(
     }
 };
 
+export const searchStudiosAndItems = async (req: Request, res: Response) => {
+    const searchTerm = req.query.q as string;
+
+    if (!searchTerm) {
+        return res.status(400).json({ error: 'Search term is required' });
+    }
+
+    try {
+        const [studios, items] = await Promise.all([
+            performSearch(StudioModel, searchTerm, ['name', 'description'], 'studios'),
+            performSearch(ItemModel, searchTerm, ['name', 'description'], 'items'),
+        ]);
+
+        return res.status(200).json({
+            studios,
+            items,
+        });
+    } catch (error) {
+        console.error('Error performing combined search:', error);
+        return res.status(500).json({ error: 'Search operation failed' });
+    }
+};
+
 // Item search
 export const searchItems = async (req: Request, res: Response) => {
     const searchTerm = req.query.q; 
@@ -98,6 +121,7 @@ export const searchUsers = async (req: Request, res: Response) => {
 }
 
 export default {
+    searchStudiosAndItems,
     searchItems,
     searchStudios,
     searchUsers,
