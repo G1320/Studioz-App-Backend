@@ -57,6 +57,7 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
 
 export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
+    console.log('hours: ', hours);
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
@@ -68,7 +69,8 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
 
     // Generate all booked time slots based on the current quantity
-    const currentSlots = generateTimeSlots(startTime, hours + 1);
+    // const currentSlots = generateTimeSlots(startTime, (hours + 1));
+    const currentSlots = generateTimeSlots(startTime, Math.max(0, hours + 1));
 
     // Ensure currentSlots contains the correct slots based on hours booked
     const lastBookedSlot = currentSlots[currentSlots.length - 1]; // Get the last booked slot
