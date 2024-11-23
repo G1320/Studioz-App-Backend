@@ -18,6 +18,10 @@ const performSearch = async <T>(
                     text: {
                         query: searchTerm,
                         path: paths,
+                        fuzzy: {
+                            maxEdits: 2,
+                            prefixLength: 2,
+                        },
                     },
                 },
             },

@@ -69,7 +69,6 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
 
     // Generate all booked time slots based on the current quantity
-    // const currentSlots = generateTimeSlots(startTime, (hours + 1));
     const currentSlots = generateTimeSlots(startTime, Math.max(0, hours + 1));
 
     // Ensure currentSlots contains the correct slots based on hours booked
