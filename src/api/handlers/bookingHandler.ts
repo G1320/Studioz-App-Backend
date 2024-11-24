@@ -11,6 +11,7 @@ import {
     addTimeSlots
 } from '../../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
+import { ReservationModel } from '../../models/reservationModel.js';
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
@@ -93,7 +94,6 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
-    console.log('itemId, bookingDate, startTime, hours: ', itemId, bookingDate, startTime, hours);
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
@@ -111,6 +111,14 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     if (!areAllSlotsAvailable(timeSlots, dateAvailability.times)) {
         throw new ExpressError('One or more requested time slots are not available', 400);
     }
+    const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
+    const reservation = new ReservationModel({
+      itemId,
+      bookingDate,
+      timeSlots,
+      expiration,
+    });
+    await reservation.save();
 
     // Remove all selected time slots
     dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
