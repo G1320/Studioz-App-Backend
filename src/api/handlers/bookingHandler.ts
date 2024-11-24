@@ -50,7 +50,6 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
         { $push: { timeSlots: nextSlot[0] } },
         { new: true, upsert: true }
         );
-        console.log('reservation: ', reservation);
 
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
@@ -65,7 +64,6 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
 
 export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
-    console.log('hours: ', hours);
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
@@ -93,12 +91,15 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
         { $pull: { timeSlots: lastBookedSlot } },
         { new: true }
         );
-        console.log('reservation: ', reservation);
 
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
     );
+
+    if (hours === 0 && reservation) {
+        await ReservationModel.deleteOne({ _id: reservation._id });
+    }
 
     await item.save();
     emitAvailabilityUpdate(itemId);
