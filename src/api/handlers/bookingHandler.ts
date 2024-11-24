@@ -45,6 +45,13 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
     // Reserve the next slot
     dateAvailability.times = removeTimeSlots(dateAvailability.times, nextSlot);
 
+    const reservation = await ReservationModel.findOneAndUpdate(
+        { itemId, bookingDate },
+        { $push: { timeSlots: nextSlot[0] } },
+        { new: true, upsert: true }
+        );
+        console.log('reservation: ', reservation);
+
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
@@ -80,6 +87,13 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
 
     // Ensure times are deduplicated and sorted
     dateAvailability.times = Array.from(new Set(dateAvailability.times));
+
+    const reservation = await ReservationModel.findOneAndUpdate(
+        { itemId, bookingDate },
+        { $pull: { timeSlots: lastBookedSlot } },
+        { new: true }
+        );
+        console.log('reservation: ', reservation);
 
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
