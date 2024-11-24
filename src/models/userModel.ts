@@ -27,6 +27,7 @@ const userSchema = new Schema(
     isAdmin: { type: Boolean, default: false },
     studios: [{ type: Schema.Types.ObjectId, ref: 'Studio' }],
     wishlists: [{ type: Schema.Types.ObjectId, ref: 'Wishlist' }],
+    reservations: [{ type: Schema.Types.ObjectId, ref: 'reservation' }],
     cart: {
       items: [cartItemSchema]
     }

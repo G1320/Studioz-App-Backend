@@ -12,6 +12,9 @@ import {
 } from '../../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
+import { UserModel } from '../../models/userModel.js';
+import { StudioModel } from '../../models/studioModel.js';
+import { ObjectId } from 'mongodb';
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
@@ -180,6 +183,14 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
     );
+
+    const reservation = await ReservationModel.findOne(
+        { itemId, bookingDate }
+    );
+
+    if (reservation) {
+        await ReservationModel.deleteOne({ _id: reservation._id });
+    }
 
 
     await item.save();

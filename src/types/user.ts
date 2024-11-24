@@ -1,4 +1,5 @@
 import { Cart, Wishlist } from './index.js';
+import Reservation from './reservation.js';
 export default interface User {
   _id: string;
   username: string;
@@ -14,6 +15,7 @@ export default interface User {
   email?: string;
   studios?: string[];
   wishlists?: Wishlist[];
+  reservations?: Reservation[];
   cart?: Cart;
   __v?: number;
 }
