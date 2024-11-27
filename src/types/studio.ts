@@ -1,4 +1,10 @@
+import Availability from './availability.js';
 import StudioItem from './studioItem.js';
+
+type StudioLocation = {
+  type: 'Point'; 
+  coordinates: [number, number]; // [longitude, latitude]
+};
 
 export default interface Studio {
   _id: string;
@@ -20,4 +26,6 @@ export default interface Studio {
   createdBy: string;
   isFeatured?: boolean;
   items: StudioItem[];
+  availability?: Availability[];
+  location?: StudioLocation;
 }

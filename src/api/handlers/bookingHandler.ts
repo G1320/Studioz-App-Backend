@@ -12,9 +12,7 @@ import {
 } from '../../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
-import { UserModel } from '../../models/userModel.js';
-import { StudioModel } from '../../models/studioModel.js';
-import { ObjectId } from 'mongodb';
+
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
@@ -53,6 +51,7 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
         { $push: { timeSlots: nextSlot[0] } },
         { new: true, upsert: true }
         );
+     await reservation.save();
 
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
@@ -95,6 +94,8 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
         { new: true }
         );
 
+        
+    await reservation?.save();
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
@@ -103,7 +104,6 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     if (hours === 0 && reservation) {
         await ReservationModel.deleteOne({ _id: reservation._id });
     }
-
     await item.save();
     emitAvailabilityUpdate(itemId);
 
@@ -135,17 +135,18 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       bookingDate,
       timeSlots,
       expiration,
+      itemPrice: item.price||0,
     });
-    await reservation.save();
-
+    
     // Remove all selected time slots
     dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
-
+    
     // Update item.availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
-    );
-
+        );
+        
+    await reservation.save();
     await item.save();
     emitAvailabilityUpdate(itemId);
 

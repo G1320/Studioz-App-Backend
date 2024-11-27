@@ -1,6 +1,11 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import { Studio } from '../types/index.js';
 
+const availabilitySchema: Schema = new Schema({
+  date: { type: String, required: true },
+  times: { type: [String], required: true }
+});
+
 const studioSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
@@ -19,7 +24,11 @@ const studioSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   isFeatured: { type: Boolean, required: false },
-
+  availability: { type: [availabilitySchema], required: false },
+  location: {
+    type: { type: String, enum: ['Point'], required: false },
+    coordinates: { type: [Number], required: false }
+  },
   items: [
     {
       idx: { type: Number, required: true },
@@ -29,6 +38,8 @@ const studioSchema = new Schema({
     }
   ]
 });
+
+studioSchema.index({ location: '2dsphere' });
 
 const StudioModel: Model<Studio & Document> =
   mongoose.models.Studio || mongoose.model<Studio & Document>('Studio', studioSchema);
