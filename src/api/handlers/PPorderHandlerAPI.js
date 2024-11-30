@@ -15,13 +15,19 @@ async function generateAccessToken() {
 
   return response.data.access_token;
 }
-
 export const createOrder = async (cart) => {
   const accessToken = await generateAccessToken();
-  console.log('cart: ', cart);
-
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
-  console.log('total: ', total);
+
+  const formattedItems = cart.map((item) => ({
+    name: item.name,
+    description: item.description || 'Studio Booking',
+    quantity: item.quantity,
+    unit_amount: {
+      currency_code: 'USD',
+      value: item.price.toString()
+    }
+  }));
 
   const response = await axios({
     url: PAYPAL_BASE_URL + '/v2/checkout/orders',
@@ -34,31 +40,19 @@ export const createOrder = async (cart) => {
       intent: 'CAPTURE',
       purchase_units: [
         {
-          items: [
-            {
-              name: 'Node.js Complete Course',
-              description: 'Node.js Complete Course with Express and MongoDB',
-              quantity: 1,
-              unit_amount: {
-                currency_code: 'USD',
-                value: '100.00'
-              }
-            }
-          ],
-
+          items: formattedItems,
           amount: {
             currency_code: 'USD',
-            value: '100.00',
+            value: total,
             breakdown: {
               item_total: {
                 currency_code: 'USD',
-                value: '100.00'
+                value: total
               }
             }
           }
         }
       ],
-
       application_context: {
         return_url: PAYPAL_BASE_URL + '/complete-order',
         cancel_url: PAYPAL_BASE_URL + '/cancel-order',
@@ -68,9 +62,7 @@ export const createOrder = async (cart) => {
       }
     })
   });
-  console.log('response.data: ', response.data);
   return { id: response.data.id };
-  //   return response.data.links.find((link) => link.rel === 'approve').href;
 };
 
 export const capturePayment = async (orderId) => {
