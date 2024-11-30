@@ -18,8 +18,9 @@ router.post("/", async (req, res) => {
 router.post("/:orderID/capture", async (req, res) => {
   try {
     const { orderID } = req.params;
-    const { jsonResponse, httpStatusCode } = await capturePayment(orderID);
-    res.status(httpStatusCode).json(jsonResponse);
+    console.log('orderID: ', orderID);
+    const  jsonResponse  = await capturePayment(orderID);
+    res.status(200).json(jsonResponse);
   } catch (error:any) {
     console.error("Failed to capture order:", error);
     res.status(500).json({ error: "Failed to capture order", details: error.message });
@@ -27,4 +28,3 @@ router.post("/:orderID/capture", async (req, res) => {
 });
 
 export default router;
-``

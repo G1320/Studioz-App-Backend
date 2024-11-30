@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { PAYPAL_BASE_URL, PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY } from '../../config/index.js';
+import { BASE_URL, PAYPAL_BASE_URL, PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY } from '../../config/index.js';
 
 async function generateAccessToken() {
   const response = await axios({
@@ -21,7 +21,7 @@ export const createOrder = async (cart) => {
 
   const formattedItems = cart.map((item) => ({
     name: item.name,
-    description: item.description || 'Studio Booking',
+    description: item.description || 'Studio Service',
     quantity: item.quantity,
     unit_amount: {
       currency_code: 'USD',
@@ -54,8 +54,8 @@ export const createOrder = async (cart) => {
         }
       ],
       application_context: {
-        return_url: PAYPAL_BASE_URL + '/complete-order',
-        cancel_url: PAYPAL_BASE_URL + '/cancel-order',
+        return_url: BASE_URL + '/complete-order',
+        cancel_url: BASE_URL + '/cancel-order',
         shipping_preference: 'NO_SHIPPING',
         user_action: 'PAY_NOW',
         brand_name: 'Studioz'
@@ -66,7 +66,6 @@ export const createOrder = async (cart) => {
 };
 
 export const capturePayment = async (orderId) => {
-  console.log('orderId: ', orderId);
   const accessToken = await generateAccessToken();
 
   const response = await axios({
