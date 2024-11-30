@@ -18,7 +18,6 @@ router.post("/", async (req, res) => {
 router.post("/:orderID/capture", async (req, res) => {
   try {
     const { orderID } = req.params;
-    console.log('orderID: ', orderID);
     const  jsonResponse  = await capturePayment(orderID);
     res.status(200).json(jsonResponse);
   } catch (error:any) {
