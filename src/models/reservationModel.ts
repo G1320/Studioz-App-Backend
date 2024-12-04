@@ -10,7 +10,7 @@ const ReservationSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'confirmed', 'expired'], default: 'pending' },
     expiration: { type: Date, required: true }, // Timestamp for reservation expiration
     itemPrice: { type: Number, required: true },
-    totalPrice: { type: Number, required: true },
+    totalPrice: { type: Number, required: false },
   });
 
   ReservationSchema.pre('save', function (next) {
