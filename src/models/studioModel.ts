@@ -1,9 +1,16 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import { Studio } from '../types/index.js';
 
-const availabilitySchema: Schema = new Schema({
-  date: { type: String, required: true },
-  times: { type: [String], required: true }
+const StudioAvailability = new mongoose.Schema({
+  days: [{
+    type: String,
+    enum: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    required: true
+  }],
+  times: [{ 
+    start: String,
+    end: String 
+  }]
 });
 
 const studioSchema = new Schema({
@@ -24,7 +31,7 @@ const studioSchema = new Schema({
   isFeatured: { type: Boolean, required: false },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  availability: { type: [availabilitySchema], required: false },
+  studioAvailability: { type: StudioAvailability, required: false },
   location: {
     type: { type: String, enum: ['Point'], required: false },
     coordinates: { type: [Number], required: false }

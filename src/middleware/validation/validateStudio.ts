@@ -19,6 +19,17 @@ const schema = Joi.object({
     .max(60)
     .required()
     .label('Studio name'),
+    studioAvailability: Joi.object({
+      days: Joi.array().items(
+        Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+      ),
+      times: Joi.array().items(
+        Joi.object({
+          start: Joi.string().required(),
+          end: Joi.string().required()
+        })
+      )
+    }).optional(),
   description: Joi.string().required().label('Studio description'),
   coverImage: Joi.string().optional().label('Cover image'),
   galleryImages: Joi.array().items(Joi.string()).optional().label('Gallery images'),
