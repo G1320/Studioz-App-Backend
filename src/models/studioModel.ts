@@ -21,6 +21,8 @@ const studioSchema = new Schema({
   maxOccupancy: { type: Number, required: false },
   city: { type: String, required: true },
   address: { type: String, required: false },
+  lat: { type: Number, required: false },
+  lng: { type: Number, required: false },
   coverImage: { type: String, required: false },
   galleryImages: [{ type: String, required: false }],
   galleryAudioFiles: [{ type: String, required: false }],

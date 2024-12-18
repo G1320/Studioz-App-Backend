@@ -51,9 +51,9 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
         { $push: { timeSlots: nextSlot[0] } },
         { new: true, upsert: true }
         );
-        await reservation.save();
-        
-        // Update item availability with the modified dateAvailability
+     await reservation.save();
+
+    // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
     );

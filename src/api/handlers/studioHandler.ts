@@ -80,10 +80,11 @@ const updateStudioById = handleRequest(async (req: Request) => {
 
   const existingStudio = await StudioModel.findById(studioId);
   if (!existingStudio) throw new ExpressError('Studio not found', 404);
-
+  
   const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, req.body, {
     new: true
   });
+  console.log('updatedStudio: ', updatedStudio);
   return updatedStudio;
 });
 

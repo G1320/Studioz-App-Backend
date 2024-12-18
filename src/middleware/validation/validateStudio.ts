@@ -42,6 +42,8 @@ const schema = Joi.object({
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional(),
   address: Joi.string().optional(),
+  lat: Joi.number().optional(),
+  lng: Joi.number().optional(),
   isWheelchairAccessible: Joi.boolean().optional(),
   isSelfService: Joi.boolean().optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
