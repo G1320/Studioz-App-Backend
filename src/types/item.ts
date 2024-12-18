@@ -5,6 +5,9 @@ export default interface Item {
   studio: string;
   name: string;
   description?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
   category?: string;
   subCategory?: string;
   price?: number;

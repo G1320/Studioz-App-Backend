@@ -39,7 +39,10 @@ const createItem = handleRequest(async (req: Request) => {
     idx: studio.items.length,
     itemId: item._id,
     studioId,
-    studioName: item.studioName
+    studioName: item.studioName,
+    address: item.address,
+    lat: item.lat,
+    lng: item.lng,
   });
   await studio.save();
 

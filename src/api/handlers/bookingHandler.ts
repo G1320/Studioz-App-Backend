@@ -17,6 +17,50 @@ import { ReservationModel } from '../../models/reservationModel.js';
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
 
+const reserveItemTimeSlots = handleRequest(async (req: Request) => {
+    const { itemId, bookingDate, startTime, hours } = req.body;
+    console.log('hours: ', hours);
+
+    const item = await ItemModel.findOne({ _id: itemId });
+    if (!item) throw new ExpressError('Item not found', 404);
+
+    // Initialize availability
+    item.availability = initializeAvailability(item.availability) ;
+        
+    // Find or create availability entry for the booking date
+    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+    // Generate array of consecutive time slots needed
+    const timeSlots = generateTimeSlots(startTime, hours);
+
+    // Verify all needed time slots are available
+    if (!areAllSlotsAvailable(timeSlots, dateAvailability.times)) {
+        throw new ExpressError('One or more requested time slots are not available', 400);
+    }
+    const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
+    const reservation = new ReservationModel({
+      itemId,
+      bookingDate,
+      timeSlots,
+      expiration,
+      itemPrice: item.price||0,
+    });
+    
+    // Remove all selected time slots
+    dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
+    
+    // Update item.availability with the modified dateAvailability
+    item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+        );
+        
+    await reservation.save();
+    await item.save();
+    emitAvailabilityUpdate(itemId);
+
+    return item;
+});
+
 export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
 
@@ -110,48 +154,7 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     return item;
 });
 
-const reserveItemTimeSlots = handleRequest(async (req: Request) => {
-    const { itemId, bookingDate, startTime, hours } = req.body;
 
-    const item = await ItemModel.findOne({ _id: itemId });
-    if (!item) throw new ExpressError('Item not found', 404);
-
-    // Initialize availability
-    item.availability = initializeAvailability(item.availability) ;
-        
-    // Find or create availability entry for the booking date
-    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
-
-    // Generate array of consecutive time slots needed
-    const timeSlots = generateTimeSlots(startTime, hours);
-
-    // Verify all needed time slots are available
-    if (!areAllSlotsAvailable(timeSlots, dateAvailability.times)) {
-        throw new ExpressError('One or more requested time slots are not available', 400);
-    }
-    const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
-    const reservation = new ReservationModel({
-      itemId,
-      bookingDate,
-      timeSlots,
-      expiration,
-      itemPrice: item.price||0,
-    });
-    
-    // Remove all selected time slots
-    dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
-    
-    // Update item.availability with the modified dateAvailability
-    item.availability = item.availability.map(avail =>
-        avail.date === bookingDate ? dateAvailability : avail
-        );
-        
-    await reservation.save();
-    await item.save();
-    emitAvailabilityUpdate(itemId);
-
-    return item;
-});
 
 const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;

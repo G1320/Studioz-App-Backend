@@ -4,4 +4,7 @@ export default interface StudioItem {
   studioId: string;
   studioName: string;
   studioImgUrl?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
 }
