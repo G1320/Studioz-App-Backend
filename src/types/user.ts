@@ -1,5 +1,8 @@
 import { Cart, Wishlist } from './index.js';
 import Reservation from './reservation.js';
+
+export type PayPalOnboardingStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
+
 export default interface User {
   _id: string;
   username: string;
@@ -17,5 +20,7 @@ export default interface User {
   wishlists?: Wishlist[];
   reservations?: Reservation[];
   cart?: Cart;
+  paypalMerchantId?: string;
+  paypalOnboardingStatus?: PayPalOnboardingStatus;
   __v?: number;
 }

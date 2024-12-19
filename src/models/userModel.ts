@@ -30,6 +30,15 @@ const userSchema = new Schema(
     reservations: [{ type: Schema.Types.ObjectId, ref: 'reservation' }],
     cart: {
       items: [cartItemSchema]
+    },
+    paypalMerchantId: { 
+      type: String,
+      sparse: true 
+    },
+    paypalOnboardingStatus: {
+      type: String,
+      enum: ['PENDING', 'COMPLETED', 'FAILED'],
+      default: 'PENDING'
     }
   },
   { timestamps: true }

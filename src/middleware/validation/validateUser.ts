@@ -18,19 +18,26 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     cart: Joi.object({
       items: Joi.array().items(
         Joi.object({
-          name: Joi.string().optional(),
-          price: Joi.number().optional(),
-          total: Joi.number().optional(),
-          itemId: Joi.string().optional(),
-          quantity: Joi.number().optional().default(1),
-          bookingDate: Joi.string().optional(),
-          startTime: Joi.string().optional(),
-          studioName: Joi.string().optional(),
-          studioId: Joi.string().optional()
+          name: Joi.string().label('Item Name').optional(),
+          price: Joi.number().label('Price').optional(),
+          total: Joi.number().label('Total Price').optional(),
+          itemId: Joi.string().label('Item ID').optional(),
+          quantity: Joi.number().label('Quantity').optional().default(1),
+          bookingDate: Joi.string().label('Booking Date').optional(),
+          startTime: Joi.string().label('Start Time').optional(),
+          studioName: Joi.string().label('Studio Name').optional(),
+          studioId: Joi.string().label('Studio ID').optional()
         })
-      )
-    }).optional(),
-    });
+      ).label('Cart Items')
+    }).label('Shopping Cart').optional(),
+    paypalMerchantId: Joi.string()
+      .label('PayPal Merchant ID')
+      .optional(),
+    paypalOnboardingStatus: Joi.string()
+      .valid('PENDING', 'COMPLETED', 'FAILED')
+      .label('PayPal Onboarding Status')
+      .optional()
+  });
 
   const { error } = schema.validate(req.body);
   error ? handleJoiError(error) : next();
