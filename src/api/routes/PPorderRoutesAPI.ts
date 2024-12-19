@@ -2,9 +2,15 @@
 import express from "express";
 import { createOrder, capturePayment } from "../handlers/PPorderHandlerAPI.js";
 import { generateSellerSignupLink, createMarketplaceOrder, processPayout } from '../handlers/PPorderHandlerAPI.js';
+import { UserModel } from "../../models/userModel.js";
 // import { requireAuth, validateAdmin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+const CLIENT_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://studioz.co.il'
+  : 'http://localhost:5174';  
+
 
 router.post("/", async (req, res) => {
   try {
@@ -38,6 +44,33 @@ router.post('/seller/generate-signup-link',  async (req, res) => {
     res.status(500).json({ error: 'Failed to generate seller signup link' });
   }
 });
+
+// Onboarding completion callback route
+router.get('/seller/onboard-complete/:sellerId', async (req, res) => {
+    try {
+      const { 
+        merchantId, 
+        merchantIdInPayPal, 
+        permissionsGranted, 
+        consentStatus 
+      } = req.query;
+      if (permissionsGranted === 'true' && consentStatus === 'true') {
+        // Update your user/seller in the database with the PayPal merchant ID
+        await UserModel.findByIdAndUpdate(merchantId, {
+          paypalMerchantId: merchantIdInPayPal,
+          paypalOnboardingStatus: 'COMPLETED'
+        });
+  
+        // Redirect to a success page
+        res.redirect(`${CLIENT_URL}/profile?onboarding=success`);
+    } else {
+      res.redirect(`${CLIENT_URL}/profile?onboarding=failed`);
+      }
+    } catch (error) {
+      console.error('Onboarding completion error:', error);
+      res.redirect('/profile?onboarding=error');
+    }
+  });
 
 router.post('/marketplace/orders',  async (req, res) => {
   try {
@@ -115,17 +148,7 @@ router.post('/webhooks', async (req, res) => {
   }
 });
 
-// Onboarding completion callback route
-router.get('/seller/onboard-complete/:sellerId',  async (req, res) => {
-  try {
-    const { sellerId } = req.params;
-  
-    res.redirect('/profile');
-  } catch (error) {
-    console.error('Onboarding completion failed:', error);
-    res.redirect('/error');
-  }
-});
+
 
 
 export default router;

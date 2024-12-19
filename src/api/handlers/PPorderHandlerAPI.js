@@ -2,14 +2,20 @@ import axios from 'axios';
 
 import { paypalClient } from '../../config/paypalClientConfig.js';
 
-import { BASE_URL, PAYPAL_BASE_URL, PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY } from '../../config/index.js';
+import {
+  BASE_URL,
+  PAYPAL_BASE_URL,
+  PAYPAL_PARTNER_ID,
+  PAYPAL_CLIENT_ID,
+  PAYPAL_SECRET_KEY
+} from '../../config/index.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 };
 
 const calculatePlatformFee = (total) => {
-  return (total * 0.13).toFixed(2);
+  return (total * 0.12).toFixed(2);
 };
 
 async function generateAccessToken() {
@@ -64,8 +70,8 @@ export const createOrder = async (cart) => {
         }
       ],
       application_context: {
-        return_url: BASE_URL + '/complete-order',
-        cancel_url: BASE_URL + '/cancel-order',
+        return_url: BASE_URL + '/orders/complete-order',
+        cancel_url: BASE_URL + '/orders/cancel-order',
         shipping_preference: 'NO_SHIPPING',
         user_action: 'PAY_NOW',
         brand_name: 'Studioz'
@@ -100,12 +106,12 @@ export const generateSellerSignupLink = async (sellerId) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'PayPal-Partner-Attribution-Id': 'FLAVORsb-wwchq34654045_MP' // Your sandbox BN Code
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
       },
       data: {
         tracking_id: sellerId,
         partner_config_override: {
-          return_url: `${BASE_URL}/seller/onboard-complete/${sellerId}`
+          return_url: `${BASE_URL}/orders/seller/onboard-complete/${sellerId}`
         },
         operations: [
           {
@@ -128,11 +134,6 @@ export const generateSellerSignupLink = async (sellerId) => {
             granted: true
           }
         ]
-        // partner_config_override: {
-        //   // Use your actual domain
-        //   return_url: `${BASE_URL}/api/paypal/onboarding/return`,
-        //   action_renewal_url: `${BASE_URL}/api/paypal/onboarding/renew`
-        // }
       }
     });
 
@@ -175,7 +176,7 @@ export const createMarketplaceOrder = async (cart, sellerId) => {
             }
           },
           payee: {
-            merchant_id: sellerId // Seller's PayPal merchant ID
+            merchant_id: sellerId
           },
           payment_instruction: {
             platform_fees: [

@@ -84,7 +84,6 @@ const updateStudioById = handleRequest(async (req: Request) => {
   const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, req.body, {
     new: true
   });
-  console.log('updatedStudio: ', updatedStudio);
   return updatedStudio;
 });
 
