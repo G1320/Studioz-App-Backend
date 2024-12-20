@@ -14,22 +14,23 @@ const itemSchema = Joi.object({
 const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.string()
-    .regex(/^[a-zA-Z0-9\s]*$/)
-    .min(2)
-    .max(60)
-    .required()
-    .label('Studio name'),
-    studioAvailability: Joi.object({
-      days: Joi.array().items(
-        Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+  .regex(/^[a-zA-Z0-9\s]*$/)
+  .min(2)
+  .max(35)
+  .required()
+  .label('Studio name'),
+  studioAvailability: Joi.object({
+    days: Joi.array().items(
+      Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
       ),
       times: Joi.array().items(
         Joi.object({
           start: Joi.string().required(),
           end: Joi.string().required()
         })
-      )
-    }).optional(),
+        )
+      }).optional(),
+      subtitle: Joi.string().optional(),
   description: Joi.string().required().label('Studio description'),
   coverImage: Joi.string().optional().label('Cover image'),
   galleryImages: Joi.array().items(Joi.string()).optional().label('Gallery images'),

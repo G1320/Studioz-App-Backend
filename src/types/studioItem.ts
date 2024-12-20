@@ -7,4 +7,6 @@ export default interface StudioItem {
   address?: string;
   lat?: number;
   lng?: number;
+  sellerId?: string;
+
 }

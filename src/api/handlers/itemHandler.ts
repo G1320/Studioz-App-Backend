@@ -43,6 +43,7 @@ const createItem = handleRequest(async (req: Request) => {
     address: item.address,
     lat: item.lat,
     lng: item.lng,
+    sellerId: studio.createdBy
   });
   await studio.save();
 

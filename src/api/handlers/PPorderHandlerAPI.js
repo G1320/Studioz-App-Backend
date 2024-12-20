@@ -144,6 +144,73 @@ export const generateSellerSignupLink = async (sellerId) => {
   }
 };
 
+// export const createMarketplaceOrder = async (cart) => {
+//     const accessToken = await generateAccessToken();
+
+//     // Group items by seller and create a purchase unit for each
+//     const purchaseUnits = Object.values(
+//       cart.reduce((acc, item) => {
+//         if (!acc[item.sellerId]) {
+//           acc[item.sellerId] = {
+//             items: [],
+//             total: 0,
+//             sellerId: item.sellerId
+//           };
+//         }
+//         acc[item.sellerId].items.push(item);
+//         acc[item.sellerId].total += item.price * item.quantity;
+//         return acc;
+//       }, {})
+//     ).map(({ items, total, sellerId }) => {
+//       const platformFee = calculatePlatformFee(total);
+
+//       return {
+//         reference_id: `STUDIO_${sellerId}`,
+//         amount: {
+//           currency_code: 'ILS',
+//           value: total.toString(),
+//           breakdown: {
+//             item_total: {
+//               currency_code: 'ILS',
+//               value: total.toString()
+//             },
+//             platform_fees: {
+//               currency_code: 'ILS',
+//               value: platformFee.toString()
+//             }
+//           }
+//         },
+//         payee: {
+//           merchant_id: sellerId
+//         },
+//         payment_instruction: {
+//           platform_fees: [{
+//             amount: {
+//               currency_code: 'ILS',
+//               value: platformFee.toString()
+//             }
+//           }],
+//           disbursement_mode: 'INSTANT'
+//         }
+//       };
+//     });
+
+//     const response = await axios({
+//       url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
+//       method: 'post',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         Authorization: `Bearer ${accessToken}`
+//       },
+//       data: {
+//         intent: 'CAPTURE',
+//         purchase_units: purchaseUnits
+//       }
+//     });
+
+//     return response.data;
+//   };
+
 export const createMarketplaceOrder = async (cart, sellerId) => {
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
