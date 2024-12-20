@@ -9,6 +9,7 @@ import {
   PAYPAL_CLIENT_ID,
   PAYPAL_SECRET_KEY
 } from '../../config/index.js';
+import { UserModel } from '../../models/userModel.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
@@ -212,6 +213,11 @@ export const generateSellerSignupLink = async (sellerId) => {
 //   };
 
 export const createMarketplaceOrder = async (cart, sellerId) => {
+  const seller = await UserModel.findById(sellerId);
+  if (!seller?.paypalMerchantId) {
+    throw new Error('Seller PayPal account not found');
+  }
+
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
   const platformFee = calculatePlatformFee(total);
@@ -243,7 +249,7 @@ export const createMarketplaceOrder = async (cart, sellerId) => {
             }
           },
           payee: {
-            merchant_id: sellerId
+            merchant_id: seller?.paypalMerchantId
           },
           payment_instruction: {
             platform_fees: [
