@@ -236,8 +236,6 @@ const deleteItemById = handleRequest(async (req: Request) => {
 });
 
 
-
-
 export default {
   createItem,
   getItems,

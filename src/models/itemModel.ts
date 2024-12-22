@@ -10,7 +10,9 @@ const itemSchema: Schema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: false },
   category: { type: String, required: false },
+  categories: [{ type: String, required: false }],
   subCategory: { type: String, required: false },
+  subCategories: [{ type: String, required: false }],
   price: { type: Number, required: false },
   imgUrl: { type: String, required: false },
   idx: { type: Number, required: false },
@@ -24,7 +26,7 @@ const itemSchema: Schema = new Schema({
   address: { type: String, required: false },
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },
-      sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
+ sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
   availability: { type: [availabilitySchema], required: false }
 });
 
