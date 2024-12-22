@@ -20,6 +20,7 @@ const itemSchema: Schema = new Schema({
   studioImgUrl: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   address: { type: String, required: false },
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },

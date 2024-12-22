@@ -16,7 +16,7 @@ const schema = Joi.object({
   name: Joi.string()
   .regex(/^[a-zA-Z0-9\s]*$/)
   .min(2)
-  .max(35)
+  .max(20)
   .required()
   .label('Studio name'),
   studioAvailability: Joi.object({
@@ -48,6 +48,7 @@ const schema = Joi.object({
   isWheelchairAccessible: Joi.boolean().optional(),
   isSelfService: Joi.boolean().optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
+  paypalMerchantId: Joi.string().optional(),
   isFeatured: Joi.boolean().optional()
 });
 

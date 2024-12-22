@@ -1,6 +1,6 @@
 // routes/ordersRoutes.js
 import express from "express";
-import { createOrder, capturePayment } from "../handlers/PPorderHandlerAPI.js";
+import {  capturePayment } from "../handlers/PPorderHandlerAPI.js";
 import { generateSellerSignupLink, createMarketplaceOrder, processPayout } from '../handlers/PPorderHandlerAPI.js';
 import { UserModel } from "../../models/userModel.js";
 // import { requireAuth, validateAdmin } from '../middleware/auth.middleware.js';
@@ -12,16 +12,6 @@ const CLIENT_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:5174';  
 
 
-router.post("/", async (req, res) => {
-  try {
-    const { cart } = req.body;
-    const jsonResponse = await createOrder(cart);
-    res.status(200).json(jsonResponse);
-  } catch (error:any) {
-    console.error("Failed to create order:", error);
-    res.status(500).json({ error: "Failed to create order", details: error.message });
-}
-});
 
 router.post("/:orderID/capture", async (req, res) => {
   try {
@@ -74,8 +64,8 @@ router.get('/seller/onboard-complete/:sellerId', async (req, res) => {
 
 router.post('/marketplace/orders',  async (req, res) => {
   try {
-    const { cart, sellerId } = req.body;
-    const order = await createMarketplaceOrder(cart, sellerId);
+    const { cart, merchantId } = req.body;
+    const order = await createMarketplaceOrder(cart, merchantId);
     res.json(order);
   } catch (error) {
     console.error('Marketplace order creation failed:', error);

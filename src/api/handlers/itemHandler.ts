@@ -220,9 +220,6 @@ const updateItemById = handleRequest(async (req: Request) => {
   return req.body;
 });
 
-
-
-
 const deleteItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
@@ -238,6 +235,9 @@ const deleteItemById = handleRequest(async (req: Request) => {
   return item;
 });
 
+
+
+
 export default {
   createItem,
   getItems,
@@ -248,5 +248,5 @@ export default {
   addItemToWishlist,
   removeItemFromWishlist,
   updateItemById,
-  deleteItemById
+  deleteItemById,
 };

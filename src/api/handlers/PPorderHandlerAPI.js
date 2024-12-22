@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-import { paypalClient } from '../../config/paypalClientConfig.js';
-
 import {
   BASE_URL,
   PAYPAL_BASE_URL,
@@ -9,7 +7,6 @@ import {
   PAYPAL_CLIENT_ID,
   PAYPAL_SECRET_KEY
 } from '../../config/index.js';
-import { UserModel } from '../../models/userModel.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
@@ -32,55 +29,6 @@ async function generateAccessToken() {
 
   return response.data.access_token;
 }
-export const createOrder = async (cart) => {
-  const accessToken = await generateAccessToken();
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
-
-  const formattedItems = cart.map((item) => ({
-    name: item.name,
-    description: item.description || 'Studio Service',
-    quantity: item.quantity,
-    unit_amount: {
-      currency_code: 'ILS',
-      value: item.price.toString()
-    }
-  }));
-
-  const response = await axios({
-    url: PAYPAL_BASE_URL + '/v2/checkout/orders',
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + accessToken
-    },
-    data: JSON.stringify({
-      intent: 'CAPTURE',
-      purchase_units: [
-        {
-          items: formattedItems,
-          amount: {
-            currency_code: 'ILS',
-            value: total,
-            breakdown: {
-              item_total: {
-                currency_code: 'ILS',
-                value: total
-              }
-            }
-          }
-        }
-      ],
-      application_context: {
-        return_url: BASE_URL + '/orders/complete-order',
-        cancel_url: BASE_URL + '/orders/cancel-order',
-        shipping_preference: 'NO_SHIPPING',
-        user_action: 'PAY_NOW',
-        brand_name: 'Studioz'
-      }
-    })
-  });
-  return { id: response.data.id };
-};
 
 export const capturePayment = async (orderId) => {
   const accessToken = await generateAccessToken();
@@ -145,79 +93,7 @@ export const generateSellerSignupLink = async (sellerId) => {
   }
 };
 
-// export const createMarketplaceOrder = async (cart) => {
-//     const accessToken = await generateAccessToken();
-
-//     // Group items by seller and create a purchase unit for each
-//     const purchaseUnits = Object.values(
-//       cart.reduce((acc, item) => {
-//         if (!acc[item.sellerId]) {
-//           acc[item.sellerId] = {
-//             items: [],
-//             total: 0,
-//             sellerId: item.sellerId
-//           };
-//         }
-//         acc[item.sellerId].items.push(item);
-//         acc[item.sellerId].total += item.price * item.quantity;
-//         return acc;
-//       }, {})
-//     ).map(({ items, total, sellerId }) => {
-//       const platformFee = calculatePlatformFee(total);
-
-//       return {
-//         reference_id: `STUDIO_${sellerId}`,
-//         amount: {
-//           currency_code: 'ILS',
-//           value: total.toString(),
-//           breakdown: {
-//             item_total: {
-//               currency_code: 'ILS',
-//               value: total.toString()
-//             },
-//             platform_fees: {
-//               currency_code: 'ILS',
-//               value: platformFee.toString()
-//             }
-//           }
-//         },
-//         payee: {
-//           merchant_id: sellerId
-//         },
-//         payment_instruction: {
-//           platform_fees: [{
-//             amount: {
-//               currency_code: 'ILS',
-//               value: platformFee.toString()
-//             }
-//           }],
-//           disbursement_mode: 'INSTANT'
-//         }
-//       };
-//     });
-
-//     const response = await axios({
-//       url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
-//       method: 'post',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         Authorization: `Bearer ${accessToken}`
-//       },
-//       data: {
-//         intent: 'CAPTURE',
-//         purchase_units: purchaseUnits
-//       }
-//     });
-
-//     return response.data;
-//   };
-
-export const createMarketplaceOrder = async (cart, sellerId) => {
-  const seller = await UserModel.findById(sellerId);
-  if (!seller?.paypalMerchantId) {
-    throw new Error('Seller PayPal account not found');
-  }
-
+export const createMarketplaceOrder = async (cart, merchantId) => {
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
   const platformFee = calculatePlatformFee(total);
@@ -249,7 +125,7 @@ export const createMarketplaceOrder = async (cart, sellerId) => {
             }
           },
           payee: {
-            merchant_id: seller?.paypalMerchantId
+            merchant_id: merchantId
           },
           payment_instruction: {
             platform_fees: [

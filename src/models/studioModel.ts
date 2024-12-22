@@ -34,6 +34,7 @@ const studioSchema = new Schema({
   isFeatured: { type: Boolean, required: false },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  paypalMerchantId: { type: String, required: false },
   studioAvailability: { type: StudioAvailability, required: false },
   location: {
     type: { type: String, enum: ['Point'], required: false },

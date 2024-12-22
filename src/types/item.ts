@@ -9,7 +9,9 @@ export default interface Item {
   lat?: number;
   lng?: number;
   category?: string;
+  categories?: string[];
   subCategory?: string;
+  subCategories?: string[];
   price?: number;
   imageUrl?: string;
   idx?: number;
@@ -17,7 +19,7 @@ export default interface Item {
   studioId: string;
   studioName: string;
   studioImgUrl?: string;
-  createdBy: string;
+  createdBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
   paypalMerchantId?: string;
