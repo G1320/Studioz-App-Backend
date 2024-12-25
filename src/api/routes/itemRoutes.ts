@@ -4,7 +4,6 @@ import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
-// router.post('/update-item-translations', itemHandler.updateItemTranslations);
 
 router.post('/',  itemHandler.createItem);
 router.get('/', itemHandler.getItems);
