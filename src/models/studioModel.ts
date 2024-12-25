@@ -13,7 +13,17 @@ const StudioAvailability = new mongoose.Schema({
   }]
 });
 
+const translationSchema = new Schema({
+  en: { type: String, required: false },
+  he: { type: String, required: false }
+}, { _id: false });
+
+
 const studioSchema = new Schema({
+  name: { type: translationSchema, required: false },
+  subtitle: { type: translationSchema, required: false },
+  description: { type: translationSchema, required: false },
+  
   nameEn: { type: String, required: false },
   nameHe: { type: String, required: false },
   subtitleEn: { type: String, required: false },
@@ -46,6 +56,7 @@ const studioSchema = new Schema({
   items: [
     {
       idx: { type: Number, required: true },
+      name: { type: translationSchema, required: false },
       nameEn: { type: String, required: false },
       nameHe: { type: String, required: false },
       itemId: { type: Schema.Types.ObjectId, ref: 'Item' },

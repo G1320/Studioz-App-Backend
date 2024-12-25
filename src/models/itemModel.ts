@@ -6,13 +6,22 @@ const availabilitySchema: Schema = new Schema({
   times: { type: [String], required: true }
 });
 
+const translationSchema = new Schema({
+  en: { type: String, required: false },
+  he: { type: String, required: false }
+}, { _id: false });
+
 const itemSchema: Schema = new Schema({
-  name: { type: String, required: false },
+  name: { type: translationSchema, required: false },
+  description: { type: translationSchema, required: false },
+  studioName: { type: translationSchema, required: false },
+  
   nameEn: { type: String, required: false },
   nameHe: { type: String, required: false },
-  description: { type: String, required: false },
   descriptionEn: { type: String, required: false },
   descriptionHe: { type: String, required: false },
+  studioNameEn: { type: String, required: false },
+  studioNameHe: { type: String, required: false },
   category: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategory: { type: String, required: false },
@@ -23,8 +32,7 @@ const itemSchema: Schema = new Schema({
   idx: { type: Number, required: false },
   inStock: { type: Boolean, required: false },
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
-  studioNameEn: { type: String, required: false },
-  studioNameHe: { type: String, required: false },
+  
   studioImgUrl: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

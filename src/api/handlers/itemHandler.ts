@@ -39,7 +39,10 @@ const createItem = handleRequest(async (req: Request) => {
     idx: studio.items.length,
     itemId: item._id,
     studioId,
-    studioNameEn: item.studioNameEn ,
+    studioName: {
+      en: item.studioName.en, 
+      he: item.studioName.he, 
+    },  
     address: item.address,
     lat: item.lat,
     lng: item.lng,
@@ -108,8 +111,11 @@ const addItemToStudio = handleRequest(async (req: Request) => {
     idx: studio.items.length,
     itemId: item._id,
     studioId: studioId,
-    studioNameEn: studio.nameEn
-  });
+    studioName: {
+      en: item.studioName.en, 
+      he: item.studioName.he, 
+    },
+    });
   await studio.save();
 
   return item;
@@ -235,6 +241,82 @@ const deleteItemById = handleRequest(async (req: Request) => {
   return item;
 });
 
+// const updateItemTranslations = handleRequest(async (req: Request) => {
+//   try {
+//     const items = await ItemModel.find({
+//       $or: [
+//         { nameEn: { $exists: true } },
+//         { descriptionEn: { $exists: true } },
+//         { studioNameEn: { $exists: true } }
+//       ]
+//     });
+    
+//     console.log(`Found ${items.length} items to update.`);
+ 
+//     const bulkOps = items.map(item => {
+//       const update: any = {
+//         $set: {}
+//       };
+ 
+//       // Update name
+//       if (item.nameEn || item.nameHe) {
+//         update.$set['name'] = {
+//           en: item.nameEn || '',
+//           he: item.nameHe || ''
+//         };
+//       }
+ 
+//       // Update description
+//       if (item.descriptionEn || item.descriptionHe) {
+//         update.$set['description'] = {
+//           en: item.descriptionEn || '',
+//           he: item.descriptionHe || ''
+//         };
+//       }
+ 
+//       // Update studioName
+//       if (item.studioNameEn || item.studioNameHe) {
+//         update.$set['studioName'] = {
+//           en: item.studioNameEn || '',
+//           he: item.studioNameHe || ''
+//         };
+//       }
+ 
+//       // Remove old fields
+//       // update.$unset = {
+//       //   nameEn: "",
+//       //   nameHe: "",
+//       //   descriptionEn: "",
+//       //   descriptionHe: "",
+//       //   studioNameEn: "",
+//       //   studioNameHe: ""
+//       // };
+ 
+//       return {
+//         updateOne: {
+//           filter: { _id: item._id },
+//           update
+//         }
+//       };
+//     });
+ 
+//     if (bulkOps.length > 0) {
+//       const result = await ItemModel.bulkWrite(bulkOps);
+//       console.log(`Updated ${result.modifiedCount} items`);
+//       return { 
+//         message: `Successfully updated translations for ${result.modifiedCount} items`,
+//         modifiedCount: result.modifiedCount 
+//       };
+//     }
+ 
+//     return { message: 'No items needed translation update' };
+ 
+//   } catch (error) {
+//     console.error('Error updating item translations:', error);
+//     throw new Error('Failed to update item translations');
+//   }
+//  });
+ 
 
 export default {
   createItem,
@@ -247,4 +329,5 @@ export default {
   removeItemFromWishlist,
   updateItemById,
   deleteItemById,
+  // updateItemTranslations
 };

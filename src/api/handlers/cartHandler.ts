@@ -37,14 +37,19 @@ if (existingCartItem) {
 } else {
   // If it’s a new item, add it to the cart
   user.cart.items.push({
-    nameEn: item.nameEn,
-    price: item.price,
+    name: {
+      en: item.name?.en || '', 
+      he: item.name?.he || undefined, 
+    },
+    studioName: {
+      en: item.studioName.en || '', 
+      he: item.studioName.he || undefined, 
+    },
     total: (item.price || 0) * (hours || 1),
     itemId: item._id,
     quantity: hours || 1,
     bookingDate: bookingDate.toString(),
     startTime: startTime.toString(),
-    studioNameEn: item.studioNameEn,
     studioId: item.studioId
   });
 }
@@ -89,13 +94,18 @@ const addItemsToCart = handleRequest(async (req: Request) => {
     } else {
       // If it's a new item, add it to the cart with an initial quantity of 1
       user.cart?.items?.push({
-        nameEn: item.nameEn,
-        price: item.price,
+        name: {
+          en: item.name?.en || '', 
+          he: item.name?.he || undefined, 
+        },
+        studioName: {
+          en: item.studioName.en || '', 
+          he: item.studioName.he || undefined, 
+        },
         total: item.price,
         itemId: item._id,
         quantity: 1,
         bookingDate: bookingDate,
-        studioNameEn: item.studioNameEn,
         studioId: item.studioId
       });
     }
