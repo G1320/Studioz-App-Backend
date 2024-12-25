@@ -14,9 +14,14 @@ export interface StudioAvailability {
 
 export default interface Studio {
   _id: string;
-  name: string;
-  subtitle?: string;
-  description: string;
+  name?: string;
+  nameEn: string;
+  nameHe?: string;
+  subtitleEn?: string;
+  subtitleHe?: string;
+  description?: string;
+  descriptionEn?: string;
+  descriptionHe?: string;
   categories?: string[];
   subCategories?: string[];
   maxOccupancy?: number;

@@ -3,6 +3,7 @@ import studioHandler from '../handlers/studioHandler.js';
 import { validateStudio, verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
+router.post('/update-studios-desc', studioHandler.updateStudioDescription);
 
 router.get('/', studioHandler.getStudios);
 router.get('/:studioId', studioHandler.getStudioById);

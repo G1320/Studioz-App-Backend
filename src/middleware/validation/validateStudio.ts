@@ -14,11 +14,15 @@ const itemSchema = Joi.object({
 const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.string()
-  .regex(/^[a-zA-Z0-9\s]*$/)
+  .regex(/^[a-zA-Z0-9\s]*$/).min(2).max(20).optional().label('Studio name'),
+  nameEn: Joi.string()
+  .regex(/^[a-zA-Z0-9\s]*$/).min(2).max(20).optional().label('Studio name EN'),
+  nameHe: Joi.string()
+  .regex(/^[\u0590-\u05FF\s]*$/)
   .min(2)
   .max(20)
-  .required()
-  .label('Studio name'),
+  .optional()
+  .label('Studio name HE'),
   studioAvailability: Joi.object({
     days: Joi.array().items(
       Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
@@ -30,8 +34,11 @@ const schema = Joi.object({
         })
         )
       }).optional(),
-      subtitle: Joi.string().optional(),
-  description: Joi.string().required().label('Studio description'),
+      subtitleEn: Joi.string().optional().label('Studio subtitle EN'),
+      subtitleHe: Joi.string().optional().label('Studio subtitle HE'),
+  description: Joi.string().optional().label('Studio description'),
+  descriptionEn: Joi.string().optional().label('Studio description EN'),
+  descriptionHe: Joi.string().regex(/^[\u0590-\u05FF\s]*$/).optional().label('Studio description HE'),
   coverImage: Joi.string().optional().label('Cover image'),
   galleryImages: Joi.array().items(Joi.string()).optional().label('Gallery images'),
   coverAudioFile: Joi.string().optional().label('Cover audio'),

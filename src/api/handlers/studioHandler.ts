@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { StudioModel } from '../../models/studioModel.js';
-import { Item } from '../../types/index.js';
+import { Item, Studio } from '../../types/index.js';
 import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
@@ -98,11 +98,49 @@ const deleteStudioById = handleRequest(async (req: Request) => {
 });
 
 
+const updateStudioDescription = handleRequest(async (req: Request) => {
+  try {
+    const studios = await StudioModel.find({
+      nameEn: { $exists: false }  // Only find studios without nameEn
+    });
+    
+    console.log(`Found ${studios.length} studios that need name updates.`);
+
+    const bulkOps = studios
+      .filter(studio => studio.name && !studio.nameEn)
+      .map(studio => ({
+        updateOne: {
+          filter: { _id: studio._id },
+          update: {
+            $set: { nameEn: studio.name }
+          }
+        }
+      }));
+
+    if (bulkOps.length > 0) {
+      const result = await StudioModel.bulkWrite(bulkOps);
+      console.log(`Updated names for ${result.modifiedCount} studios`);
+      return { 
+        message: `Successfully updated names for ${result.modifiedCount} studios`,
+        modifiedCount: result.modifiedCount 
+      };
+    }
+
+    return { message: 'No studios needed name updates' };
+
+  } catch (error) {
+    console.error('Error updating studio names:', error);
+    throw new Error('Failed to update studio names');
+  }
+});
+
+
 export default {
   createStudio,
   getStudios,
   getStudioById,
   updateStudioItem,
   updateStudioById,
-  deleteStudioById
+  deleteStudioById,
+  updateStudioDescription
 };

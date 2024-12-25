@@ -7,16 +7,21 @@ const availabilitySchema: Schema = new Schema({
 });
 
 const itemSchema: Schema = new Schema({
-  name: { type: String, required: true },
+  name: { type: String, required: false },
+  nameEn: { type: String, required: false },
+  nameHe: { type: String, required: false },
   description: { type: String, required: false },
+  descriptionEn: { type: String, required: false },
+  descriptionHe: { type: String, required: false },
   category: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategory: { type: String, required: false },
   subCategories: [{ type: String, required: false }],
   price: { type: Number, required: false },
+  pricePer: { type: String, required: true },
   imgUrl: { type: String, required: false },
   idx: { type: Number, required: false },
-  inStock: { type: Boolean, required: true },
+  inStock: { type: Boolean, required: false },
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   studioName: { type: String, required: true },
   studioImgUrl: { type: String, required: false },

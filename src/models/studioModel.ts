@@ -14,9 +14,14 @@ const StudioAvailability = new mongoose.Schema({
 });
 
 const studioSchema = new Schema({
-  name: { type: String, required: true },
-  subtitle: { type: String, required: false },
-  description: { type: String, required: true },
+  name: { type: String, required: false },
+  nameEn: { type: String, required: false },
+  nameHe: { type: String, required: false },
+  subtitleEn: { type: String, required: false },
+  subtitleHe: { type: String, required: false },
+  description: { type: String, required: false },
+  descriptionEn: { type: String, required: false },
+  descriptionHe: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },

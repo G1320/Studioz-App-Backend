@@ -108,7 +108,7 @@ const addItemToStudio = handleRequest(async (req: Request) => {
     idx: studio.items.length,
     itemId: item._id,
     studioId: studioId,
-    studioName: studio.name
+    studioName: studio.nameEn
   });
   await studio.save();
 
@@ -234,6 +234,8 @@ const deleteItemById = handleRequest(async (req: Request) => {
 
   return item;
 });
+
+
 
 
 export default {

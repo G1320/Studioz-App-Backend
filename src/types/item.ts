@@ -3,8 +3,12 @@ import Availability from './availability.js';
 export default interface Item {
   _id: string;
   studio: string;
-  name: string;
+  name?: string;
+  nameEn: string;
+  nameHe: string;
   description?: string;
+  descriptionEn?: string;
+  descriptionHe?: string;
   address?: string;
   lat?: number;
   lng?: number;
@@ -13,6 +17,7 @@ export default interface Item {
   subCategory?: string;
   subCategories?: string[];
   price?: number;
+  pricePer?: 'hour' | 'session' | 'unit' | 'song';
   imageUrl?: string;
   idx?: number;
   inStock: boolean;
