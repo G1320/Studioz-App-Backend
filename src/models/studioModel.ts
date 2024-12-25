@@ -14,12 +14,10 @@ const StudioAvailability = new mongoose.Schema({
 });
 
 const studioSchema = new Schema({
-  name: { type: String, required: false },
   nameEn: { type: String, required: false },
   nameHe: { type: String, required: false },
   subtitleEn: { type: String, required: false },
   subtitleHe: { type: String, required: false },
-  description: { type: String, required: false },
   descriptionEn: { type: String, required: false },
   descriptionHe: { type: String, required: false },
   categories: [{ type: String, required: false }],
@@ -48,6 +46,8 @@ const studioSchema = new Schema({
   items: [
     {
       idx: { type: Number, required: true },
+      nameEn: { type: String, required: false },
+      nameHe: { type: String, required: false },
       itemId: { type: Schema.Types.ObjectId, ref: 'Item' },
       studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
       studioImgUrl: { type: String, required: false },

@@ -3,10 +3,8 @@ import Availability from './availability.js';
 export default interface Item {
   _id: string;
   studio: string;
-  name?: string;
   nameEn: string;
   nameHe: string;
-  description?: string;
   descriptionEn?: string;
   descriptionHe?: string;
   address?: string;
@@ -22,12 +20,12 @@ export default interface Item {
   idx?: number;
   inStock: boolean;
   studioId: string;
-  studioName: string;
+  studioNameEn?: string;
+  studioNameHe?: string;
   studioImgUrl?: string;
   createdBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
   paypalMerchantId?: string;
-
   availability?: Availability[];
 }

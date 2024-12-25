@@ -1,5 +1,6 @@
 export default interface CartItem {
-  name?: string;
+  nameEn?: string;
+  nameHe?: string;
   price?: number;
   pricePer?: 'hour' | 'session' | 'unit' | 'song';
   total?: number;
@@ -7,6 +8,7 @@ export default interface CartItem {
   quantity?: number;
   bookingDate?: string ;
   startTime?: string;
-  studioName?: string;
+  studioNameEn?: string;
+  studioNameHe?: string;
   studioId?: string;
 }

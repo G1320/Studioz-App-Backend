@@ -13,8 +13,6 @@ const itemSchema = Joi.object({
 
 const schema = Joi.object({
   _id: Joi.string().optional(),
-  name: Joi.string()
-  .regex(/^[a-zA-Z0-9\s]*$/).min(2).max(20).optional().label('Studio name'),
   nameEn: Joi.string()
   .regex(/^[a-zA-Z0-9\s]*$/).min(2).max(20).optional().label('Studio name EN'),
   nameHe: Joi.string()
@@ -36,7 +34,6 @@ const schema = Joi.object({
       }).optional(),
       subtitleEn: Joi.string().optional().label('Studio subtitle EN'),
       subtitleHe: Joi.string().optional().label('Studio subtitle HE'),
-  description: Joi.string().optional().label('Studio description'),
   descriptionEn: Joi.string().optional().label('Studio description EN'),
   descriptionHe: Joi.string().regex(/^[\u0590-\u05FF\s]*$/).optional().label('Studio description HE'),
   coverImage: Joi.string().optional().label('Cover image'),
