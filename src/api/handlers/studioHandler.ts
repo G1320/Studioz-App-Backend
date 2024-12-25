@@ -97,6 +97,8 @@ const deleteStudioById = handleRequest(async (req: Request) => {
   return null;
 });
 
+
+
 export default {
   createStudio,
   getStudios,

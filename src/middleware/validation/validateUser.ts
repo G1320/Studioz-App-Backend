@@ -2,12 +2,13 @@ import Joi from 'joi';
 import handleJoiError from '../../utils/joiErrorHandler.js';
 import { Request, Response, NextFunction } from '../../types/express.js';
 
+
 const validateUser = (req: Request, res: Response, next: NextFunction) => {
   const schema = Joi.object({
     username: Joi.string().label('Username').optional(),
     firstName: Joi.string().label('First Name').optional(),
     lastName: Joi.string().label('Last Name').optional(),
-    name: Joi.string().optional().label('Last Name'),
+    name: Joi.string().label('Name').optional(),
     avatar: Joi.string().label('Avatar').optional(),
     password: Joi.string().min(6).label('Password').optional(),
     isAdmin: Joi.boolean().label('Admin access').optional(),
@@ -18,29 +19,38 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     cart: Joi.object({
       items: Joi.array().items(
         Joi.object({
-          name: Joi.string().label('Item Name').optional(),
+          name: Joi.object({
+            en: Joi.string().label('Name (English)').required(),
+            he: Joi.string().label('Name (Hebrew)').optional(),
+          }).label('Name'),
+          studioName: Joi.object({
+            en: Joi.string().label('Studio Name (English)').optional(),
+            he: Joi.string().label('Studio Name (Hebrew)').optional(),
+          }).label('Studio Name'),
           price: Joi.number().label('Price').optional(),
           total: Joi.number().label('Total Price').optional(),
+          pricePer: Joi.string()
+            .valid('hour', 'session', 'unit', 'song')
+            .label('Price Per')
+            .optional(),
           itemId: Joi.string().label('Item ID').optional(),
           quantity: Joi.number().label('Quantity').optional().default(1),
           bookingDate: Joi.string().label('Booking Date').optional(),
           startTime: Joi.string().label('Start Time').optional(),
-          studioName: Joi.string().label('Studio Name').optional(),
-          studioId: Joi.string().label('Studio ID').optional()
+          studioId: Joi.string().label('Studio ID').optional(),
         })
-      ).label('Cart Items')
+      ).label('Cart Items'),
     }).label('Shopping Cart').optional(),
-    paypalMerchantId: Joi.string()
-      .label('PayPal Merchant ID')
-      .optional(),
+    paypalMerchantId: Joi.string().label('PayPal Merchant ID').optional(),
     paypalOnboardingStatus: Joi.string()
       .valid('PENDING', 'COMPLETED', 'FAILED')
       .label('PayPal Onboarding Status')
-      .optional()
+      .optional(),
   });
 
   const { error } = schema.validate(req.body);
   error ? handleJoiError(error) : next();
 };
+
 
 export default validateUser;

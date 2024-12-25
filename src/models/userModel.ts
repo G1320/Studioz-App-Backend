@@ -2,14 +2,20 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 import { User } from '../types/index.js';
 
 const cartItemSchema = new Schema({
-  name: { type: String, required: false },
+  name: {
+    en: { type: String, required: true },
+    he: { type: String, required: false },
+  },
+  studioName: {
+    en: { type: String, required: false },
+    he: { type: String, required: false },
+  },
   price: { type: Number, required: false },
   total: { type: Number, required: false },
   itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false },
   quantity: { type: Number, required: false, default: 1 },
   bookingDate: { type: String, required: false },
   startTime: { type: String, required: false },
-  studioName: { type: String, required: false },
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false }
 });
 
