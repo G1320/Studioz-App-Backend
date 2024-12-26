@@ -14,19 +14,19 @@ const itemSchema = Joi.object({
 const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.object({
-    en: Joi.string().regex(/^[a-zA-Z0-9\s]*$/).min(2).max(20).required().label('English Name'),
-    he: Joi.string().regex(/^[\u0590-\u05FF\s]*$/).min(2).max(20).required().label('Hebrew Name')
+    en: Joi.string().regex(/^[a-zA-Z0-9\s]*$/).min(3).max(20).required().label('English Name'),
+    he: Joi.string().regex(/^[\u0590-\u05FF\s]*$/).min(3).max(20).required().label('Hebrew Name')
   }).required(),
  
   subtitle: Joi.object({
-    en: Joi.string().optional().label('English Subtitle'), 
-    he: Joi.string().optional().label('Hebrew Subtitle')
-  }).optional(),
+    en: Joi.string().required().label('English Subtitle'), 
+    he: Joi.string().required().label('Hebrew Subtitle')
+  }).required(),
  
   description: Joi.object({
-    en: Joi.string().optional().label('English Description'),
-    he: Joi.string().regex(/^[\u0590-\u05FF\s]*$/).optional().label('Hebrew Description')
-  }).optional(),
+    en: Joi.string().required().label('English Description'),
+    he: Joi.string().required().regex(/^[\u0590-\u05FF\s]*$/).label('Hebrew Description')
+  }).required(),
  
   studioAvailability: Joi.object({
     days: Joi.array().items(
@@ -39,14 +39,14 @@ const schema = Joi.object({
         })
         )
       }).optional(),
-  coverImage: Joi.string().optional().label('Cover image'),
-  galleryImages: Joi.array().items(Joi.string()).optional().label('Gallery images'),
+  coverImage: Joi.string().required().label('Cover image'),
+  galleryImages: Joi.array().required().items(Joi.string()).label('Gallery images'),
   coverAudioFile: Joi.string().optional().label('Cover audio'),
   galleryAudioFiles: Joi.array().items(Joi.string()).optional().label('Gallery audio files'),
   items: Joi.array().items(itemSchema).optional().label('Items array'),
   categories: Joi.array().items(Joi.string()),
   subCategories: Joi.array().items(Joi.string()),
-  maxOccupancy: Joi.number().optional(),
+  maxOccupancy: Joi.number().required(),
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional(),
   address: Joi.string().optional(),

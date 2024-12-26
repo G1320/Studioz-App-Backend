@@ -1,9 +1,6 @@
 import StudioItem from './studioItem.js';
 
-type StudioLocation = {
-  type: 'Point'; 
-  coordinates: [number, number]; // [longitude, latitude]
-};
+
 
 export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
@@ -46,5 +43,4 @@ export default interface Studio {
   items: StudioItem[];
   paypalMerchantId?: string;
   studioAvailability?: StudioAvailability;
-  location?: StudioLocation;
 }

@@ -30,8 +30,12 @@ const performSearch = async <T>(
                 $project: {
                     name: 1,
                     description: 1,
-                    score: { $meta: "searchScore" },
-                },
+                    studioName: 1, 
+                    price: 1,
+                    categories: 1,
+                    subCategories: 1,
+                    score: { $meta: "searchScore" }
+                  }
             },
         ]);
     } catch (error) {
@@ -49,10 +53,9 @@ export const searchStudiosAndItems = async (req: Request, res: Response) => {
 
     try {
         const [studios, items] = await Promise.all([
-            performSearch(StudioModel, searchTerm, ['name', 'description'], 'studios'),
-            performSearch(ItemModel, searchTerm, ['name', 'description'], 'items'),
+            performSearch(StudioModel, searchTerm, ['name.en', 'name.he', 'description.en', 'description.he'], 'studios'),
+            performSearch(ItemModel, searchTerm, ['name.en', 'name.he', 'description.en', 'description.he'], 'items'),
         ]);
-
         return res.status(200).json({
             studios,
             items,
