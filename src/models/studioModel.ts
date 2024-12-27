@@ -24,12 +24,6 @@ const studioSchema = new Schema({
   subtitle: { type: translationSchema, required: false },
   description: { type: translationSchema, required: false },
   
-  nameEn: { type: String, required: false },
-  nameHe: { type: String, required: false },
-  subtitleEn: { type: String, required: false },
-  subtitleHe: { type: String, required: false },
-  descriptionEn: { type: String, required: false },
-  descriptionHe: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
@@ -49,10 +43,6 @@ const studioSchema = new Schema({
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   paypalMerchantId: { type: String, required: false },
   studioAvailability: { type: StudioAvailability, required: false },
-  location: {
-    type: { type: String, enum: ['Point'], required: false },
-    coordinates: { type: [Number], required: false }
-  },
   items: [
     {
       idx: { type: Number, required: true },

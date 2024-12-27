@@ -19,7 +19,6 @@ const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
-    console.log('hours: ', hours);
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
