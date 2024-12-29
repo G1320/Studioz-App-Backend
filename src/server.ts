@@ -9,7 +9,9 @@ import wishlistRoutes from './api/routes/wishlistRoutes.js';
 import itemRoutes from './api/routes/itemRoutes.js';
 import cartRoutes from './api/routes/cartRoutes.js';
 import bookingRoutes from './api/routes/bookingRoutes.js';
-import orderRoutes from './api/routes/PPorderRoutesAPI.js';
+import PPOrderRoutes from './api/routes/PPOrderRoutes.js';
+import PPAuthRoutes from './api/routes/PPAuthRoutes.js';
+import PPOnboardingRoutes from './api/routes/PPOnboardingRoutes.js';
 import searchRoutes from './api/routes/searchRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -67,7 +69,9 @@ app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/search', searchRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/PPAuth", PPAuthRoutes);
+app.use("/api/PPorders", PPOrderRoutes);
+app.use("/api/PPOnboarding", PPOnboardingRoutes);
 
 
 app.use('/api/auth', authRoutes);

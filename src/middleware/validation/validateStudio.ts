@@ -34,6 +34,7 @@ const schema = Joi.object({
       ),
       times: Joi.array().items(
         Joi.object({
+          _id: Joi.string().optional(),
           start: Joi.string().required(),
           end: Joi.string().required()
         })

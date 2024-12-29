@@ -1,12 +1,7 @@
 import axios from 'axios';
 
-import {
-  BASE_URL,
-  PAYPAL_BASE_URL,
-  PAYPAL_PARTNER_ID,
-  PAYPAL_CLIENT_ID,
-  PAYPAL_SECRET_KEY
-} from '../../config/index.js';
+import { PAYPAL_BASE_URL } from '../../config/index.js';
+import { generateAccessToken } from './PPAuthHandler.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
@@ -15,20 +10,6 @@ const calculateTotal = (cart) => {
 const calculatePlatformFee = (total) => {
   return (total * 0.12).toFixed(2);
 };
-
-async function generateAccessToken() {
-  const response = await axios({
-    url: PAYPAL_BASE_URL + '/v1/oauth2/token',
-    method: 'post',
-    data: 'grant_type=client_credentials',
-    auth: {
-      username: PAYPAL_CLIENT_ID,
-      password: PAYPAL_SECRET_KEY
-    }
-  });
-
-  return response.data.access_token;
-}
 
 export const capturePayment = async (orderId) => {
   const accessToken = await generateAccessToken();
@@ -45,51 +26,45 @@ export const capturePayment = async (orderId) => {
   return response.data;
 };
 
-export const generateSellerSignupLink = async (sellerId) => {
-  const accessToken = await generateAccessToken();
-
+export const getOrderDetails = async (orderId) => {
   try {
+    // Get the order details from PayPal
+    const accessToken = await generateAccessToken();
     const response = await axios({
-      url: `${PAYPAL_BASE_URL}/v2/customer/partner-referrals`,
-      method: 'post',
+      url: `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}`,
+      method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
-      },
-      data: {
-        tracking_id: sellerId,
-        partner_config_override: {
-          return_url: `${BASE_URL}/orders/seller/onboard-complete/${sellerId}`
-        },
-        operations: [
-          {
-            operation: 'API_INTEGRATION',
-            api_integration_preference: {
-              rest_api_integration: {
-                integration_method: 'PAYPAL',
-                integration_type: 'THIRD_PARTY',
-                third_party_details: {
-                  features: ['PAYMENT', 'REFUND', 'PARTNER_FEE']
-                }
-              }
-            }
-          }
-        ],
-        products: ['EXPRESS_CHECKOUT'],
-        legal_consents: [
-          {
-            type: 'SHARE_DATA_CONSENT',
-            granted: true
-          }
-        ]
+        Authorization: `Bearer ${accessToken}`
       }
     });
 
-    return response.data.links.find((link) => link.rel === 'action_url').href;
+    const orderData = response.data;
+
+    // Format the response
+    const formattedOrder = {
+      orderId: orderData.id,
+      createTime: orderData.create_time,
+      merchantName: orderData.purchase_units[0].payee.merchant_id, // You might want to look up the actual name
+      items:
+        orderData.purchase_units[0].items?.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.unit_amount.value
+        })) || [],
+      total: orderData.purchase_units[0].amount.value,
+      paymentStatus: orderData.status,
+      payerEmail: orderData.payer.email_address,
+      transactionId: orderData.purchase_units[0].payments?.captures[0]?.id
+    };
+
+    res.json(formattedOrder);
   } catch (error) {
-    console.error('Error generating seller signup:', error?.response?.data || error);
-    throw error;
+    console.error('Error fetching order:', error);
+    res.status(500).json({
+      error: 'Failed to fetch order details',
+      details: error.message
+    });
   }
 };
 
@@ -97,6 +72,9 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
   const platformFee = calculatePlatformFee(total);
+
+  if (!merchantId) throw new Error('Merchant ID is required');
+  if (total <= 0) throw new Error('Invalid order total');
 
   const response = await axios({
     url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
