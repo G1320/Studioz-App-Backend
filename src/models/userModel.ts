@@ -28,6 +28,7 @@ const userSchema = new Schema(
     avatar: { type: String },
     password: { type: String, select: false },
     picture: { type: String },
+    email: { type: String, required: false, unique: true },
     sub: { type: String, required: true, unique: true },
     updatedAt: { type: Date, default: Date.now },
     isAdmin: { type: Boolean, default: false },

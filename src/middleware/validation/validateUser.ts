@@ -16,6 +16,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     updatedAt: Joi.date().default(Date.now).label('Last Update'),
     picture: Joi.string().label('Picture').optional(),
     sub: Joi.string().label('Sub').optional(),
+    email: Joi.string().email().label('Email').optional(),
     cart: Joi.object({
       items: Joi.array().items(
         Joi.object({
