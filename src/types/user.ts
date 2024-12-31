@@ -16,6 +16,7 @@ export default interface User {
   isAdmin?: boolean;
   updatedAt?: Date;
   email?: string;
+  email_verified?: boolean;
   studios?: string[];
   wishlists?: Wishlist[];
   reservations?: Reservation[];

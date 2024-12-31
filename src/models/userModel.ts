@@ -29,6 +29,7 @@ const userSchema = new Schema(
     password: { type: String, select: false },
     picture: { type: String },
     email: { type: String, required: false, unique: true },
+    email_verified: { type: Boolean, default: false },
     sub: { type: String, required: true, unique: true },
     updatedAt: { type: Date, default: Date.now },
     isAdmin: { type: Boolean, default: false },

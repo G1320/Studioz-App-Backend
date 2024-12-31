@@ -17,6 +17,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     picture: Joi.string().label('Picture').optional(),
     sub: Joi.string().label('Sub').optional(),
     email: Joi.string().email().label('Email').optional(),
+    email_verified: Joi.boolean().label('Email Verification').optional(),
     cart: Joi.object({
       items: Joi.array().items(
         Joi.object({
