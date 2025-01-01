@@ -14,6 +14,7 @@ import PPAuthRoutes from './api/routes/PPAuthRoutes.js';
 import PPOnboardingRoutes from './api/routes/PPOnboardingRoutes.js';
 import searchRoutes from './api/routes/searchRoutes.js';
 import emailRoutes from './api/routes/emailRoutes.js';
+import invoiceRoutes from './api/routes/invoiceRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -74,6 +75,7 @@ app.use("/api/PPAuth", PPAuthRoutes);
 app.use("/api/PPorders", PPOrderRoutes);
 app.use("/api/PPOnboarding", PPOnboardingRoutes);
 app.use("/api/emails", emailRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 
 app.use('/api/auth', authRoutes);
