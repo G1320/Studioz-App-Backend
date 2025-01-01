@@ -48,7 +48,7 @@ interface PayPalPaymentSource {
     }>;
   }
 
-const formatAddress = (shipping?: PayPalShipping): string => {
+export const formatAddress = (shipping?: PayPalShipping): string => {
   if (!shipping?.address) return '';
 
   const { address_line_1, admin_area_2, postal_code, country_code } = shipping.address;
@@ -62,7 +62,7 @@ const formatAddress = (shipping?: PayPalShipping): string => {
   return parts.join(', ');
 };
 
-const formatClient = (payer: PayPalPayer, shipping?: PayPalShipping) => {
+export const formatClient = (payer: PayPalPayer, shipping?: PayPalShipping) => {
   return {
     name: `${payer.name.given_name} ${payer.name.surname}`,
     email: payer.email_address,
@@ -70,7 +70,7 @@ const formatClient = (payer: PayPalPayer, shipping?: PayPalShipping) => {
   };
 };
 
-const formatIncomeItems = (items: PayPalItem[] = []) => {
+export const formatIncomeItems = (items: PayPalItem[] = []) => {
   return items.map(item => ({
     description: item.name,
     quantity: parseInt(item.quantity),
@@ -95,7 +95,7 @@ export const formatInvoiceData = (orderData: PayPalOrderData): CreateInvoiceData
     };
   };
 
-  const getPaymentType = (orderData: PayPalOrderData): number => {
+  export const getPaymentType = (orderData: PayPalOrderData): number => {
     // Check if payment was made via PayPal balance or PayPal Credit
     if (orderData.payment_source?.paypal) {
       return 5; // Other (for PayPal balance)

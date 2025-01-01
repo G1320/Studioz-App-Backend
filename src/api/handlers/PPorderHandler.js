@@ -2,6 +2,8 @@ import axios from 'axios';
 
 import { PAYPAL_BASE_URL } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
+import { createMarketplaceInvoices } from './invoiceHandler.js';
+import { sendOrderConfirmation } from './emailHandler.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
@@ -146,45 +148,46 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
       ]
     }
   });
+  processMarketplaceOrder(response.data, merchantId);
 
   return response.data;
 };
 
-export const processPayout = async (sellerId, amount) => {
-  const accessToken = await generateAccessToken();
-
+export const processMarketplaceOrder = async (orderData, sellerId) => {
   try {
-    const response = await axios({
-      url: `${PAYPAL_BASE_URL}/v1/payments/payouts`,
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
-      },
-      data: {
-        sender_batch_header: {
-          sender_batch_id: `PAYOUT_${Date.now()}`,
-          email_subject: 'You have a payout!',
-          email_message: 'You have received a payout from your studio bookings'
-        },
-        items: [
-          {
-            recipient_type: 'PAYPAL_ID',
-            amount: {
-              value: amount.toString(),
-              currency: 'ILS'
-            },
-            receiver: sellerId,
-            note: 'Payout for studio bookings',
-            sender_item_id: `PAYOUT_ITEM_${Date.now()}`
-          }
-        ]
-      }
-    });
+    // 1. Calculate fees
+    const fees = calculateMarketplaceFees(parseFloat(orderData.purchase_units[0].amount.value));
 
-    return response.data;
+    // 2. Create invoices
+    const invoices = await createMarketplaceInvoices(orderData, fees, sellerId);
+
+    // 3. Process seller payout
+    const payout = await processSellerPayout(sellerId, fees.sellerAmount, orderData.id);
+
+    // 4. Send notifications
+    await Promise.all([
+      // Send buyer receipt
+      sendOrderConfirmation(orderData.payer.email_address, {
+        ...orderData,
+        invoiceUrl: invoices.platformInvoice.url.he
+      }),
+
+      // Send seller payout notification
+      sendPayoutNotification(sellerId, {
+        amount: fees.sellerAmount,
+        orderId: orderData.id,
+        invoiceUrl: invoices.sellerInvoice.url.he
+      })
+    ]);
+
+    return {
+      fees,
+      invoices,
+      payout
+    };
   } catch (error) {
-    console.error('Payout failed:', error);
+    console.error('Order processing failed:', error);
+    // Handle rollback if needed
     throw error;
   }
 };

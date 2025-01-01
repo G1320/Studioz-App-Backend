@@ -16,7 +16,6 @@ const emailLimiter = rateLimit({
 
 const router = express.Router();
 
-// Welcome email route
 router.post('/send-welcome',  async (req, res) => {
   try {
     const { email, name } = req.body;

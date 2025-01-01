@@ -1,5 +1,6 @@
 // services/invoiceService.ts
 import axios, { AxiosInstance } from 'axios';
+import { formatAddress, getPaymentType } from '../../utils/invoiceFormatter.js';
 
 const { GREEN_INVOICE_API_URL, GREEN_INVOICE_API_KEY, GREEN_INVOICE_API_SECRET } = process.env;
 
@@ -52,6 +53,12 @@ export interface InvoiceResponse {
   [key: string]: any;
 }
 
+interface MarketplaceFees {
+  platformFee: number; 
+  sellerAmount: number; 
+  total: number;       
+}
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: GREEN_INVOICE_API_URL,
   headers: {
@@ -64,6 +71,8 @@ apiClient.interceptors.request.use(async (config) => {
   config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+
 
 export const fetchToken = async (): Promise<string> => {
  
@@ -106,4 +115,54 @@ export const getInvoice = async (invoiceId: string): Promise<InvoiceResponse> =>
     console.error('Error retrieving invoice:', error.response?.data || error.message);
     throw new Error('Failed to retrieve invoice');
   }
+};
+
+
+export const createMarketplaceInvoices = async (
+  orderData: any, 
+  fees: MarketplaceFees,
+  sellerId: string
+) => {
+  // 1. Create platform fee invoice (income for you)
+  const platformInvoice = await createInvoice({
+    type: 305, // Invoice + Receipt
+    client: {
+      name: orderData.payer.name.given_name,
+      email: orderData.payer.email_address,
+      address: formatAddress(orderData.purchase_units[0]?.shipping)
+    },
+    income: [{
+      description: 'Platform Fee',
+      quantity: 1,
+      price: fees.platformFee
+    }],
+    vatType: 'INCLUDED',
+    currency: 'ILS',
+    remarks: `Order ID: ${orderData.id} - Platform Fee`,
+    paymentType: getPaymentType(orderData)
+  });
+
+  // 2. Create seller payout invoice (expense for you)
+  const sellerInvoice = await createInvoice({
+    type: 305, // Receipt for payout
+    client: {
+      name: 'Studioz', // You are the client paying the seller
+      email: 'admin@studioz.online',
+      address: 'Allenby 70, Tel-aviv, Israel'
+    },
+    income: [{
+      description: `Payout for Order ${orderData.id}`,
+      quantity: 1,
+      price: fees.sellerAmount
+    }],
+    vatType: 'INCLUDED',
+    currency: 'ILS',
+    remarks: `Seller ID: ${sellerId}`,
+    paymentType: 5 // PayPal payout
+  });
+
+  return {
+    platformInvoice,
+    sellerInvoice
+  };
 };

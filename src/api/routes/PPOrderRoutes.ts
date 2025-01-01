@@ -1,7 +1,7 @@
 // routes/ordersRoutes.js
 import express from "express";
 import {  capturePayment, getOrderDetails } from "../handlers/PPorderHandler.js";
-import {  createMarketplaceOrder, processPayout } from '../handlers/PPorderHandler.js';
+import {  createMarketplaceOrder } from '../handlers/PPorderHandler.js';
 
 const router = express.Router();
 
@@ -40,16 +40,6 @@ router.post('/marketplace/orders',  async (req, res) => {
 });
 
 
-router.post('/payouts',  async (req, res) => {
-  try {
-    const { sellerId, amount } = req.body;
-    const payout = await processPayout(sellerId, amount);
-    res.json(payout);
-  } catch (error) {
-    console.error('Payout processing failed:', error);
-    res.status(500).json({ error: 'Failed to process payout' });
-  }
-});
 
 
 router.post('/webhooks', async (req, res) => {

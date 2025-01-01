@@ -1,5 +1,6 @@
 // services/emailService.ts
 import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
+import { UserModel } from '../../models/userModel.js';
 
 const apiKey = process.env.BREVO_API_KEY as string;
 const apiInstance = new TransactionalEmailsApi();
@@ -22,9 +23,33 @@ interface OrderDetails {
     price: number;
   }>;
   total: number;
-  invoiceUrl?: string;  // Add this field
+  invoiceUrl?: string;  
 }
 
+interface PayoutNotificationParams {
+  sellerId: string;
+  amount: number;
+  orderId: string;
+  invoiceUrl: string;
+}
+
+interface SellerDetails {
+  email: string;
+  name?: string;
+}
+
+const getSellerDetails = async (sellerId: string): Promise<SellerDetails> => {
+  const seller = await UserModel.findOne({ paypalMerchantId: sellerId });
+  
+  if (!seller) {
+    throw new Error(`Seller not found with paypalMerchantId: ${sellerId}`);
+  }
+
+  return {
+    email: seller.email || '',
+    name: seller.name
+  };
+};
 
 
 export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
@@ -79,4 +104,31 @@ export const sendPasswordReset = async (userEmail: string, resetToken: string) =
       resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
     }
   });
+};
+
+export const sendPayoutNotification = async (
+  sellerId: string,
+  payoutDetails: Omit<PayoutNotificationParams, 'sellerId'>
+) => {
+  try {
+    const seller = await getSellerDetails(sellerId);
+
+    return sendTemplateEmail({
+      to: [{ 
+        email: seller.email,
+        name: seller.name
+      }],
+      templateId: 7, 
+      params: {
+        sellerName: seller.name,
+        amount: payoutDetails.amount,
+        orderId: payoutDetails.orderId,
+        invoiceUrl: payoutDetails.invoiceUrl,
+        date: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error('Error sending payout notification:', error);
+    throw error;
+  }
 };
