@@ -42,6 +42,7 @@ export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams)
 };
 
 export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
+  
   return sendTemplateEmail({
     to: [{ email: userEmail, name: userName }],
     templateId: 6, 
@@ -53,6 +54,7 @@ export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
 
 
 export const sendOrderConfirmation = async (userEmail: string, orderDetails: OrderDetails) => {
+  
   return sendTemplateEmail({
     to: [{ email: userEmail }],
     templateId: 5,

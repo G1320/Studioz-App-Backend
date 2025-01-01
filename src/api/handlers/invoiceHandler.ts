@@ -63,13 +63,7 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 export const fetchToken = async (): Promise<string> => {
-  // if (cachedToken && tokenExpiration && Date.now() < tokenExpiration) {
-  //   return cachedToken; // Return cached token if valid
-  // }
-
-  console.log('GREEN_INVOICE_API_URL: ', GREEN_INVOICE_API_URL);
-  console.log('GREEN_INVOICE_API_KEY: ', GREEN_INVOICE_API_KEY);
-  console.log('GREEN_INVOICE_API_SECRET: ', GREEN_INVOICE_API_SECRET);
+ 
   try {
     const response = await axios.post<TokenResponse>(
       `${GREEN_INVOICE_API_URL}/account/token`,
@@ -83,13 +77,7 @@ export const fetchToken = async (): Promise<string> => {
       );
       
     const { token, expires } = response.data;
-    console.log('token: ', token);
-    console.log('expires: ', expires);
-
-    // Cache the token and set expiration
-    cachedToken = token;
-    tokenExpiration = Date.now() + expires * 1000;
-
+ 
     return token;
   } catch (error: any) {
     console.error('Error fetching token:', error.response?.data || error.message);

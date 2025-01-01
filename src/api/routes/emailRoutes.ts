@@ -2,6 +2,8 @@ import express from 'express';
 import { sendWelcomeEmail, sendOrderConfirmation, sendPasswordReset } from '../handlers/emailHandler.js';
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
+import { formatOrderDetails } from '../../utils/orderFormatter.js';
+
 import rateLimit from 'express-rate-limit';
 
 const emailLimiter = rateLimit({
@@ -31,14 +33,16 @@ router.post('/send-welcome',  async (req, res) => {
 
 router.post('/send-order-confirmation',  async (req, res) => {
   try {
-    const { email, orderDetails } = req.body;
+    const { email, orderData } = req.body;
 
 
-    if (!email || !orderDetails) {
+    if (!email || !orderData) {
       return res.status(400).json({ error: 'Email and order details are required' });
     }
 
-    await sendOrderConfirmation(email, orderDetails);
+    const formattedOrderDetails = formatOrderDetails(orderData);
+    await sendOrderConfirmation(email, formattedOrderDetails);
+
     res.status(200).json({ message: 'Order confirmation email sent successfully' });
   } catch (error) {
     console.error('Error sending order confirmation:', error);
