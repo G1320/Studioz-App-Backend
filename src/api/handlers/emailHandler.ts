@@ -22,6 +22,7 @@ interface OrderDetails {
     price: number;
   }>;
   total: number;
+  invoiceUrl?: string;  // Add this field
 }
 
 
@@ -64,7 +65,8 @@ export const sendOrderConfirmation = async (userEmail: string, orderDetails: Ord
       orderDate: orderDetails.orderDate,
       paymentStatus: orderDetails.paymentStatus,
       items: orderDetails.items,       
-      total: orderDetails.total        
+      total: orderDetails.total   ,
+      invoiceUrl: orderDetails.invoiceUrl      
     }
   });
 };

@@ -25,6 +25,7 @@ export interface IncomeItem {
 }
 
 export interface CreateInvoiceData {
+  type: number;      
   client: {
     name: string;
     email: string;
@@ -39,6 +40,8 @@ export interface CreateInvoiceData {
   vatType: 'INCLUDED' | 'EXCLUDED' | 'NONE';
   currency: 'ILS' | 'USD' | 'EUR';
   remarks?: string;
+  lang?: 'he' | 'en';  
+  paymentType?: number; 
 }
 
 export interface InvoiceResponse {

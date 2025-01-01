@@ -3,8 +3,10 @@ import { sendWelcomeEmail, sendOrderConfirmation, sendPasswordReset } from '../h
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
 import { formatOrderDetails } from '../../utils/orderFormatter.js';
+import { formatInvoiceData } from '../../utils/invoiceFormatter.js';
 
 import rateLimit from 'express-rate-limit';
+import { createInvoice } from '../handlers/invoiceHandler.js';
 
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -41,7 +43,17 @@ router.post('/send-order-confirmation',  async (req, res) => {
     }
 
     const formattedOrderDetails = formatOrderDetails(orderData);
-    await sendOrderConfirmation(email, formattedOrderDetails);
+    const invoiceData = formatInvoiceData(orderData);
+
+    const invoiceResponse = await createInvoice(invoiceData);
+
+    const orderDetailsWithInvoice = {
+      ...formattedOrderDetails,
+      invoiceUrl: invoiceResponse.url.he  
+    };
+
+
+    await sendOrderConfirmation(email, orderDetailsWithInvoice);
 
     res.status(200).json({ message: 'Order confirmation email sent successfully' });
   } catch (error) {
