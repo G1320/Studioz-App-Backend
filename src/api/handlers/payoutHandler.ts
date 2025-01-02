@@ -61,6 +61,7 @@ export const processPayout = async (sellerId:string, amount:number) => {
         }
       });
   
+      console.log('response: ', response);
       return response.data;
     } catch (error) {
       console.error('Payout failed:', error);

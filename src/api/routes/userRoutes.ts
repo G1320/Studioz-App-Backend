@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/',  userHandler.getAllUsers);
 router.get('/:sub', userHandler.getUserBySub);
+router.get('/:merchantId', userHandler.getUserByMerchantId);
 router.get('/my-studios/:id',  userHandler.getUserStudios);
 router.post('/', validateUser, userHandler.createUser);
 router.put('/:id',  validateUser, userHandler.updateUser);

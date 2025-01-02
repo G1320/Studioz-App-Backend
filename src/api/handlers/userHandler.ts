@@ -24,6 +24,13 @@ const getUserBySub = handleRequest(async (req: Request) => {
 
   return user;
 });
+const getUserByMerchantId = handleRequest(async (req: Request) => {
+  const user = await UserModel.findOne({ paypalMerchantId: req.params.merchantId });
+
+  if (!user) return null;
+
+  return user;
+});
 
 const getUserStudios = handleRequest(async (req: Request) => {
   const user = await UserModel.findById(req.params.id);
@@ -103,6 +110,7 @@ const deleteUser = handleRequest(async (req: Request) => {
 export default {
   createUser,
   getUserBySub,
+  getUserByMerchantId,
   getUserStudios,
   addStudioToUser,
   removeStudioFromUser,

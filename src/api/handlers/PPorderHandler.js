@@ -2,15 +2,19 @@ import axios from 'axios';
 
 import { PAYPAL_BASE_URL } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
-import { createMarketplaceInvoices } from './invoiceHandler.js';
-import { sendOrderConfirmation } from './emailHandler.js';
 
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 };
 
-const calculatePlatformFee = (total) => {
-  return (total * 0.12).toFixed(2);
+export const calculateMarketplaceFee = (total) => {
+  const platformFee = parseFloat((total * 0.12).toFixed(2));
+  const sellerAmount = parseFloat((total - platformFee).toFixed(2));
+
+  return {
+    platformFee,
+    sellerAmount
+  };
 };
 
 export const capturePayment = async (orderId) => {
@@ -90,7 +94,7 @@ export const getOrderDetails = async (orderId) => {
 export const createMarketplaceOrder = async (cart, merchantId) => {
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
-  const platformFee = calculatePlatformFee(total);
+  const platformFee = calculateMarketplaceFee(total).platformFee;
 
   const items = cart.map((item) => ({
     name: item.name,
@@ -148,46 +152,6 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
       ]
     }
   });
-  processMarketplaceOrder(response.data, merchantId);
 
   return response.data;
-};
-
-export const processMarketplaceOrder = async (orderData, sellerId) => {
-  try {
-    // 1. Calculate fees
-    const fees = calculateMarketplaceFees(parseFloat(orderData.purchase_units[0].amount.value));
-
-    // 2. Create invoices
-    const invoices = await createMarketplaceInvoices(orderData, fees, sellerId);
-
-    // 3. Process seller payout
-    const payout = await processSellerPayout(sellerId, fees.sellerAmount, orderData.id);
-
-    // 4. Send notifications
-    await Promise.all([
-      // Send buyer receipt
-      sendOrderConfirmation(orderData.payer.email_address, {
-        ...orderData,
-        invoiceUrl: invoices.platformInvoice.url.he
-      }),
-
-      // Send seller payout notification
-      sendPayoutNotification(sellerId, {
-        amount: fees.sellerAmount,
-        orderId: orderData.id,
-        invoiceUrl: invoices.sellerInvoice.url.he
-      })
-    ]);
-
-    return {
-      fees,
-      invoices,
-      payout
-    };
-  } catch (error) {
-    console.error('Order processing failed:', error);
-    // Handle rollback if needed
-    throw error;
-  }
 };

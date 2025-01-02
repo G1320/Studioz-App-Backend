@@ -125,7 +125,9 @@ export const createMarketplaceInvoices = async (
 ) => {
   // 1. Create platform fee invoice (income for you)
   const platformInvoice = await createInvoice({
-    type: 305, // Invoice + Receipt
+    type: 300,  
+    lang: 'he', 
+
     client: {
       name: orderData.payer.name.given_name,
       email: orderData.payer.email_address,
@@ -144,9 +146,11 @@ export const createMarketplaceInvoices = async (
 
   // 2. Create seller payout invoice (expense for you)
   const sellerInvoice = await createInvoice({
-    type: 305, // Receipt for payout
+    type: 300, // Receipt for payout
+    lang: 'he', 
+
     client: {
-      name: 'Studioz', // You are the client paying the seller
+      name: 'Studioz', 
       email: 'admin@studioz.online',
       address: 'Allenby 70, Tel-aviv, Israel'
     },
