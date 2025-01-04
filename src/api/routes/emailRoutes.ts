@@ -6,7 +6,8 @@ import { formatOrderDetails } from '../../utils/orderFormatter.js';
 import { formatInvoiceData } from '../../utils/invoiceFormatter.js';
 
 import rateLimit from 'express-rate-limit';
-import { createInvoice } from '../handlers/invoiceHandler.js';
+import { createInvoice, createPayoutInvoice } from '../handlers/invoiceHandler.js';
+import { calculateMarketplaceFee } from '../handlers/PPorderHandler.js';
 
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -74,11 +75,12 @@ router.post('/send-order-confirmation', async (req, res) => {
       invoiceUrl: invoiceResponse.url.he  
     };
 
-      await sendOrderConfirmation(email, orderDetailsWithInvoice),    
+     const orderConfirmationData = await sendOrderConfirmation(email, orderDetailsWithInvoice)   
     
     res.status(200).json({ 
       message: 'Order confirmation email sent successfully',
-      invoice: invoiceResponse
+      invoice: invoiceResponse,
+      orderConfirmationData
     });
   } catch (error) {
     console.error('Error sending order confirmation:', error);
@@ -86,6 +88,33 @@ router.post('/send-order-confirmation', async (req, res) => {
   }
 });
 
+router.post('/send-payout-notification', async (req, res) => {
+  try {
+    const { sellerId , amount, orderId } = req.body;
+    
+    
+    if (!sellerId || !amount ||!orderId ) {
+      return res.status(400).json({ error: 'SellerId, orderId and amount are required' });
+    }
+    
+    const fees = calculateMarketplaceFee(amount);
+
+    const payoutInvoice = await createPayoutInvoice(
+      {
+        id: orderId,
+        amount
+      },
+      fees,
+      sellerId
+    );
+
+    await sendPayoutNotification(sellerId, fees.sellerAmount,orderId,payoutInvoice.url.he);
+    res.status(200).json({ message: 'Payout notification email sent successfully' });
+  } catch (error) {
+    console.error('Error sending payout notification:', error);
+    res.status(500).json({ error: 'Failed to send payout notification email' });
+  }
+});
 router.post('/send-password-reset', async (req, res) => {
   try {
     const { email, resetToken } = req.body;

@@ -80,6 +80,35 @@ export const sendOrderConfirmation = async (userEmail: string, orderDetails: Ord
   });
 };
 
+export const sendPayoutNotification = async (
+  sellerId: string,
+  amount: number,
+  orderId:string,
+  invoiceUrl: string
+) => {
+  try {
+    const seller = await getSellerDetails(sellerId);
+
+    return sendTemplateEmail({
+      to: [{ 
+        email: seller.email || 'admin@studioz.online',
+        name: seller.name
+      }],
+      templateId: 7, 
+      params: {
+        sellerName: seller.name,
+        amount: amount.toFixed(2),
+        orderId: orderId,
+        invoiceUrl: invoiceUrl,
+        date: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error('Error sending payout notification:', error);
+    throw error;
+  }
+};
+
 export const sendPasswordReset = async (userEmail: string, resetToken: string) => {
   return sendTemplateEmail({
     to: [{ email: userEmail }],
@@ -90,29 +119,3 @@ export const sendPasswordReset = async (userEmail: string, resetToken: string) =
   });
 };
 
-export const sendPayoutNotification = async (
-  sellerId: string,
-  payoutDetails: Omit<PayoutNotificationParams, 'sellerId'>
-) => {
-  try {
-    const seller = await getSellerDetails(sellerId);
-
-    return sendTemplateEmail({
-      to: [{ 
-        email: seller.email,
-        name: seller.name
-      }],
-      templateId: 7, 
-      params: {
-        sellerName: seller.name,
-        amount: payoutDetails.amount,
-        orderId: payoutDetails.orderId,
-        invoiceUrl: payoutDetails.invoiceUrl,
-        date: new Date().toISOString(),
-      }
-    });
-  } catch (error) {
-    console.error('Error sending payout notification:', error);
-    throw error;
-  }
-};

@@ -91,10 +91,11 @@ export const getOrderDetails = async (orderId) => {
     });
   }
 };
+
 export const createMarketplaceOrder = async (cart, merchantId) => {
   const accessToken = await generateAccessToken();
   const total = calculateTotal(cart);
-  const platformFee = calculateMarketplaceFee(total).platformFee;
+  const fees = calculateMarketplaceFee(total);
 
   const items = cart.map((item) => ({
     name: item.name,
@@ -127,10 +128,6 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
               item_total: {
                 currency_code: 'ILS',
                 value: total.toString()
-              },
-              platform_fees: {
-                currency_code: 'ILS',
-                value: platformFee.toString()
               }
             }
           },
@@ -138,15 +135,15 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
             merchant_id: merchantId
           },
           payment_instruction: {
+            disbursement_mode: 'INSTANT',
             platform_fees: [
               {
                 amount: {
                   currency_code: 'ILS',
-                  value: platformFee.toString()
+                  value: fees.platformFee.toString()
                 }
               }
-            ],
-            disbursement_mode: 'INSTANT'
+            ]
           }
         }
       ]

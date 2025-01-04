@@ -8,7 +8,7 @@ const payoutSchema = new Schema({
     payoutId: { type: String, required: true },
     status: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
-    invoiceId: { type: String, required: true }
+    invoiceId: { type: String, required: false }
   });
 
    const PayoutModel: Model<Payout & Document> =

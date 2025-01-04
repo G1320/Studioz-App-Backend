@@ -2,19 +2,28 @@ import { PAYPAL_BASE_URL } from "../../config/index.js";
 import { PayoutModel } from "../../models/payoutModel.js";
 import { generateAccessToken } from "./PPAuthHandler.js";
 import axios from 'axios';
+import { calculateMarketplaceFee } from "./PPorderHandler.js";
 
-// payoutService.ts
+const convertILStoUSD = (ilsAmount:number) => {
+    // Using a fixed conversion rate for sandbox testing
+    // In production, you'd want to use a real-time exchange rate
+    const rate = 0.27; // Approximate ILS to USD rate
+    return parseFloat((ilsAmount * rate).toFixed(2));
+  };
+
 export const processSellerPayout = async (
     sellerId: string, 
     amount: number,
     orderId: string
   ) => {
     try {
-      const payout = await processPayout(sellerId, amount);
+
+         const fees = calculateMarketplaceFee(amount);
+      const payout = await processPayout(sellerId, fees.sellerAmount);
       
       await new PayoutModel({
         sellerId,
-        amount,
+        amount: fees.sellerAmount,
         orderId,
         payoutId: payout.batch_header.payout_batch_id,
         status: payout.batch_header.batch_status,
@@ -31,6 +40,12 @@ export const processSellerPayout = async (
 
 export const processPayout = async (sellerId:string, amount:number) => {
     const accessToken = await generateAccessToken();
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const payoutAmount = isProduction ? amount : convertILStoUSD(amount);
+    
+    const currency = isProduction ? 'ILS' : 'USD';
+
   
     try {
       const response = await axios({
@@ -50,8 +65,8 @@ export const processPayout = async (sellerId:string, amount:number) => {
             {
               recipient_type: 'PAYPAL_ID',
               amount: {
-                value: amount.toString(),
-                currency: 'ILS'
+                value: payoutAmount.toString(),
+                currency: currency
               },
               receiver: sellerId,
               note: 'Payout for studio bookings',
@@ -61,7 +76,6 @@ export const processPayout = async (sellerId:string, amount:number) => {
         }
       });
   
-      console.log('response: ', response);
       return response.data;
     } catch (error) {
       console.error('Payout failed:', error);

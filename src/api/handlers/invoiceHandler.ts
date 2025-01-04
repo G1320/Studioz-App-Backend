@@ -56,7 +56,7 @@ export interface InvoiceResponse {
 interface MarketplaceFees {
   platformFee: number; 
   sellerAmount: number; 
-  total: number;       
+  // total: number;       
 }
 
 const apiClient: AxiosInstance = axios.create({
@@ -118,35 +118,20 @@ export const getInvoice = async (invoiceId: string): Promise<InvoiceResponse> =>
 };
 
 
-export const createMarketplaceInvoices = async (
+export const createPayoutInvoice = async (
   orderData: any, 
   fees: MarketplaceFees,
   sellerId: string
 ) => {
-  // 1. Create platform fee invoice (income for you)
-  const platformInvoice = await createInvoice({
-    type: 300,  
-    lang: 'he', 
+ 
+  // const amount = parseFloat(fees.sellerAmount.toFixed(2));
 
-    client: {
-      name: orderData.payer.name.given_name,
-      email: orderData.payer.email_address,
-      address: formatAddress(orderData.purchase_units[0]?.shipping)
-    },
-    income: [{
-      description: 'Platform Fee',
-      quantity: 1,
-      price: fees.platformFee
-    }],
-    vatType: 'INCLUDED',
-    currency: 'ILS',
-    remarks: `Order ID: ${orderData.id} - Platform Fee`,
-    paymentType: getPaymentType(orderData)
-  });
+  const amount = Number(fees.sellerAmount);
+
 
   // 2. Create seller payout invoice (expense for you)
   const sellerInvoice = await createInvoice({
-    type: 300, // Receipt for payout
+    type: 300, 
     lang: 'he', 
 
     client: {
@@ -157,16 +142,14 @@ export const createMarketplaceInvoices = async (
     income: [{
       description: `Payout for Order ${orderData.id}`,
       quantity: 1,
-      price: fees.sellerAmount
+      price: Number(amount.toFixed(2))
     }],
     vatType: 'INCLUDED',
     currency: 'ILS',
     remarks: `Seller ID: ${sellerId}`,
-    paymentType: 5 // PayPal payout
+    paymentType: 5 
   });
 
-  return {
-    platformInvoice,
-    sellerInvoice
-  };
+  return sellerInvoice
+  
 };
