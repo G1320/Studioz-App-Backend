@@ -1,15 +1,10 @@
-import { PAYPAL_BASE_URL } from "../../config/index.js";
+import { NODE_ENV, PAYPAL_BASE_URL } from "../../config/index.js";
 import { PayoutModel } from "../../models/payoutModel.js";
 import { generateAccessToken } from "./PPAuthHandler.js";
 import axios from 'axios';
-import { calculateMarketplaceFee } from "./PPorderHandler.js";
 
-const convertILStoUSD = (ilsAmount:number) => {
-    // Using a fixed conversion rate for sandbox testing
-    // In production, you'd want to use a real-time exchange rate
-    const rate = 0.27; // Approximate ILS to USD rate
-    return parseFloat((ilsAmount * rate).toFixed(2));
-  };
+const currency = NODE_ENV === 'production' ? 'ILS' : 'USD';
+
 
 export const processSellerPayout = async (
     sellerId: string, 
@@ -18,15 +13,11 @@ export const processSellerPayout = async (
   ) => {
     try {
 
-         const fees = calculateMarketplaceFee(amount);
-      const payout = await processPayout(sellerId, fees.sellerAmount);
-      
-      await new PayoutModel({
+     const payout = await new PayoutModel({
         sellerId,
-        amount: fees.sellerAmount,
+        amount: amount,
         orderId,
-        payoutId: payout.batch_header.payout_batch_id,
-        status: payout.batch_header.batch_status,
+        status: 'COMPLETED',
         timestamp: new Date()
       }).save();
   
@@ -40,11 +31,6 @@ export const processSellerPayout = async (
 
 export const processPayout = async (sellerId:string, amount:number) => {
     const accessToken = await generateAccessToken();
-
-    const isProduction = process.env.NODE_ENV === 'production';
-    const payoutAmount = isProduction ? amount : convertILStoUSD(amount);
-    
-    const currency = isProduction ? 'ILS' : 'USD';
 
   
     try {
@@ -65,7 +51,7 @@ export const processPayout = async (sellerId:string, amount:number) => {
             {
               recipient_type: 'PAYPAL_ID',
               amount: {
-                value: payoutAmount.toString(),
+                value: amount.toString(),
                 currency: currency
               },
               receiver: sellerId,

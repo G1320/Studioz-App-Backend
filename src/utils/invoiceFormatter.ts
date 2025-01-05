@@ -1,5 +1,6 @@
 // utils/invoiceFormatter.ts
 import { CreateInvoiceData } from '../api/handlers/invoiceHandler.js';
+import { NODE_ENV } from '../config/index.js';
 
 interface PayPalAddress {
   address_line_1?: string;
@@ -48,6 +49,9 @@ interface PayPalPaymentSource {
     }>;
   }
 
+  const currency = NODE_ENV === 'production' ? 'ILS' : 'USD';
+
+
 export const formatAddress = (shipping?: PayPalShipping): string => {
   if (!shipping?.address) return '';
 
@@ -87,8 +91,8 @@ export const formatInvoiceData = (orderData: PayPalOrderData): CreateInvoiceData
       type: 300,  // Code for Invoice + Receipt (חשבונית מס קבלה)
       client: formatClient(payer, shipping),
       income: formatIncomeItems(items),
-      vatType: 'INCLUDED',
-      currency: 'ILS',
+      vatType: 'NONE',
+      currency: currency,
       remarks: `Order ID: ${orderData.id}`,
       lang: 'he', 
       paymentType: getPaymentType(orderData)

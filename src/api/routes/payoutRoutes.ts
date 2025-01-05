@@ -1,5 +1,6 @@
 import express from "express";
 import { processSellerPayout } from "../handlers/payoutHandler.js";
+import { calculateMarketplaceFee } from "../handlers/PPorderHandler.js";
 
 const router = express.Router();
 
@@ -7,8 +8,10 @@ router.post('/seller-payouts',  async (req, res) => {
     try {
       const { sellerId, amount, orderId } = req.body;
 
-      
-      const payout = await processSellerPayout(sellerId, amount, orderId);
+     const fees = calculateMarketplaceFee(amount);
+
+
+      const payout = await processSellerPayout(sellerId, fees.sellerAmount, orderId);
       res.json(payout);
     //   res.json({ message: 'Payout processed successfully' });
     } catch (error) {

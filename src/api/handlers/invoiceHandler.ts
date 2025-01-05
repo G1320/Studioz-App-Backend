@@ -1,8 +1,11 @@
 // services/invoiceService.ts
 import axios, { AxiosInstance } from 'axios';
 import { formatAddress, getPaymentType } from '../../utils/invoiceFormatter.js';
+import { getSellerDetails } from '../../utils/payoutUtils.js';
 
-const { GREEN_INVOICE_API_URL, GREEN_INVOICE_API_KEY, GREEN_INVOICE_API_SECRET } = process.env;
+const { GREEN_INVOICE_API_URL, GREEN_INVOICE_API_KEY, GREEN_INVOICE_API_SECRET, NODE_ENV } = process.env;
+
+
 
 interface TokenResponse {
   token: string;
@@ -11,6 +14,8 @@ interface TokenResponse {
 
 let cachedToken: string | null = null;
 let tokenExpiration: number | null = null;
+
+const currency = NODE_ENV === 'production' ? 'ILS' : 'USD';
 
 export interface Client {
   name: string;
@@ -39,7 +44,7 @@ export interface CreateInvoiceData {
     price: number;
   }[];
   vatType: 'INCLUDED' | 'EXCLUDED' | 'NONE';
-  currency: 'ILS' | 'USD' | 'EUR';
+  currency: 'ILS' | 'USD' ;
   remarks?: string;
   lang?: 'he' | 'en';  
   paymentType?: number; 
@@ -124,30 +129,32 @@ export const createPayoutInvoice = async (
   sellerId: string
 ) => {
  
-  // const amount = parseFloat(fees.sellerAmount.toFixed(2));
-
   const amount = Number(fees.sellerAmount);
 
+  const seller = await getSellerDetails(sellerId);
 
-  // 2. Create seller payout invoice (expense for you)
+  if (!seller) {
+    throw new Error(`Seller not found with ID: ${sellerId}`);
+  }
+
+
   const sellerInvoice = await createInvoice({
-    type: 300, 
+    type: 300,
     lang: 'he', 
-
     client: {
-      name: 'Studioz', 
-      email: 'admin@studioz.online',
-      address: 'Allenby 70, Tel-aviv, Israel'
+      name:  seller.name || 'Studioz', 
+      email: seller.email || 'admin@studioz.online',
+      address: seller.address 
     },
     income: [{
-      description: `Payout for Order ${orderData.id}`,
+      description: `פיצול הכנסות - תשלום עבור הזמנה ${orderData.id}`,
       quantity: 1,
       price: Number(amount.toFixed(2))
     }],
-    vatType: 'INCLUDED',
-    currency: 'ILS',
-    remarks: `Seller ID: ${sellerId}`,
-    paymentType: 5 
+    vatType: 'NONE',
+    currency: currency,
+    remarks: `Seller ID: ${sellerId} - תשלום PayPal`, 
+    paymentType: 5 // PayPal payment
   });
 
   return sellerInvoice

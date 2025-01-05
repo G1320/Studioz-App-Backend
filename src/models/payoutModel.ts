@@ -5,7 +5,7 @@ const payoutSchema = new Schema({
     sellerId: { type: String, required: true },
     amount: { type: Number, required: true },
     orderId: { type: String, required: true },
-    payoutId: { type: String, required: true },
+    // payoutId: { type: String, required: true },
     status: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
     invoiceId: { type: String, required: false }
