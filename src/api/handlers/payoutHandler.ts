@@ -1,4 +1,4 @@
-import { NODE_ENV, PAYPAL_BASE_URL } from "../../config/index.js";
+import { NODE_ENV, PAYPAL_SANDBOX_BASE_URL } from "../../config/index.js";
 import { PayoutModel } from "../../models/payoutModel.js";
 import { generateAccessToken } from "./PPAuthHandler.js";
 import axios from 'axios';
@@ -35,7 +35,7 @@ export const processPayout = async (sellerId:string, amount:number) => {
   
     try {
       const response = await axios({
-        url: `${PAYPAL_BASE_URL}/v1/payments/payouts`,
+        url: `${PAYPAL_SANDBOX_BASE_URL}/v1/payments/payouts`,
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
