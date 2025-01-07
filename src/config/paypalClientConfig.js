@@ -1,14 +1,22 @@
 import { Client, Environment, LogLevel } from '@paypal/paypal-server-sdk';
 
-const { PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY } = process.env;
+const { PAYPAL_LIVE_CLIENT_ID, PAYPAL_SANDBOX_CLIENT_ID, PAYPAL_SANDBOX_SECRET_KEY, PAYPAL_LIVE_SECRET_KEY } =
+  process.env;
+
+const isProduction = process.env.NODE_ENV === 'production';
+// const isProduction = true;
+
+const CLIENT_ID = isProduction ? PAYPAL_LIVE_CLIENT_ID : PAYPAL_SANDBOX_CLIENT_ID;
+const CLIENT_SECRET = isProduction ? PAYPAL_LIVE_SECRET_KEY : PAYPAL_SANDBOX_SECRET_KEY;
+const ENVIRONMENT = isProduction ? Environment.Live : Environment.Sandbox;
 
 export const paypalClient = new Client({
   clientCredentialsAuthCredentials: {
-    oAuthClientId: PAYPAL_CLIENT_ID,
-    oAuthClientSecret: PAYPAL_SECRET_KEY
+    oAuthClientId: CLIENT_ID,
+    oAuthClientSecret: CLIENT_SECRET
   },
   timeout: 0,
-  environment: Environment.Sandbox,
+  environment: ENVIRONMENT,
   logging: {
     logLevel: LogLevel.Error,
     logRequest: { logBody: true },

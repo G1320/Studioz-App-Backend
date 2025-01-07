@@ -8,22 +8,22 @@ import {
   PAYPAL_LIVE_PARTNER_ID
 } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
+const isProduction = process.env.NODE_ENV === 'production';
+
+const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
+const PAYPAL_PARTNER_ID = isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID;
 
 export const generateSellerSignupLink = async (sellerId) => {
   const accessToken = await generateAccessToken();
 
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  const PAYPAL_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
-
   try {
     const response = await axios({
-      url: `${PAYPAL_URL}/v2/customer/partner-referrals`,
+      url: `${PAYPAL_BASE_URL}/v2/customer/partner-referrals`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'PayPal-Partner-Attribution-Id': isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
       },
       data: {
         tracking_id: sellerId,

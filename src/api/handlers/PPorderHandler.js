@@ -12,8 +12,14 @@ import {
 import { generateAccessToken } from './PPAuthHandler.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
+// const isProduction = true;
 const currency = isProduction ? 'ILS' : 'USD';
 
+const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
+const PAYPAL_PARTNER_ID = isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID;
+const PAYPAL_PLATFORM_MERCHANT_ID = isProduction
+  ? PAYPAL_LIVE_PLATFORM_MERCHANT_ID
+  : PAYPAL_SANDBOX_PLATFORM_MERCHANT_ID;
 const calculateTotal = (cart) => {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 };
@@ -33,23 +39,23 @@ export const capturePayment = async (orderId) => {
   try {
     // First get the order details
     const orderDetails = await axios({
-      url: `${isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL}/v2/checkout/orders/${orderId}`,
+      url: `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}`,
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'PayPal-Partner-Attribution-Id': isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
       }
     });
 
     // Then capture the payment
     const captureResponse = await axios({
-      url: isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL + `/v2/checkout/orders/${orderId}/capture`,
+      url: PAYPAL_BASE_URL + `/v2/checkout/orders/${orderId}/capture`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + accessToken,
-        'PayPal-Partner-Attribution-Id': isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
       }
     });
 
@@ -72,7 +78,7 @@ export const getOrderDetails = async (orderId) => {
     // Get the order details from PayPal
     const accessToken = await generateAccessToken();
     const response = await axios({
-      url: `${isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL}/v2/checkout/orders/${orderId}`,
+      url: `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}`,
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -110,7 +116,9 @@ export const getOrderDetails = async (orderId) => {
 };
 
 export const createMarketplaceOrder = async (cart, merchantId) => {
+  console.log('merchantId: ', merchantId);
   const accessToken = await generateAccessToken();
+  console.log('accessToken: ', accessToken);
   const total = calculateTotal(cart);
   const fees = calculateMarketplaceFee(total);
 
@@ -126,12 +134,12 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
   }));
 
   const response = await axios({
-    url: `${isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL}/v2/checkout/orders`,
+    url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
     method: 'post',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
-      'PayPal-Partner-Attribution-Id': isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID
+      'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
     },
     data: {
       intent: 'CAPTURE',
@@ -167,7 +175,7 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
                   value: fees.platformFee.toString()
                 },
                 payee: {
-                  merchant_id: isProduction ? PAYPAL_LIVE_PLATFORM_MERCHANT_ID : PAYPAL_SANDBOX_PLATFORM_MERCHANT_ID
+                  merchant_id: PAYPAL_PLATFORM_MERCHANT_ID
                 },
                 description: 'Platform fee for service'
               }
