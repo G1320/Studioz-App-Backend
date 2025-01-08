@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import {
+  NODE_ENV,
   PAYPAL_LIVE_BASE_URL,
   PAYPAL_LIVE_CLIENT_ID,
   PAYPAL_LIVE_SECRET_KEY,
@@ -9,7 +10,8 @@ import {
   PAYPAL_SANDBOX_SECRET_KEY
 } from '../../config/index.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = NODE_ENV === 'production';
+// const isProduction = true;
 const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
 const PAYPAL_CLIENT_ID = isProduction ? PAYPAL_LIVE_CLIENT_ID : PAYPAL_SANDBOX_CLIENT_ID;
 const PAYPAL_SECRET_KEY = isProduction ? PAYPAL_LIVE_SECRET_KEY : PAYPAL_SANDBOX_SECRET_KEY;
@@ -38,7 +40,6 @@ export async function generateAccessToken() {
     // The access token is inside the response data
     const accessToken = response.data.access_token;
 
-    console.log('Access Token:', accessToken);
     return accessToken;
   } catch (error) {
     console.error('Error fetching access token:', error.message);

@@ -33,8 +33,15 @@ router.post('/marketplace/orders',  async (req, res) => {
     const { cart, merchantId } = req.body;
     const order = await createMarketplaceOrder(cart, merchantId);
     res.json(order);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Marketplace order creation failed:', error);
+    console.log('PayPal Error Details:', error.response?.data?.details);
+    console.log('Full PayPal Error:', {
+      name: error.response?.data?.name,
+      message: error.response?.data?.message,
+      details: error.response?.data?.details,
+      debugId: error.response?.data?.debug_id
+    });
     res.status(500).json({ error: 'Failed to create marketplace order' });
   }
 });

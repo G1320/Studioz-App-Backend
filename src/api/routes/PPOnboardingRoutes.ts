@@ -14,8 +14,16 @@ router.post('/seller/generate-signup-link',  async (req, res) => {
       const { sellerId } = req.body;
       const signupLink = await generateSellerSignupLink(sellerId);
       res.json({ signupLink });
-    } catch (error) {
+    } catch (error:any) {
       console.error('Seller signup link generation failed:', error);
+      console.error('Marketplace order creation failed:', error);
+    console.log('PayPal Error Details:', error.response?.data?.details);
+    console.log('Full PayPal Error:', {
+      name: error.response?.data?.name,
+      message: error.response?.data?.message,
+      details: error.response?.data?.details,
+      debugId: error.response?.data?.debug_id
+    });
       res.status(500).json({ error: 'Failed to generate seller signup link' });
     }
   });

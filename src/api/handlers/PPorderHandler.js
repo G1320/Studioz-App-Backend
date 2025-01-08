@@ -11,7 +11,7 @@ import {
 } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = NODE_ENV === 'production';
 // const isProduction = true;
 const currency = isProduction ? 'ILS' : 'USD';
 
@@ -122,76 +122,87 @@ export const createMarketplaceOrder = async (cart, merchantId) => {
   const total = calculateTotal(cart);
   const fees = calculateMarketplaceFee(total);
 
-  const items = cart.map((item) => ({
-    name: item.name,
-    quantity: item.quantity || 1,
-    unit_amount: {
-      currency_code: currency,
-      value: item.price.toString()
-    },
-    description: item.description || '',
-    category: 'DIGITAL_GOODS'
-  }));
+  try {
+    const items = cart.map((item) => ({
+      name: item.name,
+      quantity: item.quantity || 1,
+      unit_amount: {
+        currency_code: currency,
+        value: item.price.toString()
+      },
+      description: item.description || '',
+      category: 'DIGITAL_GOODS'
+    }));
 
-  const response = await axios({
-    url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
-    },
-    data: {
-      intent: 'CAPTURE',
-      purchase_units: [
-        {
-          reference_id: 'STUDIO_PURCHASE',
-          items: items,
-          amount: {
-            currency_code: currency,
-            value: total.toString(),
-            breakdown: {
-              item_total: {
-                currency_code: currency,
-                value: total.toString()
-              },
-              platform_fees: {
-                currency_code: currency,
-                value: fees.platformFee.toString()
-              }
-            }
-          },
-          payee: {
-            merchant_id: merchantId,
-            email_message: 'You have received a payment for your studio booking!',
-            email_subject: 'New Studio Booking Payment'
-          },
-          payment_instruction: {
-            disbursement_mode: 'INSTANT',
-            platform_fees: [
-              {
-                amount: {
+    const response = await axios({
+      url: `${PAYPAL_BASE_URL}/v2/checkout/orders`,
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
+      },
+      data: {
+        intent: 'CAPTURE',
+        purchase_units: [
+          {
+            reference_id: 'STUDIO_PURCHASE',
+            items: items,
+            amount: {
+              currency_code: currency,
+              value: total.toString(),
+              breakdown: {
+                item_total: {
+                  currency_code: currency,
+                  value: total.toString()
+                },
+                platform_fees: {
                   currency_code: currency,
                   value: fees.platformFee.toString()
-                },
-                payee: {
-                  merchant_id: PAYPAL_PLATFORM_MERCHANT_ID
-                },
-                description: 'Platform fee for service'
+                }
               }
-            ],
-            disbursement_options: {
-              delayed_disbursement_date: 'NO_DELAY'
+            },
+            payee: {
+              merchant_id: merchantId,
+              email_message: 'You have received a payment for your studio booking!',
+              email_subject: 'New Studio Booking Payment'
+            },
+            payment_instruction: {
+              disbursement_mode: 'INSTANT',
+              platform_fees: [
+                {
+                  amount: {
+                    currency_code: currency,
+                    value: fees.platformFee.toString()
+                  },
+                  payee: {
+                    merchant_id: PAYPAL_PLATFORM_MERCHANT_ID
+                  },
+                  description: 'Platform fee for service'
+                }
+              ],
+              disbursement_options: {
+                delayed_disbursement_date: 'NO_DELAY'
+              }
             }
           }
+        ],
+        application_context: {
+          shipping_preference: 'NO_SHIPPING',
+          platform_fees_reason: 'Platform service fee'
         }
-      ],
-      application_context: {
-        shipping_preference: 'NO_SHIPPING',
-        platform_fees_reason: 'Platform service fee'
       }
-    }
-  });
+    });
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    console.log('PayPal Error Details:', error.response?.data?.details);
+    console.log('Full PayPal Error:', {
+      name: error.response?.data?.name,
+      message: error.response?.data?.message,
+      details: error.response?.data?.details,
+      debugId: error.response?.data?.debug_id
+    });
+    throw error;
+  }
 };

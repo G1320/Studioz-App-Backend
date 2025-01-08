@@ -17,6 +17,45 @@ import { ReservationModel } from '../../models/reservationModel.js';
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
 
+const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
+    const { studioId, bookingDate, startTime, hours } = req.body;
+
+    // Find all items belonging to the studio
+    const studioItems = await ItemModel.find({ studioId });
+    if (!studioItems.length) throw new ExpressError('No items found for this studio', 404);
+
+    const updatedItems = [];
+
+    for (const item of studioItems) {
+        // Initialize availability
+        item.availability = initializeAvailability(item.availability);
+            
+        // Find or create availability entry for the booking date
+        const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+        // Generate array of consecutive time slots needed
+        const timeSlots = generateTimeSlots(startTime, hours);       
+        
+        // Remove all selected time slots
+        dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
+        
+        // Update item.availability with the modified dateAvailability
+        item.availability = item.availability.map(avail =>
+            avail.date === bookingDate ? dateAvailability : avail
+        );
+            
+        await item.save();
+        
+        updatedItems.push(item);
+        emitAvailabilityUpdate(item._id);
+    }
+
+    return {
+        message: `Successfully blocked time slots for ${updatedItems.length} items`,
+        items: updatedItems
+    };
+});
+
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { itemId, bookingDate, startTime, hours } = req.body;
 
@@ -207,4 +246,5 @@ export default {
     reserveNextItemTimeSlot,
     releaseLastItemTimeSlot,
     releaseItemTimeSlots,
+    reserveStudioTimeSlots
 };

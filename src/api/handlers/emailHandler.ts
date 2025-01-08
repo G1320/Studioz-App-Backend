@@ -34,8 +34,6 @@ interface PayoutNotificationParams {
 }
 
 
-
-
 export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
   try {
     const response = await apiInstance.sendTransacEmail({
