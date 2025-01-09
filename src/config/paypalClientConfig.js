@@ -3,8 +3,8 @@ import { Client, Environment, LogLevel } from '@paypal/paypal-server-sdk';
 const { PAYPAL_LIVE_CLIENT_ID, PAYPAL_SANDBOX_CLIENT_ID, PAYPAL_SANDBOX_SECRET_KEY, PAYPAL_LIVE_SECRET_KEY } =
   process.env;
 
-const isProduction = process.env.NODE_ENV === 'production';
-// const isProduction = true;
+// const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = false;
 
 const CLIENT_ID = isProduction ? PAYPAL_LIVE_CLIENT_ID : PAYPAL_SANDBOX_CLIENT_ID;
 const CLIENT_SECRET = isProduction ? PAYPAL_LIVE_SECRET_KEY : PAYPAL_SANDBOX_SECRET_KEY;

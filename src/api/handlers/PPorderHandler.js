@@ -11,8 +11,8 @@ import {
 } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
 
-const isProduction = NODE_ENV === 'production';
-// const isProduction = true;
+// const isProduction = NODE_ENV === 'production';
+const isProduction = false;
 const currency = isProduction ? 'ILS' : 'USD';
 
 const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;

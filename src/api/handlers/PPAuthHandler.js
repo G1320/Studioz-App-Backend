@@ -10,8 +10,8 @@ import {
   PAYPAL_SANDBOX_SECRET_KEY
 } from '../../config/index.js';
 
-const isProduction = NODE_ENV === 'production';
-// const isProduction = true;
+// const isProduction = NODE_ENV === 'production';
+const isProduction = false;
 const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
 const PAYPAL_CLIENT_ID = isProduction ? PAYPAL_LIVE_CLIENT_ID : PAYPAL_SANDBOX_CLIENT_ID;
 const PAYPAL_SECRET_KEY = isProduction ? PAYPAL_LIVE_SECRET_KEY : PAYPAL_SANDBOX_SECRET_KEY;

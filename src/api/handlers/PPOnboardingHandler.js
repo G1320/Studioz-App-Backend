@@ -9,8 +9,8 @@ import {
   PAYPAL_LIVE_PARTNER_ID
 } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
-const isProduction = NODE_ENV === 'production';
-// const isProduction = true;
+// const isProduction = NODE_ENV === 'production';
+const isProduction = false;
 
 const PAYPAL_BASE_URL = isProduction ? PAYPAL_LIVE_BASE_URL : PAYPAL_SANDBOX_BASE_URL;
 const PAYPAL_PARTNER_ID = isProduction ? PAYPAL_LIVE_PARTNER_ID : PAYPAL_SANDBOX_PARTNER_ID;
