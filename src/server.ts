@@ -16,6 +16,7 @@ import searchRoutes from './api/routes/searchRoutes.js';
 import emailRoutes from './api/routes/emailRoutes.js';
 import invoiceRoutes from './api/routes/invoiceRoutes.js';
 import payoutRoutes from './api/routes/payoutRoutes.js';
+import reservationRoutes from './api/routes/reservationRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -24,17 +25,33 @@ import express, { type Application } from 'express';
 import { initializeSocket } from './webSockets/socket.js';
 import { createServer } from 'node:http';
 import bodyParser from 'body-parser';
+import { initializeReservationScheduler, stopReservationScheduler } from './workers/reservationScheduler.js';
 
-connectToDb();
+
+try {
+  await connectToDb();
+  initializeReservationScheduler();
+} catch (error) {
+  console.error('Failed to initialize server:', error);
+  process.exit(1);
+}
 
 const app: Application = express();
 const httpServer = createServer(app);
 
 const io = initializeSocket(httpServer);
 
-process.on('SIGINT', () => {
-  io ? io.close(() => process.exit(0)) : process.exit(0);
-});
+const gracefulShutdown = async () => {  
+  stopReservationScheduler();
+  if (io) await io.close();
+    await new Promise<void>((resolve) => {
+    httpServer.close(() => resolve());
+  });
+  process.exit(0);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 app.use(
   helmet({
@@ -71,6 +88,7 @@ app.use('/api/wishlists', wishlistRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/reservations', reservationRoutes);
 app.use('/api/search', searchRoutes);
 app.use("/api/PPAuth", PPAuthRoutes);
 app.use("/api/PPorders", PPOrderRoutes);
