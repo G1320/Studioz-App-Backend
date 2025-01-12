@@ -12,6 +12,7 @@ import {
 } from '../../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
+import { StudioModel } from '../../models/studioModel.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -57,11 +58,13 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 });
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
-    const { itemId, bookingDate, startTime, hours } = req.body;
+    const { itemId, bookingDate, startTime, hours, costumerId, costumerName, costumerPhone, comment } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
 
+    const studio = await StudioModel.findById(item.studioId)
+     if (!studio) throw new ExpressError('Studio not found', 404);
     // Initialize availability
     item.availability = initializeAvailability(item.availability) ;
         
@@ -77,13 +80,19 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     }
     const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
     const reservation = new ReservationModel({
-      itemId,
-      bookingDate,
-      timeSlots,
-      expiration,
-      itemPrice: item.price||0,
+        itemId,
+        bookingDate,
+        timeSlots,
+        expiration,
+        itemPrice: item.price||0,
+        studioId: item.studioId,
+        costumerId,
+        costumerName,
+        costumerPhone,
+        comment
     });
     
+    console.log('reservation: ', reservation);
     // Remove all selected time slots
     dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
     

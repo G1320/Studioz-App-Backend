@@ -11,6 +11,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     name: Joi.string().label('Name').optional(),
     avatar: Joi.string().label('Avatar').optional(),
     password: Joi.string().min(6).label('Password').optional(),
+    phone: Joi.string().label('Phone').optional(),
     isAdmin: Joi.boolean().label('Admin access').optional(),
     createdAt: Joi.date().default(Date.now).label('Creation Date'),
     updatedAt: Joi.date().default(Date.now).label('Last Update'),
@@ -44,11 +45,30 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
       ).label('Cart Items'),
     }).label('Shopping Cart').optional(),
     paypalMerchantId: Joi.string().label('PayPal Merchant ID').optional(),
-    paypalOnboardingStatus: Joi.string()
-      .valid('PENDING', 'COMPLETED', 'FAILED')
-      .label('PayPal Onboarding Status')
-      .optional(),
-  });
+   paypalOnboardingStatus: Joi.string()
+     .valid('PENDING', 'COMPLETED', 'FAILED')
+     .label('PayPal Onboarding Status')
+     .optional(),
+   paypalAccountStatus: Joi.object({
+     payments_receivable: Joi.boolean()
+       .label('Payments Receivable Status')
+       .optional(),
+     primary_email_confirmed: Joi.boolean()
+       .label('Email Confirmation Status')
+       .optional(),
+     oauth_integrations: Joi.array().items(
+       Joi.object({
+         status: Joi.string()
+           .label('OAuth Integration Status')
+           .required(),
+         integration_type: Joi.string()
+           .label('Integration Type')
+           .required()
+       })
+     ).optional()
+   }).label('PayPal Account Status').optional(),
+ });
+  
 
   const { error } = schema.validate(req.body);
   error ? handleJoiError(error) : next();

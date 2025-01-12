@@ -26,6 +26,7 @@ const userSchema = new Schema(
     lastName: { type: String },
     name: { type: String, required: true },
     avatar: { type: String },
+    phone: { type: String },
     password: { type: String, select: false },
     picture: { type: String },
     email: { type: String, required: false, unique: true },
@@ -47,6 +48,14 @@ const userSchema = new Schema(
       type: String,
       enum: ['PENDING', 'COMPLETED', 'FAILED'],
       default: 'PENDING'
+    },
+    paypalAccountStatus: {
+      payments_receivable: Boolean,
+      primary_email_confirmed: Boolean,
+      oauth_integrations: [{
+        status: String,
+        integration_type: String
+      }],
     }
   },
   { timestamps: true }

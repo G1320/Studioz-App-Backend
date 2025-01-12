@@ -29,6 +29,7 @@ export default interface Studio {
   isSmokingAllowed?: boolean;
   city: string;
   address?: string;
+  phone?: string;
   lat?: number;
   lng?: number;
   isWheelchairAccessible?: boolean;

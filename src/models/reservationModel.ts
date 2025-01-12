@@ -11,6 +11,11 @@ const ReservationSchema = new mongoose.Schema({
     expiration: { type: Date, required: true }, // Timestamp for reservation expiration
     itemPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: false },
+    studioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Studio', required: true },
+    costumerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    costumerName: { type: String, required: true },
+    costumerPhone: { type: String, required: true },
+    comment: { type: String, required: true },
   });
 
   ReservationSchema.pre('save', function (next) {

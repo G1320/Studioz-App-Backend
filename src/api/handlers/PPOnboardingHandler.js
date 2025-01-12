@@ -6,7 +6,8 @@ import {
   PAYPAL_SANDBOX_BASE_URL,
   PAYPAL_SANDBOX_PARTNER_ID,
   PAYPAL_LIVE_BASE_URL,
-  PAYPAL_LIVE_PARTNER_ID
+  PAYPAL_LIVE_PARTNER_ID,
+  PAYPAL_SANDBOX_PLATFORM_MERCHANT_ID
 } from '../../config/index.js';
 import { generateAccessToken } from './PPAuthHandler.js';
 // const isProduction = NODE_ENV === 'production';
@@ -59,6 +60,33 @@ export const generateSellerSignupLink = async (sellerId) => {
     return response.data.links.find((link) => link.rel === 'action_url').href;
   } catch (error) {
     console.error('Error generating seller signup:', error?.response?.data || error);
+    throw error;
+  }
+};
+
+export const checkSellerAccountStatus = async (merchantId) => {
+  const accessToken = await generateAccessToken();
+  console.log('accessToken: ', accessToken);
+
+  try {
+    const response = await axios({
+      url: `${PAYPAL_BASE_URL}/v1/customer/partners/${PAYPAL_SANDBOX_PLATFORM_MERCHANT_ID}/merchant-integrations/${merchantId}`,
+      method: 'get',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'PayPal-Partner-Attribution-Id': PAYPAL_PARTNER_ID
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error checking seller account status:', {
+      partnerIdUsed: PAYPAL_PARTNER_ID,
+      merchantId,
+      errorData: error?.response?.data,
+      errorStatus: error?.response?.status,
+      fullUrl: `${PAYPAL_BASE_URL}/v1/customer/paypal/merchant-integrations/${merchantId}`
+    });
     throw error;
   }
 };

@@ -51,6 +51,7 @@ const schema = Joi.object({
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional(),
   address: Joi.string().optional(),
+  phone: Joi.string().optional(),
   lat: Joi.number().optional(),
   lng: Joi.number().optional(),
   isWheelchairAccessible: Joi.boolean().optional(),

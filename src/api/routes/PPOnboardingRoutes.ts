@@ -1,7 +1,12 @@
 import express from "express";
-import { generateSellerSignupLink } from '../handlers/PPOnboardingHandler.js';
+import { checkSellerAccountStatus, generateSellerSignupLink } from '../handlers/PPOnboardingHandler.js';
 import { UserModel } from "../../models/userModel.js";
 
+
+interface PayPalOAuthIntegration {
+    status: string;
+    integration_type: string;
+  }
 
 const router = express.Router();
 
@@ -27,6 +32,69 @@ router.post('/seller/generate-signup-link',  async (req, res) => {
       res.status(500).json({ error: 'Failed to generate seller signup link' });
     }
   });
+
+  router.get('/seller/check-status/:merchantId', async (req, res) => {
+    try {
+      const { merchantId } = req.params;
+      const status = await checkSellerAccountStatus(merchantId);
+      res.json(status);
+    } catch (error) {
+      console.error('Status check failed:', error);
+      res.status(500).json({ error: 'Failed to check seller status' });
+    }
+  });
+
+//   router.get('/seller/onboard-complete/:sellerId', async (req, res) => {
+//     try {
+//       const { 
+//         merchantId, 
+//         merchantIdInPayPal, 
+//         permissionsGranted, 
+//         consentStatus 
+//       } = req.query;
+  
+//       if (permissionsGranted === 'true' && consentStatus === 'true') {
+//         // Check account status before completing onboarding
+//         try {
+//           const merchantStatus = await checkSellerAccountStatus(merchantIdInPayPal);
+          
+//           // Check various status properties
+//           const isReady = merchantStatus.payments_receivable && 
+//           merchantStatus.primary_email_confirmed &&
+//           !merchantStatus.oauth_integrations.some((integration: PayPalOAuthIntegration) => 
+//             integration.status === 'INACTIVE'
+//           );
+  
+//           if (isReady) {
+//             await UserModel.findByIdAndUpdate(merchantId, {
+//               paypalMerchantId: merchantIdInPayPal,
+//               paypalOnboardingStatus: 'COMPLETED',
+//               paypalAccountStatus: merchantStatus
+//             });
+  
+//             res.redirect(`${CLIENT_URL}/profile?onboarding=success`);
+//           } else {
+//             // Handle incomplete setup
+//             await UserModel.findByIdAndUpdate(merchantId, {
+//               paypalMerchantId: merchantIdInPayPal,
+//               paypalOnboardingStatus: 'PENDING',
+//               paypalAccountStatus: merchantStatus
+//             });
+  
+//             res.redirect(`${CLIENT_URL}/profile?onboarding=incomplete`);
+//           }
+//         } catch (statusError) {
+//           console.error('Error checking merchant status:', statusError);
+//           res.redirect(`${CLIENT_URL}/profile?onboarding=status-check-failed`);
+//         }
+//       } else {
+//         res.redirect(`${CLIENT_URL}/profile?onboarding=failed`);
+//       }
+//     } catch (error) {
+//       console.error('Onboarding completion error:', error);
+//       res.redirect('/profile?onboarding=error');
+//     }
+//   });
 
   router.get('/seller/onboard-complete/:sellerId', async (req, res) => {
     try {

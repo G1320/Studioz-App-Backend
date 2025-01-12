@@ -14,6 +14,9 @@ export default interface CartItem {
   quantity?: number;
   bookingDate?: string ;
   startTime?: string;
- 
   studioId?: string;
+  costumerName?: string;
+  costumerPhone?: string;
+  costumerId?: string;
+  comment?: string;
 }
