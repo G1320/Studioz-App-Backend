@@ -31,7 +31,7 @@ export default interface User {
   email_verified?: boolean;
   studios?: string[];
   wishlists?: Wishlist[];
-  reservations?: Reservation[];
+  reservations?: string[];
   cart?: Cart;
   paypalMerchantId?: string;
   paypalOnboardingStatus?: PayPalOnboardingStatus;

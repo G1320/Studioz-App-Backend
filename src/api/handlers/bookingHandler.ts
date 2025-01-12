@@ -12,7 +12,8 @@ import {
 } from '../../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
-import { StudioModel } from '../../models/studioModel.js';
+import { UserModel } from '../../models/userModel.js';
+import { RESERVATION_STATUS } from '../../utils/reservationUtils.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -63,8 +64,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
 
-    const studio = await StudioModel.findById(item.studioId)
-     if (!studio) throw new ExpressError('Studio not found', 404);
+    const user = await UserModel.findById(costumerId);
     // Initialize availability
     item.availability = initializeAvailability(item.availability) ;
         
@@ -100,12 +100,15 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
         );
+
+    user?.reservations?.push(reservation._id);
         
     await reservation.save();
     await item.save();
+    await user?.save();
     emitAvailabilityUpdate(itemId);
 
-    return item;
+    return reservation._id;
 });
 
 export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
@@ -250,10 +253,48 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     return item;
 });
 
+const confirmBooking = handleRequest(async (req: Request) => {
+    const { reservationIds, orderId } = req.body;
+  
+    if (!reservationIds?.length) {
+        throw new ExpressError('No reservation IDs provided', 400);
+    }
+  
+    // Get the specific reservations
+    const pendingReservations = await ReservationModel.find({
+      _id: { $in: reservationIds },
+      status: RESERVATION_STATUS.PENDING
+    });
+
+    if (!pendingReservations.length) {
+        throw new ExpressError('No pending reservations found', 404);
+    }
+  
+    // Update the specific reservations to confirmed
+    const updatePromises = pendingReservations.map(reservation => {
+        reservation.status = RESERVATION_STATUS.CONFIRMED;
+        reservation.orderId = orderId;
+        return reservation.save();
+    });
+  
+    const confirmedReservations = await Promise.all(updatePromises);
+  
+    // Emit socket events for each updated item
+    confirmedReservations.forEach(reservation => {
+        emitAvailabilityUpdate(reservation.itemId);
+    });
+  
+    return {
+        message: 'Reservations confirmed successfully',
+        confirmedReservations
+    };
+});
+
 export default {
     reserveItemTimeSlots,
     reserveNextItemTimeSlot,
     releaseLastItemTimeSlot,
     releaseItemTimeSlots,
-    reserveStudioTimeSlots
+    reserveStudioTimeSlots,
+    confirmBooking
 };

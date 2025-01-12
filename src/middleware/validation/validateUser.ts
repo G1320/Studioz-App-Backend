@@ -19,6 +19,9 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     sub: Joi.string().label('Sub').optional(),
     email: Joi.string().email().label('Email').optional(),
     email_verified: Joi.boolean().label('Email Verification').optional(),
+    wishlists: Joi.string().label('Wishlists').optional(),
+    studios: Joi.string().label('Studios').optional(),
+    reservations: Joi.string().label('Reservations').optional(),
     cart: Joi.object({
       items: Joi.array().items(
         Joi.object({
@@ -41,6 +44,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
           bookingDate: Joi.string().label('Booking Date').optional(),
           startTime: Joi.string().label('Start Time').optional(),
           studioId: Joi.string().label('Studio ID').optional(),
+          reservationId: Joi.string().label('Reservation ID').optional(),
         })
       ).label('Cart Items'),
     }).label('Shopping Cart').optional(),

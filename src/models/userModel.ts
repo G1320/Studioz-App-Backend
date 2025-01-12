@@ -16,7 +16,8 @@ const cartItemSchema = new Schema({
   quantity: { type: Number, required: false, default: 1 },
   bookingDate: { type: String, required: false },
   startTime: { type: String, required: false },
-  studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false }
+  studioId: { type: Schema.Types.ObjectId, ref: 'Studio', required: false },
+  reservationId: { type: Schema.Types.ObjectId, ref: 'Reservation', required: false },
 });
 
 const userSchema = new Schema(

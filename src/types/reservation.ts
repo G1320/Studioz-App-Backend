@@ -14,6 +14,7 @@ createdAt?: Date;
 updatedAt?: Date;
 itemPrice?: number;
 totalPrice?: number;
+orderId?: string;
 costumerName?: string;
   costumerPhone?: string;
   costumerId?: string;

@@ -116,9 +116,7 @@ export const getOrderDetails = async (orderId) => {
 };
 
 export const createMarketplaceOrder = async (cart, merchantId) => {
-  console.log('merchantId: ', merchantId);
   const accessToken = await generateAccessToken();
-  console.log('accessToken: ', accessToken);
   const total = calculateTotal(cart);
   const fees = calculateMarketplaceFee(total);
 
