@@ -4,15 +4,24 @@ import { Item, Studio } from '../../types/index.js';
 import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { UserModel } from '../../models/userModel.js';
 
 const createStudio = handleRequest(async (req: Request) => {
   const { userId } = req.params;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
+  const user = await UserModel.findById(userId)
+
   const studio = new StudioModel(req.body);
   studio.createdBy = userId;
 
+  if (user && studio){
+    if (!user.studios) user.studios = [];
+    user.studios.push(studio._id);
+  }
+
   await studio.save();
+  await user?.save();
 
   return studio;
 });
