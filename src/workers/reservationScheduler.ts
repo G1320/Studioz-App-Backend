@@ -1,14 +1,14 @@
 // workers/reservationScheduler.ts
-import schedule from 'node-schedule';
+import { Job, scheduleJob } from 'node-schedule';
 import { updateExpiredReservations, cleanupExpiredReservations } from '../utils/reservationUtils.js';
 
 export class ReservationScheduler {
-  private expirationJob: schedule.Job;
-  private cleanupJob: schedule.Job;
+  private expirationJob: Job;
+  private cleanupJob: Job;
 
   constructor() {
     // Update expired reservations every minute
-    this.expirationJob = schedule.scheduleJob('*/1 * * * *', async () => {
+    this.expirationJob = scheduleJob('*/1 * * * *', async () => {
       try {
         await updateExpiredReservations();
       } catch (error) {
@@ -17,7 +17,7 @@ export class ReservationScheduler {
     });
 
     // Clean up old expired reservations daily at midnight
-    this.cleanupJob = schedule.scheduleJob('0 0 * * *', async () => {
+    this.cleanupJob = scheduleJob('0 0 * * *', async () => {
       try {
         await cleanupExpiredReservations();
       } catch (error) {
