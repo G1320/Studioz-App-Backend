@@ -92,7 +92,6 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         comment
     });
     
-    console.log('reservation: ', reservation);
     // Remove all selected time slots
     dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
     
