@@ -12,7 +12,7 @@ const ReservationSchema = new mongoose.Schema({
     itemPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: false },
     studioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Studio', required: true },
-    costumerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    costumerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     costumerName: { type: String, required: true },
     costumerPhone: { type: String, required: true },
     comment: { type: String, required: true },

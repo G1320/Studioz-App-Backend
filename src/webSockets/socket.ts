@@ -23,9 +23,9 @@ export const emitAvailabilityUpdate = (itemId: string) => {
   }
 };
 
-export const emitReservationUpdate = (reservationId: string[], costumerId:string) => {
+export const emitReservationUpdate = (reservationIds: string[], costumerId:string) => {
   if (io) {
-    io.emit('reservationUpdated', { reservationId, costumerId });
+    io.emit('reservationUpdated', { reservationIds, costumerId });
   }
 }
 

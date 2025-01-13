@@ -78,7 +78,7 @@ export const updateExpiredReservations = async () => {
         );
   
         // Clean up offline cart or trigger query invalidation through socket event
-        if (costumerId) emitReservationUpdate( expiredReservationIds, costumerId );
+         emitReservationUpdate( expiredReservationIds, costumerId || '' );
         // Update reservation status to expired
         return  await ReservationModel.updateMany(
           {
