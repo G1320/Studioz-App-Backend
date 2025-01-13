@@ -3,8 +3,9 @@ import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
 import type { UpdateWriteOpResult } from 'mongoose';
 import { addTimeSlots, findOrCreateDateAvailability, initializeAvailability } from './timeSlotUtils.js';
-import { emitAvailabilityUpdate } from '../webSockets/socket.js';
+import io, { emitAvailabilityUpdate, emitReservationUpdate } from '../webSockets/socket.js';
 import Reservation from '../types/reservation.js';
+import { UserModel } from '../models/userModel.js';
 
 export const RESERVATION_STATUS = {
   PENDING: 'pending' as const,
@@ -52,45 +53,48 @@ export const releaseReservationTimeSlots = async (reservation: Reservation) => {
     emitAvailabilityUpdate(item._id);
 };
 
-export const updateExpiredReservations = async (): Promise<UpdateWriteOpResult> => {
-  try {
-    // Find all expired reservations that are still pending
-    const expiredReservations = await ReservationModel.find({
-      status: RESERVATION_STATUS.PENDING,
-      expiration: { $lt: new Date() }
-    });
-
-    console.log('Found expired reservations:', expiredReservations.length);
-    if (expiredReservations.length > 0) {
-      console.log('Expired reservations details:', expiredReservations);
-    }
-
-    // For each expired reservation, release its time slots back to availability
-    await Promise.all(
-      expiredReservations.map(reservation => releaseReservationTimeSlots(reservation))
-    );
-
-    // Update their status to expired
-    const result = await ReservationModel.updateMany(
-      {
+export const updateExpiredReservations = async () => {
+    try {
+      // Find all expired reservations that are still pending
+      const expiredReservations = await ReservationModel.find({
         status: RESERVATION_STATUS.PENDING,
         expiration: { $lt: new Date() }
-      },
-      {
-        $set: { status: RESERVATION_STATUS.EXPIRED }
-      }
-    );
+      });
+  
+      if (expiredReservations.length > 0) {
+        const expiredReservationIds = expiredReservations.map(r => r._id.toString());
+        const costumerId = expiredReservations.find(r => r.costumerId)?.costumerId; // Get one costumerId
 
-    if (result.modifiedCount > 0) {
-      console.log(`Released time slots and updated ${result.modifiedCount} expired reservations`);
+  
+        // Release time slots
+        await Promise.all(
+          expiredReservations.map(reservation => releaseReservationTimeSlots(reservation))
+        );
+  
+        // Clean up user carts in database
+        await UserModel.updateMany(
+          { 'cart.items.reservationId': { $in: expiredReservationIds } },
+          { $pull: { 'cart.items': { reservationId: { $in: expiredReservationIds } } } }
+        );
+  
+        // Clean up offline cart or trigger query invalidation through socket event
+        if (costumerId) emitReservationUpdate( expiredReservationIds, costumerId );
+        // Update reservation status to expired
+        return  await ReservationModel.updateMany(
+          {
+            status: RESERVATION_STATUS.PENDING,
+            expiration: { $lt: new Date() }
+          },
+          {
+            $set: { status: RESERVATION_STATUS.EXPIRED }
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error updating expired reservations:', error);
+      throw error;
     }
-    
-    return result;
-  } catch (error) {
-    console.error('Error updating expired reservations:', error);
-    throw error;
-  }
-};
+  };
 
 export const cleanupExpiredReservations = async (): Promise<{ deletedCount: number }> => {
   try {
