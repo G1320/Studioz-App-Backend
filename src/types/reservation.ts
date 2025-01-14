@@ -12,6 +12,10 @@ status: typeof RESERVATION_STATUS[keyof typeof RESERVATION_STATUS];
 expiration: Date;
 createdAt?: Date;
 updatedAt?: Date;
+itemName: {
+    en: string;
+    he?: string;
+  };
 itemPrice?: number;
 totalPrice?: number;
 orderId?: string;

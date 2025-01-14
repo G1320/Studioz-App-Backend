@@ -26,6 +26,7 @@ const createReservation = handleRequest(async (req: Request) => {
   const reservation = new ReservationModel({
     studioId,
     itemId,
+    itemName: item.name,
     userId,
     reservationDetails,
     status: RESERVATION_STATUS.PENDING,

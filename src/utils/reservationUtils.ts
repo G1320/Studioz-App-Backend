@@ -1,9 +1,7 @@
-// utils/reservationUtils.ts
 import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
-import type { UpdateWriteOpResult } from 'mongoose';
 import { addTimeSlots, findOrCreateDateAvailability, initializeAvailability } from './timeSlotUtils.js';
-import io, { emitAvailabilityUpdate, emitReservationUpdate } from '../webSockets/socket.js';
+import { emitAvailabilityUpdate, emitReservationUpdate } from '../webSockets/socket.js';
 import Reservation from '../types/reservation.js';
 import { UserModel } from '../models/userModel.js';
 
@@ -18,7 +16,6 @@ const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(
 
 export type ReservationStatus = typeof RESERVATION_STATUS[keyof typeof RESERVATION_STATUS];
 
-// Function to check if a reservation is expired
 export const isReservationExpired = (expiration: Date): boolean => {
   return new Date() > new Date(expiration);
 };
@@ -70,7 +67,6 @@ export const updateExpiredReservations = async () => {
         await Promise.all(
           expiredReservations.map(reservation => releaseReservationTimeSlots(reservation))
         );
-  
         // Clean up user carts in database
         await UserModel.updateMany(
           { 'cart.items.reservationId': { $in: expiredReservationIds } },

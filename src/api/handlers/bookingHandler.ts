@@ -81,6 +81,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
     const reservation = new ReservationModel({
         itemId,
+        itemName:{
+            en: item.name?.en,
+            he: item.name?.he
+        },
         bookingDate,
         timeSlots,
         expiration,
