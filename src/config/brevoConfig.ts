@@ -1,12 +1,12 @@
 
-import { BREVO_API_KEY } from '../config/index.js';
+import { BREVO_EMAIL_API_KEY } from '../config/index.js';
 
 
 const brevo = require('@getbrevo/brevo');
 let apiInstance = new brevo.TransactionalEmailsApi();
 
 let apiKey = apiInstance.authentications['apiKey'];
-apiKey.apiKey = BREVO_API_KEY;
+apiKey.apiKey = BREVO_EMAIL_API_KEY;
 
 let sendSmtpEmail = new brevo.SendSmtpEmail();
 

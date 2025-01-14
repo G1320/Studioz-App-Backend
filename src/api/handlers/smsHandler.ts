@@ -1,12 +1,9 @@
-// services/smsService.ts
 import { TransactionalSMSApi, TransactionalSMSApiApiKeys } from '@getbrevo/brevo';
 import { SendTransacSms } from '@getbrevo/brevo'
 
-const apiKey = process.env.BREVO_API_KEY as string;
+const apiKey = process.env.BREVO_SMS_API_KEY as string;
 const apiInstance = new TransactionalSMSApi();
 apiInstance.setApiKey(TransactionalSMSApiApiKeys.apiKey, apiKey);
-
-
 
 interface BookingDetails {
   id: string;
@@ -27,7 +24,7 @@ interface SMSParams {
   export const sendSMS = async ({ 
     phoneNumber, 
     message, 
-    sender = "StudioZ",
+    sender = "Studioz",
     type = SendTransacSms.TypeEnum.Transactional  
   }: SMSParams) => {
     try {

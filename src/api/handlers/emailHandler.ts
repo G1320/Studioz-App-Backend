@@ -3,7 +3,7 @@ import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo
 import { UserModel } from '../../models/userModel.js';
 import { getSellerDetails } from '../../utils/payoutUtils.js';
 
-const apiKey = process.env.BREVO_API_KEY as string;
+const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
 const apiInstance = new TransactionalEmailsApi();
 apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
