@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { OTPService } from '../../services/otpService.js';
 
-export class OTPController {
+export class OTPHandler {
   static async sendOTP(req: Request, res: Response) {
     try {
       const { phoneNumber } = req.body;

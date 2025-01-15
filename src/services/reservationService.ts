@@ -1,9 +1,7 @@
-import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
-import { addTimeSlots, findOrCreateDateAvailability, initializeAvailability } from './timeSlotUtils.js';
-import { emitAvailabilityUpdate, emitReservationUpdate } from '../webSockets/socket.js';
-import Reservation from '../types/reservation.js';
+import { emitReservationUpdate } from '../webSockets/socket.js';
 import { UserModel } from '../models/userModel.js';
+import { releaseReservationTimeSlots } from '../api/handlers/bookingHandler.js';
 
 export const RESERVATION_STATUS = {
   PENDING: 'pending' as const,
@@ -11,43 +9,10 @@ export const RESERVATION_STATUS = {
   CONFIRMED: 'confirmed' as const,
 } as const;
 
-const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-
-
 export type ReservationStatus = typeof RESERVATION_STATUS[keyof typeof RESERVATION_STATUS];
 
 export const isReservationExpired = (expiration: Date): boolean => {
   return new Date() > new Date(expiration);
-};
-
-export const releaseReservationTimeSlots = async (reservation: Reservation) => {
-    const item = await ItemModel.findById(reservation.itemId);
-    if (!item) {
-        console.log('Item not found for reservation:', reservation._id);
-        return;
-    }
-  
-    // Initialize availability if needed
-    item.availability = initializeAvailability(item.availability);
-    
-    // Find or create availability entry for the booking date
-    const dateAvailability = findOrCreateDateAvailability(
-      item.availability, 
-      reservation.bookingDate, 
-      defaultHours
-    );
-
-    // Add the expired reservation's time slots back to availability
-    dateAvailability.times = addTimeSlots(dateAvailability.times, reservation.timeSlots);
-  
-
-    // Update item's availability
-    item.availability = item.availability.map(avail =>
-      avail.date === reservation.bookingDate ? dateAvailability : avail
-    );
-  
-    await item.save();
-    emitAvailabilityUpdate(item._id);
 };
 
 export const updateExpiredReservations = async () => {
@@ -62,7 +27,6 @@ export const updateExpiredReservations = async () => {
         const expiredReservationIds = expiredReservations.map(r => r._id.toString());
         const costumerId = expiredReservations.find(r => r.costumerId)?.costumerId; // Get one costumerId
 
-  
         // Release time slots
         await Promise.all(
           expiredReservations.map(reservation => releaseReservationTimeSlots(reservation))

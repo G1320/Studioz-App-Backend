@@ -13,10 +13,41 @@ import {
 import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
 import { UserModel } from '../../models/userModel.js';
-import { RESERVATION_STATUS } from '../../utils/reservationUtils.js';
+import { RESERVATION_STATUS } from '../../services/reservationService.js';
+import Reservation from '../../types/reservation.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
+export const releaseReservationTimeSlots = async (reservation: Reservation) => {
+    const item = await ItemModel.findById(reservation.itemId);
+    if (!item) {
+        console.log('Item not found for reservation:', reservation._id);
+        return;
+    }
+  
+    // Initialize availability if needed
+    item.availability = initializeAvailability(item.availability);
+    
+    // Find or create availability entry for the booking date
+    const dateAvailability = findOrCreateDateAvailability(
+      item.availability, 
+      reservation.bookingDate, 
+      defaultHours
+    );
+
+    // Add the expired reservation's time slots back to availability
+    dateAvailability.times = addTimeSlots(dateAvailability.times, reservation.timeSlots);
+  
+
+    // Update item's availability
+    item.availability = item.availability.map(avail =>
+      avail.date === reservation.bookingDate ? dateAvailability : avail
+    );
+  
+    await item.save();
+    emitAvailabilityUpdate(item._id);
+};
 
 
 const reserveStudioTimeSlots = handleRequest(async (req: Request) => {

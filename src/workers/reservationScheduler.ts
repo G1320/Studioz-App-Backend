@@ -1,5 +1,5 @@
 import * as schedule from 'node-schedule';
-import { updateExpiredReservations, cleanupExpiredReservations } from '../utils/reservationUtils.js';
+import { updateExpiredReservations, cleanupExpiredReservations } from '../services/reservationService.js';
 
 export class ReservationScheduler {
   private expirationJob: schedule.Job;

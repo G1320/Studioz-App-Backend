@@ -21,7 +21,7 @@ const ReservationSchema = new mongoose.Schema({
     costumerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     costumerName: { type: String, required: true },
     costumerPhone: { type: String, required: true },
-    comment: { type: String, required: true },
+    comment: { type: String, required: false },
     orderId: { type: String, required: false },
   });
 

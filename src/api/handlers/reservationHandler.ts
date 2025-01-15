@@ -4,7 +4,7 @@ import { StudioModel } from '../../models/studioModel.js';
 import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
-import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../utils/reservationUtils.js';
+import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../services/reservationService.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails } = req.body;
@@ -36,6 +36,8 @@ const createReservation = handleRequest(async (req: Request) => {
   await reservation.save();
   return reservation;
 });
+
+
 
 const getReservations = handleRequest(async (req: Request) => {
   const { studioId, userId } = req.query;

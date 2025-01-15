@@ -1,4 +1,4 @@
-import { RESERVATION_STATUS } from '../utils/reservationUtils.js';
+import { RESERVATION_STATUS } from '../services/reservationService.js';
 
 
 export default interface Reservation {
@@ -20,7 +20,7 @@ itemPrice?: number;
 totalPrice?: number;
 orderId?: string;
 costumerName?: string;
-  costumerPhone?: string;
-  costumerId?: string;
-  comment?: string;
+costumerPhone?: string;
+costumerId?: string;
+comment?: string;
 }
