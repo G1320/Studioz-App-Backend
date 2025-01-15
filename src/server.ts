@@ -18,6 +18,7 @@ import invoiceRoutes from './api/routes/invoiceRoutes.js';
 import payoutRoutes from './api/routes/payoutRoutes.js';
 import reservationRoutes from './api/routes/reservationRoutes.js';
 import otpRoutes from './api/routes/otpRoutes.js';
+import subscriptionRoutes from './api/routes/subscriptionRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -98,6 +99,7 @@ app.use("/api/emails", emailRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/payouts', payoutRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 
 app.use('/api/auth', authRoutes);

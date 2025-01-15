@@ -57,7 +57,9 @@ const userSchema = new Schema(
         status: String,
         integration_type: String
       }],
-    }
+    },
+    subscriptionStatus: { type: String },
+    subscriptionId: { type: String },
   },
   { timestamps: true }
 );

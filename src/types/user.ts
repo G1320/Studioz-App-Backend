@@ -36,6 +36,8 @@ export default interface User {
   paypalMerchantId?: string;
   paypalOnboardingStatus?: PayPalOnboardingStatus;
   paypalAccountStatus?: PayPalAccountStatus;
+  subscriptionStatus?: string;
+  subscriptionId?: string;
 
   __v?: number;
 }

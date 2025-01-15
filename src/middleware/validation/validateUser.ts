@@ -71,6 +71,8 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
        })
      ).optional()
    }).label('PayPal Account Status').optional(),
+    subscriptionStatus: Joi.string().label('Subscription Status').optional(),
+    subscriptionId: Joi.string().label('Subscription ID').optional(),
  });
   
 
