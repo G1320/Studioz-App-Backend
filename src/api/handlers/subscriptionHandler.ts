@@ -6,6 +6,17 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { PayPalSubscriptionResponse } from '../../types/paypalSubscriptionResponse.js';
 
+interface PayPalErrorDetails {
+    issue: string;
+    description: string;
+  }
+  
+  interface PayPalErrorResponse {
+    message?: string;
+    name?: string;
+    details?: PayPalErrorDetails[];
+  }
+
 const createSubscription = handleRequest(async (req: Request) => {
   const { userId, planId } = req.body;
 
@@ -77,39 +88,94 @@ const activateSubscription = handleRequest(async (req: Request) => {
   }
 });
 
+
 const cancelSubscription = handleRequest(async (req: Request) => {
-  const { subscriptionId } = req.params;
+    const { subscriptionId } = req.params;
+  
+    if (!subscriptionId) {
+      throw new ExpressError('Subscription ID is required', 400);
+    }
+  
+    const subscription = await SubscriptionModel.findById(subscriptionId);
+    if (!subscription) {
+      throw new ExpressError('Subscription not found', 404);
+    }
+  
+    try {
+      // If subscription is already cancelled, just return it
+      if (subscription.status === 'CANCELLED') {
+        return subscription;
+      }
 
-  if (!subscriptionId) {
-    throw new ExpressError('Subscription ID is required', 400);
-  }
+      // Cancel subscription in PayPal if we have a PayPal subscription ID
+      if (subscription.paypalSubscriptionId) {
+        try {
+          // First verify if the subscription exists and is active in PayPal
+          const subscriptionDetails = await paypalClient.request(
+            `/v1/billing/subscriptions/${subscription.paypalSubscriptionId}`
+          );
 
-  const subscription = await SubscriptionModel.findById(subscriptionId);
-  if (!subscription) {
-    throw new ExpressError('Subscription not found', 404);
-  }
-
-  // Cancel subscription in PayPal
-  if (subscription.paypalSubscriptionId) {
-    await paypalClient.request(
-      `/v1/billing/subscriptions/${subscription.paypalSubscriptionId}/cancel`,
-      'POST',
-      { reason: 'Customer requested cancellation' }
-    );
-  }
-
-  subscription.status = 'CANCELLED';
-  subscription.endDate = new Date();
-  subscription.updatedAt = new Date();
-  await subscription.save();
-
-  // Update user's subscription status
-  await UserModel.findByIdAndUpdate(subscription.userId, {
-    subscriptionStatus: 'INACTIVE',
-    subscriptionId: null
-  });
-
-  return subscription;
+          // Only attempt to cancel if it's not already cancelled in PayPal
+          if (subscriptionDetails.status !== 'CANCELLED') {
+            await paypalClient.request(
+              `/v1/billing/subscriptions/${subscription.paypalSubscriptionId}/cancel`,
+              'POST',
+              {
+                reason: 'Customer requested cancellation'
+              }
+            );
+          }
+        } catch (error: unknown) {
+          console.error('PayPal cancellation error:', error);
+          
+          if (error instanceof Error) {
+            // Check for specific PayPal error conditions
+            const errorMessage = error.message.toLowerCase();
+            
+            if (errorMessage.includes('resource_not_found') || 
+                errorMessage.includes('already cancelled') ||
+                errorMessage.includes('invalid resource id')) {
+              console.log('Proceeding with local cancellation due to PayPal status:', error.message);
+            } else if (errorMessage.includes('semantically incorrect')) {
+              // This likely means the subscription is already cancelled in PayPal
+              console.log('Subscription appears to be already cancelled in PayPal');
+            } else {
+              throw error;
+            }
+          } else {
+            throw new Error('Unknown PayPal error occurred');
+          }
+        }
+      }
+  
+      // Update local subscription status
+      subscription.status = 'CANCELLED';
+      subscription.endDate = new Date();
+      subscription.updatedAt = new Date();
+      await subscription.save();
+  
+      // Update user's subscription status
+      await UserModel.findByIdAndUpdate(subscription.userId, {
+        subscriptionStatus: 'INACTIVE',
+        subscriptionId: null
+      });
+  
+      return subscription;
+    } catch (error: unknown) {
+      console.error('Error canceling subscription:', error);
+      
+      if (error instanceof Error) {
+        throw new ExpressError(
+          'Failed to cancel subscription: ' + error.message,
+          500
+        );
+      } else {
+        throw new ExpressError(
+          'Failed to cancel subscription: Unknown error',
+          500
+        );
+      }
+    }
 });
 
 const getSubscriptionDetails = handleRequest(async (req: Request) => {
