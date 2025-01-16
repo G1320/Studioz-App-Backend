@@ -33,6 +33,15 @@ const subscriptionSchema = new Schema({
     type: Date,
     default: Date.now
   },
+  planName: {
+    type: String
+  },
+    customerName: {
+        type: String
+    },
+    customerEmail: {
+        type: String
+    },
   paypalDetails: mongoose.Schema.Types.Mixed,
 });
 
