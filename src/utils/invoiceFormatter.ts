@@ -113,3 +113,35 @@ export const formatInvoiceData = (orderData: PayPalOrderData): CreateInvoiceData
     // Default to Other if payment source is unclear
     return 5;
   };
+
+  // utils/subscriptionInvoiceFormatter.ts
+export const formatSubscriptionInvoiceData = (subscriptionData: any, user: any) => {
+  const basePrice = parseFloat((subscriptionData.planPrice / 1.12).toFixed(2));
+  const platformFee = parseFloat((basePrice * 0.12).toFixed(2));
+
+  return {
+    type: 300, // Code for Invoice + Receipt
+    client: {
+      name: user.name,
+      email: user.email,
+      address: subscriptionData.paypalDetails?.shipping_address || ''
+    },
+    income: [
+      {
+        description: `${subscriptionData.planName} Subscription`,
+        quantity: 1,
+        price: basePrice
+      },
+      {
+        description: '(12%) Platform Fee',
+        quantity: 1,
+        price: platformFee
+      }
+    ],
+    vatType: 'NONE',
+    currency: 'ILS',
+    remarks: `Subscription ID: ${subscriptionData.subscriptionId}`,
+    lang: 'he',
+    paymentType: 3 // Credit Card
+  };
+};

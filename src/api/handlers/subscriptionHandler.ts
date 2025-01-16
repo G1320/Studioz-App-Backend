@@ -41,55 +41,55 @@ const createSubscription = handleRequest(async (req: Request) => {
 });
 
 const activateSubscription = handleRequest(async (req: Request) => {
-  const { subscriptionId, paypalSubscriptionId } = req.body;
-
-  if (!subscriptionId || !paypalSubscriptionId) {
-    throw new ExpressError('Subscription ID and PayPal Subscription ID are required', 400);
-  }
-
-  // First verify the PayPal subscription
-  try {
-    const response = await paypalClient.request(
-      `/v1/billing/subscriptions/${paypalSubscriptionId}`
-    );
-    
-    const paypalSubscription = response as PayPalSubscriptionResponse;
-    if (paypalSubscription.status !== 'ACTIVE') {
-      throw new ExpressError('Subscription not active in PayPal', 400);
+    const { subscriptionId, paypalSubscriptionId, subscriptionDetails } = req.body;
+  
+    if (!subscriptionId || !paypalSubscriptionId) {
+      throw new ExpressError('Subscription ID and PayPal Subscription ID are required', 400);
     }
-
-    // Find subscription by MongoDB ID, not PayPal ID
-    const subscription = await SubscriptionModel.findOne({
-      _id: subscriptionId
-    });
-
-    if (!subscription) {
-      throw new ExpressError('Subscription not found', 404);
+  
+    try {
+      // Verify the subscription status from the provided details
+      if (subscriptionDetails?.status !== 'ACTIVE') {
+        throw new ExpressError('Subscription not active in PayPal', 400);
+      }
+  
+      // Find subscription by MongoDB ID
+      const subscription = await SubscriptionModel.findOne({
+        _id: subscriptionId
+      });
+  
+      if (!subscription) {
+        throw new ExpressError('Subscription not found', 404);
+      }
+  
+      // Update subscription with PayPal details
+      subscription.paypalSubscriptionId = paypalSubscriptionId;
+      subscription.status = 'ACTIVE';
+      subscription.startDate = new Date();
+      subscription.updatedAt = new Date();
+      subscription.paypalDetails = subscriptionDetails; 
+      await subscription.save();
+      
+  
+      // Update user's subscription status
+      await UserModel.findByIdAndUpdate(subscription.userId, {
+        subscriptionStatus: 'ACTIVE',
+        subscriptionId: subscription._id
+      });
+  
+      return {
+        subscription,
+        paypalDetails: subscriptionDetails
+      };
+    } catch (error) {
+      console.error('Activation error:', error);
+      if (error instanceof ExpressError) throw error;
+      throw new ExpressError('Failed to activate subscription', 400);
     }
-
-    // Update subscription with PayPal details
-    subscription.paypalSubscriptionId = paypalSubscriptionId;
-    subscription.status = 'ACTIVE';
-    subscription.startDate = new Date();
-    subscription.updatedAt = new Date();
-    await subscription.save();
-
-    // Update user's subscription status
-    await UserModel.findByIdAndUpdate(subscription.userId, {
-      subscriptionStatus: 'ACTIVE',
-      subscriptionId: subscription._id
-    });
-
-    return subscription;
-  } catch (error) {
-    console.error('Activation error:', error);
-    if (error instanceof ExpressError) throw error;
-    throw new ExpressError('Failed to activate subscription', 400);
-  }
-});
+  });
 
 
-const cancelSubscription = handleRequest(async (req: Request) => {
+  const cancelSubscription = handleRequest(async (req: Request) => {
     const { subscriptionId } = req.params;
   
     if (!subscriptionId) {

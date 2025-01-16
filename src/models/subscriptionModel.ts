@@ -1,4 +1,3 @@
-// src/models/subscriptionModel.ts
 import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
@@ -33,7 +32,8 @@ const subscriptionSchema = new Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  paypalDetails: mongoose.Schema.Types.Mixed,
 });
 
 subscriptionSchema.pre('save', function(next) {

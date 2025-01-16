@@ -1,13 +1,14 @@
 import express from 'express';
-import { sendWelcomeEmail, sendOrderConfirmation, sendPasswordReset, sendPayoutNotification } from '../handlers/emailHandler.js';
+import { sendWelcomeEmail, sendOrderConfirmation, sendPasswordReset, sendPayoutNotification, sendSubscriptionConfirmation } from '../handlers/emailHandler.js';
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
 import { formatOrderDetails } from '../../utils/orderFormatter.js';
 import { formatInvoiceData } from '../../utils/invoiceFormatter.js';
 
 import rateLimit from 'express-rate-limit';
-import { createInvoice, createPayoutInvoice } from '../handlers/invoiceHandler.js';
+import { CreateInvoiceData, createInvoice, createPayoutInvoice } from '../handlers/invoiceHandler.js';
 import { calculateMarketplaceFee } from '../handlers/PPorderHandler.js';
+import { NODE_ENV } from '../../config/index.js';
 
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -30,6 +31,55 @@ router.post('/send-welcome',  async (req, res) => {
   } catch (error) {
     console.error('Error sending welcome email:', error);
     res.status(500).json({ error: 'Failed to send welcome email' });
+  }
+});
+
+router.post('/send-subscription-confirmation', async (req, res) => {
+  try {
+    const { email, subscriptionData } = req.body;
+
+    if (!email || !subscriptionData) {
+      return res.status(400).json({ error: 'Email and subscription details are required' });
+    }
+
+    // Format subscription details for invoice
+    const invoiceData: CreateInvoiceData = {
+      type: 300, // Invoice + Receipt
+      client: {
+        name: subscriptionData.customerName,
+        email: email
+      },
+      income: [
+        {
+          description: `${subscriptionData.planName} Subscription`,
+          quantity: 1,
+          price: subscriptionData.planPrice
+        }
+      ],
+      vatType: 'NONE' as const, // explicitly type as literal
+      currency: NODE_ENV === 'production' ? 'ILS' : 'USD',
+      remarks: `Subscription ID: ${subscriptionData.subscriptionId}`,
+      lang: 'he',
+      paymentType: 3 // Credit Card
+    };
+
+    const invoiceResponse = await createInvoice(invoiceData);
+
+    const subscriptionDetailsWithInvoice = {
+      ...subscriptionData,
+      invoiceUrl: invoiceResponse.url.he
+    };
+
+    // Send confirmation email
+    await sendSubscriptionConfirmation(email, subscriptionDetailsWithInvoice);
+
+    res.status(200).json({ 
+      message: 'Subscription confirmation email sent successfully',
+      invoice: invoiceResponse
+    });
+  } catch (error) {
+    console.error('Error sending subscription confirmation:', error);
+    res.status(500).json({ error: 'Failed to send subscription confirmation' });
   }
 });
 

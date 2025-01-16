@@ -33,6 +33,41 @@ interface PayoutNotificationParams {
   invoiceUrl: string;
 }
 
+interface SubscriptionDetails {
+  planName: string;
+  planPrice: number;
+  subscriptionId: string;
+  startDate: Date;
+  customerName: string;
+  invoiceUrl: string;
+}
+
+export const sendSubscriptionConfirmation = async (userEmail: string, details: SubscriptionDetails) => {
+  // Convert startDate to Date object if it's a string
+  const startDate = typeof details.startDate === 'string' 
+    ? new Date(details.startDate)
+    : details.startDate;
+
+  // Calculate next billing date
+  const nextBillingDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return sendTemplateEmail({
+    to: [{ 
+      email: userEmail,
+      name: details.customerName 
+    }],
+    templateId: 8,
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      amount: details.planPrice.toFixed(2),
+      subscriptionId: details.subscriptionId,
+      startDate: startDate.toLocaleDateString('he-IL'),
+      nextBillingDate: nextBillingDate.toLocaleDateString('he-IL'),
+      invoiceUrl: details.invoiceUrl
+    }
+  });
+};
 
 export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
   try {
