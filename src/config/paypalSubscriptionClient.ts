@@ -1,7 +1,8 @@
 import fetch from 'node-fetch';
 import { generateAccessToken } from '../api/handlers/PPAuthHandler.js';
 
-const isProduction = false;
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 const BASE_URL = isProduction
   ? 'https://api.paypal.com'
@@ -25,7 +26,7 @@ const BASE_URL = isProduction
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=representation'  // This helps with PayPal responses
+          'Prefer': 'return=representation'  
         }
       };
   
