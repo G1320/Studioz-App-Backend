@@ -1,13 +1,13 @@
 import { Request } from 'express';
-import { paypalClient } from '../../config/paypalSubscriptionClient.js';
-import { UserModel } from '../../models/userModel.js';
-import { SubscriptionModel } from '../../models/subscriptionModel.js';
-import ExpressError from '../../utils/expressError.js';
-import handleRequest from '../../utils/requestHandler.js';
-import { PayPalSubscriptionResponse } from '../../types/paypalSubscriptionResponse.js';
-import { CreateInvoiceData, createInvoice } from './invoiceHandler.js';
-import { sendSubscriptionConfirmation } from './emailHandler.js';
-import { processSubscriptionEmailAndInvoice } from '../../services/subscriptionService.js';
+import { paypalClient } from '../../../config/paypalSubscriptionClient.js';
+import { UserModel } from '../../../models/userModel.js';
+import { SubscriptionModel } from '../../../models/subscriptionModel.js';
+import ExpressError from '../../../utils/expressError.js';
+import handleRequest from '../../../utils/requestHandler.js';
+import { PayPalSubscriptionResponse } from '../../../types/paypalSubscriptionResponse.js';
+import { CreateInvoiceData, createInvoice } from '../invoiceHandler.js';
+import { sendSubscriptionConfirmation } from '../emailHandler.js';
+import { processSubscriptionEmailAndInvoice } from '../../../services/subscriptionService.js';
 
 interface PayPalErrorDetails {
     issue: string;

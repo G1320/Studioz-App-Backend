@@ -1,5 +1,5 @@
 import express from 'express';
-import subscriptionHandler from '../handlers/subscriptionHandler.js';
+import subscriptionHandler from '../../handlers/paypalHandlers/PPSubscriptionHandler.js';
 
 const router = express.Router();
 

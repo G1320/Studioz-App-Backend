@@ -1,6 +1,6 @@
 import express from "express";
-import { processSellerPayout } from "../handlers/payoutHandler.js";
-import { calculateMarketplaceFee } from "../handlers/PPorderHandler.js";
+import { processSellerPayout } from "../../handlers/paypalHandlers/PPPayoutHandler.js";
+import { calculateMarketplaceFee } from "../../handlers/paypalHandlers/orderHandler.js";
 
 const router = express.Router();
 

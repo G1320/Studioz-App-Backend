@@ -8,7 +8,7 @@ import {
   PAYPAL_SANDBOX_BASE_URL,
   PAYPAL_SANDBOX_CLIENT_ID,
   PAYPAL_SANDBOX_SECRET_KEY
-} from '../../config/index.js';
+} from '../../../config/index.js';
 
 const isProduction = NODE_ENV === 'production';
 // const isProduction = false;

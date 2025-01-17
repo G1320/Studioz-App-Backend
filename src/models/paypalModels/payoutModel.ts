@@ -1,5 +1,5 @@
 import mongoose, { Model, Schema } from "mongoose";
-import Payout from "../types/payout.js";
+import Payout from "../../types/payout.js";
 
 const payoutSchema = new Schema({
     sellerId: { type: String, required: true },

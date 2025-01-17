@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 
-import { generateAccessToken } from '../handlers/PPAuthHandler.js';
+import { generateAccessToken } from '../../handlers/paypalHandlers/authHandler.js';
 
 router.get('/get-access-token', async (req, res) => {
     try {

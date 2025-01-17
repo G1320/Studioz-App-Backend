@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { generateAccessToken } from '../api/handlers/PPAuthHandler.js';
+import { generateAccessToken } from '../api/handlers/paypalHandlers/authHandler.js';
 
 
 const isProduction = process.env.NODE_ENV === 'production';

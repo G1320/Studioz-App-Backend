@@ -1,6 +1,6 @@
-import { NODE_ENV, PAYPAL_SANDBOX_BASE_URL } from "../../config/index.js";
-import { PayoutModel } from "../../models/payoutModel.js";
-import { generateAccessToken } from "./PPAuthHandler.js";
+import { NODE_ENV, PAYPAL_SANDBOX_BASE_URL } from "../../../config/index.js";
+import { PayoutModel } from "../../../models/paypalModels/payoutModel.js";
+import { generateAccessToken } from "./authHandler.js";
 import axios from 'axios';
 
 const currency = NODE_ENV === 'production' ? 'ILS' : 'USD';

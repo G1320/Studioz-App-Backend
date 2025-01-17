@@ -8,8 +8,8 @@ import {
   PAYPAL_LIVE_BASE_URL,
   PAYPAL_LIVE_PARTNER_ID,
   PAYPAL_SANDBOX_PLATFORM_MERCHANT_ID
-} from '../../config/index.js';
-import { generateAccessToken } from './PPAuthHandler.js';
+} from '../../../config/index.js';
+import { generateAccessToken } from './authHandler.js';
 const isProduction = NODE_ENV === 'production';
 // const isProduction = false;
 

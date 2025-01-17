@@ -7,7 +7,7 @@ import { formatInvoiceData } from '../../utils/invoiceFormatter.js';
 
 import rateLimit from 'express-rate-limit';
 import { CreateInvoiceData, createInvoice, createPayoutInvoice } from '../handlers/invoiceHandler.js';
-import { calculateMarketplaceFee } from '../handlers/PPorderHandler.js';
+import { calculateMarketplaceFee } from '../handlers/paypalHandlers/orderHandler.js';
 import { NODE_ENV } from '../../config/index.js';
 
 const emailLimiter = rateLimit({
