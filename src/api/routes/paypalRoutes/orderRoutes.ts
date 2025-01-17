@@ -1,7 +1,5 @@
-// routes/ordersRoutes.js
 import express from "express";
-import {  capturePayment, getOrderDetails } from "../../handlers/paypalHandlers/orderHandler.js";
-import {  createMarketplaceOrder } from '../../handlers/paypalHandlers/orderHandler.js';
+import {  capturePayment, getOrderDetails, createMarketplaceOrder } from "../../handlers/paypalHandlers/orderHandler.js";
 
 const router = express.Router();
 

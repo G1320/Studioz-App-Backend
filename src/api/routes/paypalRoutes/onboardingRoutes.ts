@@ -1,5 +1,5 @@
 import express from "express";
-import { checkSellerAccountStatus, generateSellerSignupLink } from '../../handlers/paypalHandlers/PPOnboardingHandler.js';
+import { checkSellerAccountStatus, generateSellerSignupLink } from '../../handlers/paypalHandlers/onboardingHandler.js';
 import { UserModel } from "../../../models/userModel.js";
 
 const router = express.Router();
