@@ -1,6 +1,4 @@
-// services/emailService.ts
 import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
-import { UserModel } from '../../models/userModel.js';
 import { getSellerDetails } from '../../utils/payoutUtils.js';
 
 const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
@@ -42,29 +40,78 @@ interface SubscriptionDetails {
   invoiceUrl: string;
 }
 
-export const sendSubscriptionConfirmation = async (userEmail: string, details: SubscriptionDetails) => {
+type EmailType = 'activation' | 'payment' | 'cancellation';
+
+interface SubscriptionEmailConfig {
+  templateId: number;
+  includeNextBilling: boolean;
+  includeInvoice: boolean;
+}
+
+export const sendSubscriptionConfirmation = async (
+  userEmail: string, 
+  details: SubscriptionDetails,
+  type: EmailType
+) => {
+  // Get template configuration based on type
+  const emailConfig: Record<EmailType, SubscriptionEmailConfig> = {
+    activation: {
+      templateId: 10,
+      includeNextBilling: true,
+      includeInvoice: true
+    },
+    payment: {
+      templateId: 8,
+      includeNextBilling: true,
+      includeInvoice: true
+    },
+    cancellation: {
+      templateId: 9,
+      includeNextBilling: false,
+      includeInvoice: false
+    }
+  };
+
+  const config = emailConfig[type];
+
   // Convert startDate to Date object if it's a string
   const startDate = typeof details.startDate === 'string' 
     ? new Date(details.startDate)
     : details.startDate;
 
-  // Calculate next billing date
-  const nextBillingDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+  // Base params that are common to all types
+  const baseParams = {
+    customerName: details.customerName,
+    planName: details.planName,
+    amount: details.planPrice.toFixed(2),
+    subscriptionId: details.subscriptionId,
+    startDate: startDate.toLocaleDateString('he-IL')
+  };
+
+  // Add optional params based on type
+  const additionalParams = {
+    ...(config.includeNextBilling ? {
+      nextBillingDate: new Date(
+        startDate.getTime() + (type === 'activation' ? 14 : 30) * 24 * 60 * 60 * 1000
+      ).toLocaleDateString('he-IL')
+    } : {}),
+    ...(config.includeInvoice && details.invoiceUrl ? {
+      invoiceUrl: details.invoiceUrl
+    } : {}),
+    ...(type === 'cancellation' ? {
+      cancellationDate: new Date().toLocaleDateString('he-IL')
+    } : {})
+  };
 
   return sendTemplateEmail({
     to: [{ 
       email: userEmail,
       name: details.customerName 
     }],
-    templateId: 8,
+    templateId: config.templateId,
     params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      amount: details.planPrice.toFixed(2),
-      subscriptionId: details.subscriptionId,
-      startDate: startDate.toLocaleDateString('he-IL'),
-      nextBillingDate: nextBillingDate.toLocaleDateString('he-IL'),
-      invoiceUrl: details.invoiceUrl
+      ...baseParams,
+      ...additionalParams
     }
   });
 };

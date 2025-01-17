@@ -7,6 +7,7 @@ import handleRequest from '../../utils/requestHandler.js';
 import { PayPalSubscriptionResponse } from '../../types/paypalSubscriptionResponse.js';
 import { CreateInvoiceData, createInvoice } from './invoiceHandler.js';
 import { sendSubscriptionConfirmation } from './emailHandler.js';
+import { processSubscriptionEmailAndInvoice } from '../../services/subscriptionService.js';
 
 interface PayPalErrorDetails {
     issue: string;
@@ -259,71 +260,36 @@ if (!subscription) {
   }
 
   switch (event_type) {
-    case 'BILLING.SUBSCRIPTION.ACTIVATED':
-        case 'BILLING.SUBSCRIPTION.PAYMENT.COMPLETED':
-
-        
+      case 'BILLING.SUBSCRIPTION.ACTIVATED':
       subscription.status = 'ACTIVE';
       await subscription.save();
 
-      await UserModel.findByIdAndUpdate(subscription.userId, {
-        subscriptionStatus: 'ACTIVE'
+      await processSubscriptionEmailAndInvoice(subscription, {
+        type: 'activation',
+        remarks: 'Initial Subscription Payment' 
       });
-
-
-    if (subscription) {
-        try {
-          const user = await UserModel.findById(subscription.userId);
-          if (!user) {
-            console.error('User not found for subscription:', subscription._id);
-            break;
-          }
-    
-          // Create invoice
-          const invoiceData: CreateInvoiceData = {
-            type: 300,
-            client: {
-              name: user.name,
-              email: user.email as string
-            },
-            income: [{
-              description: `${subscription.planId === 'pro' ? 'Professional' : 'Starter'} Plan Subscription`,
-              quantity: 1,
-              price: subscription.planId === 'pro' ? 149 : 79
-            }],
-            vatType: 'NONE',
-            currency: 'ILS',
-            remarks: `Subscription Payment - ID: ${subscription.paypalSubscriptionId}`,
-            lang: 'he',
-            paymentType: 3
-          };
-    
-          const invoiceResponse = await createInvoice(invoiceData);
-    
-          // Send confirmation email
-          await sendSubscriptionConfirmation(user.email as string, {
-            customerName: user.name,
-            planName: subscription.planId === 'pro' ? 'Professional Plan' : 'Starter Plan',
-            planPrice: subscription.planId === 'pro' ? 149 : 79,
-            subscriptionId: subscription.paypalSubscriptionId || '',
-            startDate: new Date(),
-            invoiceUrl: invoiceResponse.url.he
+      break;
+      case 'BILLING.SUBSCRIPTION.PAYMENT.COMPLETED':
+        case 'PAYMENT.SALE.COMPLETED':
+          subscription.status = 'ACTIVE';
+          await subscription.save();
+       
+          await processSubscriptionEmailAndInvoice(subscription, {
+            type: 'payment',
+            remarks: 'Recurring Subscription Payment'
           });
-        } catch (error) {
-          console.error('Error processing payment completion:', error);
-        }
-      }
-      break;
+          break;
 
-    case 'BILLING.SUBSCRIPTION.CANCELLED':
-        
-      subscription.status = 'CANCELLED';
-      subscription.endDate = new Date();
-      await UserModel.findByIdAndUpdate(subscription.userId, {
-        subscriptionStatus: 'INACTIVE',
-        subscriptionId: null
-      });
-      break;
+          case 'BILLING.SUBSCRIPTION.CANCELLED':
+            subscription.status = 'CANCELLED';
+            subscription.endDate = new Date();
+            await subscription.save();
+         
+            await processSubscriptionEmailAndInvoice(subscription, {
+              type: 'cancellation',
+              remarks: 'Subscription Cancelled'
+            });
+            break;
 
     case 'BILLING.SUBSCRIPTION.SUSPENDED':
         
