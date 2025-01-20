@@ -9,16 +9,14 @@ import wishlistRoutes from './api/routes/wishlistRoutes.js';
 import itemRoutes from './api/routes/itemRoutes.js';
 import cartRoutes from './api/routes/cartRoutes.js';
 import bookingRoutes from './api/routes/bookingRoutes.js';
-import paypalOrderRoutes from './api/routes/paypalRoutes/orderRoutes.js';
-import paypalAuthRoutes from './api/routes/paypalRoutes/authRoutes.js';
-import paypalOnboardingRoutes from './api/routes/paypalRoutes/onboardingRoutes.js';
-import paypalSubscriptionRoutes from './api/routes/paypalRoutes/subscriptionRoutes.js';
-import paypalPayoutRoutes from './api/routes/paypalRoutes/payoutRoutes.js';
+
 import searchRoutes from './api/routes/searchRoutes.js';
 import emailRoutes from './api/routes/emailRoutes.js';
 import invoiceRoutes from './api/routes/invoiceRoutes.js';
 import reservationRoutes from './api/routes/reservationRoutes.js';
 import otpRoutes from './api/routes/otpRoutes.js';
+import sumitRoutes from './api/routes/sumit/paymentRoutes.js';
+import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -92,14 +90,12 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/search', searchRoutes);
-app.use("/api/PPAuth", paypalAuthRoutes);
-app.use('/api/subscriptions', paypalSubscriptionRoutes);
-app.use("/api/PPorders", paypalOrderRoutes);
-app.use("/api/PPOnboarding", paypalOnboardingRoutes);
+
 app.use("/api/emails", emailRoutes);
 app.use('/api/invoices', invoiceRoutes);
-app.use('/api/payouts', paypalPayoutRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/sumit', sumitRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 
 app.use('/api/auth', authRoutes);

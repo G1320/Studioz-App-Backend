@@ -7,17 +7,6 @@ import handleRequest from '../../../utils/requestHandler.js';
 import { PayPalSubscriptionResponse } from '../../../types/paypalSubscriptionResponse.js';
 import { processSubscriptionEmailAndInvoice } from '../../../services/subscriptionService.js';
 
-interface PayPalErrorDetails {
-    issue: string;
-    description: string;
-  }
-  
-  interface PayPalErrorResponse {
-    message?: string;
-    name?: string;
-    details?: PayPalErrorDetails[];
-  }
-
 const createSubscription = handleRequest(async (req: Request) => {
   const { userId, planId } = req.body;
 
@@ -37,7 +26,6 @@ const createSubscription = handleRequest(async (req: Request) => {
     createdAt: new Date()
   });
   
-
   return subscription;
 });
 
@@ -233,8 +221,6 @@ const handlePayPalWebhook = handleRequest(async (req: Request) => {
   if (!event_type || !resource) {
     throw new ExpressError('Invalid webhook data', 400);
   }
-
-
 
   const subscriptionId = resource.id || 
   resource.billing_agreement_id || 
