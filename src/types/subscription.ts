@@ -1,4 +1,4 @@
-import { Document, ObjectId } from 'mongoose';
+import { Document } from 'mongoose';
 
 interface SumitPaymentMethod {
   ID: string;
@@ -46,7 +46,7 @@ interface SumitPaymentDetails {
 
 export interface Subscription {
   _id: string;
-  userId: ObjectId;
+  userId: string;
   planId: string;
   planName: string;
   customerName: string;

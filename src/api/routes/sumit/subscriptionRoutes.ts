@@ -9,6 +9,8 @@ router.post('/activate', subscriptionHandler.activateSubscription);
 
 router.post('/cancel/:subscriptionId', subscriptionHandler.cancelSubscription);
 
+router.get('/:subscriptionId', subscriptionHandler.getSubscriptionDetails);
+
 router.post('/webhook', subscriptionHandler.handleSumitWebhook);
 
 export default router;

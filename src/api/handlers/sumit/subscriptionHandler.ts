@@ -30,7 +30,6 @@ const createSubscription = handleRequest(async (req: Request) => {
 
 const activateSubscription = handleRequest(async (req: Request) => {
     const { subscriptionId, sumitPaymentResponse } = req.body;
-    console.log('subscriptionId, sumitPaymentResponse in activateSubscription: ', subscriptionId, sumitPaymentResponse);
   
     if (!subscriptionId || !sumitPaymentResponse) {
       throw new ExpressError('Subscription ID and Sumit payment response are required', 400);
@@ -90,6 +89,19 @@ const activateSubscription = handleRequest(async (req: Request) => {
       throw new ExpressError(`Failed to activate subscription: ${error.message}`, 400);
     }
   });
+
+  const getSubscriptionDetails = handleRequest(async (req: Request) => {
+    const { subscriptionId } = req.params;
+
+    const subscription = await SubscriptionModel.findById(subscriptionId);
+  if (!subscription) {
+    throw new ExpressError('Subscription not found', 404);
+  }
+
+  return subscription
+
+  })
+
 
 const cancelSubscription = handleRequest(async (req: Request) => {
   const { subscriptionId } = req.params;
@@ -191,6 +203,7 @@ const handleSumitWebhook = handleRequest(async (req: Request) => {
 export default {
   createSubscription,
   activateSubscription,
+  getSubscriptionDetails,
   cancelSubscription,
   handleSumitWebhook
 };
