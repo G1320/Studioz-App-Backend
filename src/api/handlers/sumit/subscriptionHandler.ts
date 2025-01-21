@@ -36,7 +36,6 @@ const activateSubscription = handleRequest(async (req: Request) => {
     }
   
     try {
-      // Verify the payment status from Sumit - Payment is at root level
       if (!sumitPaymentResponse.Payment?.ValidPayment) {
         throw new ExpressError(
           sumitPaymentResponse.Payment?.StatusDescription || 'Payment validation failed',
@@ -44,9 +43,7 @@ const activateSubscription = handleRequest(async (req: Request) => {
         );
       }
   
-      const subscription = await SubscriptionModel.findOne({
-        _id: subscriptionId
-      });
+      const subscription = await SubscriptionModel.findOne({_id: subscriptionId});
   
       if (!subscription) {
         throw new ExpressError('Subscription not found', 404);
@@ -75,7 +72,6 @@ const activateSubscription = handleRequest(async (req: Request) => {
       subscription.customerEmail = user.email;
       await subscription.save();
   
-      // Update user's subscription status
       await UserModel.findByIdAndUpdate(subscription.userId, {
         subscriptionStatus: 'ACTIVE',
         subscriptionId: subscription._id
@@ -94,9 +90,9 @@ const activateSubscription = handleRequest(async (req: Request) => {
     const { subscriptionId } = req.params;
 
     const subscription = await SubscriptionModel.findById(subscriptionId);
-  if (!subscription) {
+     if (!subscription) {
     throw new ExpressError('Subscription not found', 404);
-  }
+    }
 
   return subscription
 

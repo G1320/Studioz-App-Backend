@@ -1,7 +1,6 @@
 // controllers/payment.controller.ts
 import { Request, Response } from 'express';
 import axios from 'axios';
-// import { logger } from '../services/logger.service';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -11,7 +10,6 @@ export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
     try {
       const { singleUseToken, amount, description, costumerInfo } = req.body;
-      console.log('singleUseToken, amount, description, costumerInfo: ', singleUseToken, amount, description, costumerInfo);
 
       // Call Sumit API to process the payment
       const response = await axios.post(
