@@ -29,69 +29,67 @@ const createSubscription = handleRequest(async (req: Request) => {
 });
 
 const activateSubscription = handleRequest(async (req: Request) => {
-  const { subscriptionId, sumitPaymentResponse } = req.body;
-
-  if (!subscriptionId || !sumitPaymentResponse) {
-    throw new ExpressError('Subscription ID and Sumit payment response are required', 400);
-  }
-
-  try {
-    // Verify the payment status from Sumit
-    if (!sumitPaymentResponse.Data.Payment.ValidPayment) {
-      throw new ExpressError(
-        sumitPaymentResponse.Data.Payment.StatusDescription || 'Payment validation failed',
-        400
-      );
+    const { subscriptionId, sumitPaymentResponse } = req.body;
+    console.log('subscriptionId, sumitPaymentResponse in activateSubscription: ', subscriptionId, sumitPaymentResponse);
+  
+    if (!subscriptionId || !sumitPaymentResponse) {
+      throw new ExpressError('Subscription ID and Sumit payment response are required', 400);
     }
-
-    const subscription = await SubscriptionModel.findOne({
-      _id: subscriptionId
-    });
-
-    if (!subscription) {
-      throw new ExpressError('Subscription not found', 404);
+  
+    try {
+      // Verify the payment status from Sumit - Payment is at root level
+      if (!sumitPaymentResponse.Payment?.ValidPayment) {
+        throw new ExpressError(
+          sumitPaymentResponse.Payment?.StatusDescription || 'Payment validation failed',
+          400
+        );
+      }
+  
+      const subscription = await SubscriptionModel.findOne({
+        _id: subscriptionId
+      });
+  
+      if (!subscription) {
+        throw new ExpressError('Subscription not found', 404);
+      }
+  
+      const user = await UserModel.findById(subscription.userId);
+      if (!user) {
+        throw new ExpressError('User not found', 404);
+      }
+  
+      const plans = {
+        starter: { name: 'Starter Plan', price: 79 },
+        pro: { name: 'Professional Plan', price: 149 }
+      };
+  
+      const plan = plans[subscription.planId as keyof typeof plans];
+  
+      subscription.sumitPaymentId = sumitPaymentResponse.Payment.ID;
+      subscription.sumitCustomerId = sumitPaymentResponse.Payment.CustomerID;
+      subscription.status = 'ACTIVE';
+      subscription.startDate = new Date();
+      subscription.updatedAt = new Date();
+      subscription.sumitPaymentDetails = sumitPaymentResponse; 
+      subscription.planName = plan.name;
+      subscription.customerName = user.name;
+      subscription.customerEmail = user.email;
+      await subscription.save();
+  
+      // Update user's subscription status
+      await UserModel.findByIdAndUpdate(subscription.userId, {
+        subscriptionStatus: 'ACTIVE',
+        subscriptionId: subscription._id
+      });
+  
+      return subscription;
+      
+    } catch (error: any) {
+      console.error('Activation error:', error);
+      if (error instanceof ExpressError) throw error;
+      throw new ExpressError(`Failed to activate subscription: ${error.message}`, 400);
     }
-
-    const user = await UserModel.findById(subscription.userId);
-    if (!user) {
-      throw new ExpressError('User not found', 404);
-    }
-
-    const plans = {
-      starter: { name: 'Starter Plan', price: 79 },
-      pro: { name: 'Professional Plan', price: 149 }
-    };
-
-    const plan = plans[subscription.planId as keyof typeof plans];
-
-    // Update subscription with Sumit details
-    subscription.sumitPaymentId = sumitPaymentResponse.Data.Payment.ID;
-    subscription.sumitCustomerId = sumitPaymentResponse.Data.Payment.CustomerID;
-    subscription.status = 'ACTIVE';
-    subscription.startDate = new Date();
-    subscription.updatedAt = new Date();
-    subscription.sumitPaymentDetails = sumitPaymentResponse.Data;
-    subscription.planName = plan.name;
-    subscription.customerName = user.name;
-    subscription.customerEmail = user.email;
-    await subscription.save();
-
-    // Update user's subscription status
-    await UserModel.findByIdAndUpdate(subscription.userId, {
-      subscriptionStatus: 'ACTIVE',
-      subscriptionId: subscription._id
-    });
-
-    return {
-      subscription,
-      sumitDetails: sumitPaymentResponse.Data
-    };
-  } catch (error) {
-    console.error('Activation error:', error);
-    if (error instanceof ExpressError) throw error;
-    throw new ExpressError('Failed to activate subscription', 400);
-  }
-});
+  });
 
 const cancelSubscription = handleRequest(async (req: Request) => {
   const { subscriptionId } = req.params;

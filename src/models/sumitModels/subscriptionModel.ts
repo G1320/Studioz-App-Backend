@@ -4,19 +4,27 @@ const Schema = mongoose.Schema;
 const sumitPaymentMethodSchema = new Schema({
   ID: String,
   CustomerID: String,
+  CreditCard_Number: String,
   CreditCard_LastDigits: String,
   CreditCard_ExpirationMonth: Number,
   CreditCard_ExpirationYear: Number,
+  CreditCard_CVV: String,
+  CreditCard_Track2: String,
   CreditCard_CitizenID: String,
   CreditCard_CardMask: String,
   CreditCard_Token: String,
+  DirectDebit_Bank: String,
+  DirectDebit_Branch: String,
+  DirectDebit_Account: String,
+  DirectDebit_ExpirationDate: String,
+  DirectDebit_MaximumAmount: String,
   Type: Number
 }, { _id: false });
 
-const sumitPaymentDetailsSchema = new Schema({
+const sumitPaymentSchema = new Schema({
   ID: String,
   CustomerID: String,
-  Date: Date,
+  Date: String, 
   ValidPayment: Boolean,
   Status: String,
   StatusDescription: String,
@@ -26,6 +34,15 @@ const sumitPaymentDetailsSchema = new Schema({
   AuthNumber: String,
   FirstPaymentAmount: Number,
   NonFirstPaymentAmount: Number,
+  RecurringCustomerItemIDs: [String]
+}, { _id: false });
+
+// This schema represents the full Sumit response
+const sumitPaymentDetailsSchema = new Schema({
+  Payment: sumitPaymentSchema,
+  DocumentID: String,
+  CustomerID: String,
+  DocumentDownloadURL: String,
   RecurringCustomerItemIDs: [String]
 }, { _id: false });
 
@@ -67,19 +84,12 @@ const subscriptionSchema = new Schema({
   customerEmail: {
     type: String
   },
-  sumitPaymentId: {
-    type: String
-  },
-  sumitCustomerId: {
-    type: String
-  },
-  sumitRecurringItemIds: {
-    type: [String]
-  },
-  sumitPaymentDetails: {
-    type: sumitPaymentDetailsSchema
-  },
-  // Keep paypalDetails for backward compatibility if needed
+  // Sumit specific fields
+  sumitPaymentId: String,
+  sumitCustomerId: String,
+  sumitRecurringItemIds: [String],
+  sumitPaymentDetails: sumitPaymentDetailsSchema,
+  // Keep paypalDetails for backward compatibility
   paypalDetails: mongoose.Schema.Types.Mixed
 });
 
@@ -87,7 +97,6 @@ subscriptionSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
-
 
 export const SubscriptionModel = mongoose.model('Subscription', subscriptionSchema);
 export default SubscriptionModel;
