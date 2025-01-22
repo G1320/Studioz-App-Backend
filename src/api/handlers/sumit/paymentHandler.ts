@@ -63,58 +63,108 @@ export const paymentHandler = {
     }
   },
   
-    async createSubscription(req: Request, res: Response) {
-      try {
-        const { singleUseToken, planDetails, costumerInfo } = req.body;
-        
-        const response = await axios.post(
-          `${SUMIT_API_URL}/billing/recurring/charge/`,
-          {
-            SingleUseToken: singleUseToken,
-            Customer: {
-              SearchMode: 0,
-              Name: costumerInfo.costumerName,
-              EmailAddress: costumerInfo.costumerEmail
-            },
-            Items: [{
-              Item: {
-                Name: planDetails.name || "Monthly Subscription",
-                Duration_Months: planDetails.durationMonths || 1
-              },
-              Quantity: 1,
-              UnitPrice: planDetails.amount,
-              Description: planDetails.description,
-              Recurrence: planDetails.recurrence || 12 
-            }],
-            VATIncluded: true,
-            OnlyDocument: false,
-            SendDocumentByEmail: true,
-            Credentials: {
-              CompanyID: COMPANY_ID,
-              APIKey: API_KEY
-            }
+  async createSubscription(req: Request, res: Response) {
+    try {
+      const { singleUseToken, planDetails, costumerInfo } = req.body;
+  
+      // Find any active subscription for this user
+      const existingSubscription = await SubscriptionModel.findOne({
+        customerEmail: costumerInfo.costumerEmail,
+        status: 'ACTIVE'
+      });
+  
+      // If there's an active subscription, cancel it first
+      if (existingSubscription) {
+        try {
+          // Cancel the existing subscription in Sumit
+          if (existingSubscription.sumitPaymentDetails?.RecurringCustomerItemIDs?.[0]) {
+            await axios.post(
+              `${SUMIT_API_URL}/billing/recurring/cancel/`,
+              {
+                Credentials: {
+                  CompanyID: COMPANY_ID,
+                  APIKey: API_KEY
+                },
+                Customer: {
+                  ID: existingSubscription.sumitCustomerId,
+                  Name: existingSubscription.customerName,
+                  EmailAddress: existingSubscription.customerEmail,
+                  SearchMode: 0
+                },
+                RecurringCustomerItemID: existingSubscription.sumitPaymentDetails.RecurringCustomerItemIDs[0]
+              }
+            );
           }
-        );
-              
-        if (response.data.Data.Payment.ValidPayment){
-            return res.status(200).json({
-                success: true,
-                data: response.data.Data
-            });
-            }else {
-            return res.status(500).json({
-                success: false,
-                error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
-            });
+  
+          // Update the existing subscription status
+          existingSubscription.status = 'CANCELLED';
+          existingSubscription.endDate = new Date();
+          existingSubscription.updatedAt = new Date();
+          await existingSubscription.save();
+  
+          // Update user's subscription status
+          await UserModel.findByIdAndUpdate(existingSubscription.userId, {
+            subscriptionStatus: 'INACTIVE',
+            subscriptionId: null
+          });
+        } catch (error) {
+          console.error('Error cancelling existing subscription:', error);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to cancel existing subscription'
+          });
         }
-      } catch (error: any) {
-        console.error('Subscription error:', error.response?.data || error);
+      }
+  
+      // Create new subscription
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/recurring/charge/`,
+        {
+          SingleUseToken: singleUseToken,
+          Customer: {
+            SearchMode: 0,
+            Name: costumerInfo.costumerName,
+            EmailAddress: costumerInfo.costumerEmail
+          },
+          Items: [{
+            Item: {
+              Name: planDetails.name || "Monthly Subscription",
+              Duration_Months: planDetails.durationMonths || 1
+            },
+            Quantity: 1,
+            UnitPrice: planDetails.amount,
+            Description: planDetails.description,
+            Recurrence: planDetails.recurrence || 12 
+          }],
+          VATIncluded: true,
+          OnlyDocument: false,
+          SendDocumentByEmail: true,
+          Credentials: {
+            CompanyID: COMPANY_ID,
+            APIKey: API_KEY
+          }
+        }
+      );
+            
+      if (response.data.Data.Payment.ValidPayment) {
+        return res.status(200).json({
+          success: true,
+          data: response.data.Data
+        });
+      } else {
         return res.status(500).json({
           success: false,
-          error: error.response?.data?.UserErrorMessage || 'Failed to create subscription'
+          error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
         });
       }
-    },
+    } catch (error: any) {
+      console.error('Subscription error:', error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to create subscription'
+      });
+    }
+  },
 
     async cancelSubscription(req: Request, res: Response) {
         try {
