@@ -1,6 +1,8 @@
 // controllers/payment.controller.ts
 import { Request, Response } from 'express';
 import axios from 'axios';
+import { UserModel } from '../../../models/userModel.js';
+import SubscriptionModel from '../../../models/sumitModels/subscriptionModel.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -10,6 +12,7 @@ export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
     try {
       const { singleUseToken, amount, description, costumerInfo } = req.body;
+      console.log('singleUseToken, amount, description, costumerInfo: ', singleUseToken, amount, description, costumerInfo);
 
       // Call Sumit API to process the payment
       const response = await axios.post(
@@ -98,7 +101,7 @@ export const paymentHandler = {
                 success: true,
                 data: response.data.Data
             });
-        }else {
+            }else {
             return res.status(500).json({
                 success: false,
                 error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
@@ -112,6 +115,77 @@ export const paymentHandler = {
         });
       }
     },
+
+    async cancelSubscription(req: Request, res: Response) {
+        try {
+          const { subscriptionId } = req.params;
+      
+          if (!subscriptionId) {
+            return res.status(400).json({
+              success: false,
+              error: 'Subscription ID is required'
+            });
+          }
+      
+          const subscription = await SubscriptionModel.findById(subscriptionId);
+          if (!subscription) {
+            return res.status(404).json({
+              success: false,
+              error: 'Subscription not found'
+            });
+          }
+      
+          // If subscription is already cancelled, just return it
+          if (subscription.status === 'CANCELLED') {
+            return res.status(200).json({
+              success: true,
+              data: subscription
+            });
+          }
+      
+          // Cancel recurring payment in Sumit
+          if (subscription.sumitPaymentDetails?.RecurringCustomerItemIDs?.[0]) {
+            await axios.post(
+              `${SUMIT_API_URL}/billing/recurring/cancel/`,
+              {
+                Credentials: {
+                  CompanyID: COMPANY_ID,
+                  APIKey: API_KEY
+                },
+                Customer: {
+                  ID: subscription.sumitCustomerId,
+                  Name: subscription.customerName,
+                  EmailAddress: subscription.customerEmail,
+                  SearchMode: 0
+                },
+                RecurringCustomerItemID: subscription.sumitPaymentDetails.RecurringCustomerItemIDs[0]
+              }
+            );
+          }
+      
+          subscription.status = 'CANCELLED';
+          subscription.endDate = new Date();
+          subscription.updatedAt = new Date();
+          await subscription.save();
+      
+          // Update user's subscription status
+          await UserModel.findByIdAndUpdate(subscription.userId, {
+            subscriptionStatus: 'INACTIVE',
+            subscriptionId: null
+          });
+      
+          return res.status(200).json({
+            success: true,
+            data: subscription
+          });
+        } catch (error: any) {
+          console.error('Subscription cancellation error:', error.response?.data || error);
+          return res.status(500).json({
+            success: false,
+            error: error.response?.data?.UserErrorMessage || 'Failed to cancel subscription'
+          });
+        }
+      },
 
   async validateToken(req: Request, res: Response) {
     try {
