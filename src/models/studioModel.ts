@@ -23,13 +23,12 @@ const studioSchema = new Schema({
   name: { type: translationSchema, required: false },
   subtitle: { type: translationSchema, required: false },
   description: { type: translationSchema, required: false },
-  
+  phone: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
   city: { type: String, required: true },
   address: { type: String, required: false },
-  phone: { type: String, required: false },
   lat: { type: Number, required: false },
   lng: { type: Number, required: false },
   coverImage: { type: String, required: false },
@@ -42,7 +41,6 @@ const studioSchema = new Schema({
   isFeatured: { type: Boolean, required: false },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  paypalMerchantId: { type: String, required: false },
   studioAvailability: { type: StudioAvailability, required: false },
   items: [
     {

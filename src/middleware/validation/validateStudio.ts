@@ -57,7 +57,6 @@ const schema = Joi.object({
   isWheelchairAccessible: Joi.boolean().optional(),
   isSelfService: Joi.boolean().optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
-  paypalMerchantId: Joi.string().optional(),
   isFeatured: Joi.boolean().optional()
 });
 
