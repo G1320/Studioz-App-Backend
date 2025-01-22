@@ -71,7 +71,7 @@ router.post('/send-subscription-confirmation', async (req, res) => {
     };
 
     // Send confirmation email
-    await sendSubscriptionConfirmation(email, subscriptionDetailsWithInvoice, 'activation');
+    await sendSubscriptionConfirmation(email, subscriptionDetailsWithInvoice, 'payment');
 
     res.status(200).json({ 
       message: 'Subscription confirmation email sent successfully',
