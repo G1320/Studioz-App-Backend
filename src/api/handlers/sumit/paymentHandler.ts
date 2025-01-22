@@ -146,7 +146,7 @@ export const paymentHandler = {
         }
       );
             
-      if (response.data.Data.Payment.ValidPayment) {
+      if (response?.data?.Data?.Payment?.ValidPayment) {
         return res.status(200).json({
           success: true,
           data: response.data.Data
@@ -154,7 +154,7 @@ export const paymentHandler = {
       } else {
         return res.status(500).json({
           success: false,
-          error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
+          error: response?.data?.Data?.Payment?.StatusDescription || 'Failed to create subscription'
         });
       }
     } catch (error: any) {

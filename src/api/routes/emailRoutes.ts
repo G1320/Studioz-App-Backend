@@ -56,11 +56,11 @@ router.post('/send-subscription-confirmation', async (req, res) => {
           price: subscriptionData.planPrice
         }
       ],
-      vatType: 'NONE' as const, // explicitly type as literal
+      vatType: 'NONE' as const, 
       currency: NODE_ENV === 'production' ? 'ILS' : 'USD',
       remarks: `Subscription ID: ${subscriptionData.subscriptionId}`,
       lang: 'he',
-      paymentType: 3 // Credit Card
+      paymentType: 3 
     };
 
     const invoiceResponse = await createInvoice(invoiceData);
