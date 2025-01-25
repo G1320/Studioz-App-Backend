@@ -58,9 +58,18 @@ const userSchema = new Schema(
         integration_type: String
       }],
     },
+    sumitCompanyId: { type: Number },
+  sumitApiKey: { type: String },
+  sumitApiPublicKey: { type: String },
+  role: { 
+    type: String,
+    enum: ['user', 'vendor', 'admin'],
+    default: 'user'
+  },
     subscriptionStatus: { type: String },
     subscriptionId: { type: String },
   },
+  
   { timestamps: true }
 );
 

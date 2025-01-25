@@ -17,6 +17,7 @@ import reservationRoutes from './api/routes/reservationRoutes.js';
 import otpRoutes from './api/routes/otpRoutes.js';
 import sumitRoutes from './api/routes/sumit/paymentRoutes.js';
 import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
+import vendorRoutes from './api/routes/sumit/vendorRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -96,6 +97,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/sumit', sumitRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 
 app.use('/api/auth', authRoutes);

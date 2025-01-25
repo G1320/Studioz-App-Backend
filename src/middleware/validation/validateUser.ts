@@ -73,6 +73,10 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
    }).label('PayPal Account Status').optional(),
     subscriptionStatus: Joi.string().label('Subscription Status').optional(),
     subscriptionId: Joi.string().label('Subscription ID').optional(),
+    sumitCompanyId: Joi.number().label('Sumit Company ID').optional(),
+    sumitApiKey: Joi.string().label('Sumit API Key').optional(),
+    sumitApiPublicKey: Joi.string().label('Sumit API Public Key').optional(),
+    role: Joi.string().valid('user', 'vendor', 'admin').label('User Role').optional()
  });
   
 

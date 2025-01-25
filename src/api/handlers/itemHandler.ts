@@ -40,8 +40,8 @@ const createItem = handleRequest(async (req: Request) => {
     itemId: item._id,
     studioId,
     studioName: {
-      en: item.studioName.en, 
-      he: item.studioName.he, 
+      en: item.studioName.en || '', 
+      he: item.studioName.he || '', 
     },  
     address: item.address,
     lat: item.lat,

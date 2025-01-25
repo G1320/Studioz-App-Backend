@@ -38,6 +38,9 @@ export default interface User {
   paypalAccountStatus?: PayPalAccountStatus;
   subscriptionStatus?: string;
   subscriptionId?: string;
-
+  sumitCompanyId?: number;
+  sumitApiKey?: string;  
+  sumitApiPublicKey?: string;
+  role?: 'user' | 'vendor' | 'admin';
   __v?: number;
 }
