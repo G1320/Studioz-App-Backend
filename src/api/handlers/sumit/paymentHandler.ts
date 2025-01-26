@@ -8,6 +8,13 @@ const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
 const API_KEY = process.env.SUMIT_API_KEY;
 
+interface CartItem {
+    merchantId: string;
+    name: string;
+    price: number;
+    quantity: number;
+   }
+
 export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
     try {
@@ -236,6 +243,84 @@ export const paymentHandler = {
           });
         }
       },
+
+      async multivendorCharge(req: Request, res: Response) {
+        try {
+          const { items, singleUseToken, customerInfo } = req.body;
+       
+
+           // Type check for items array
+          if (!Array.isArray(items) || !items.every(item => 
+           typeof item.merchantId === 'string' &&
+           typeof item.name === 'string' &&
+           typeof item.price === 'number' &&
+           typeof item.quantity === 'number'
+         )) {
+           return res.status(400).json({
+             success: false,
+             error: 'Invalid items format'
+           });
+         }
+
+        const typedItems: CartItem[] = items;
+          // Get merchant user for API key
+          const merchant = await UserModel.findById(typedItems[0].merchantId);
+          if (!merchant?.sumitApiKey) {
+            return res.status(404).json({
+              success: false,
+              error: 'Merchant not found or missing API credentials'
+            });
+          }
+       
+          const response = await axios.post(
+            `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
+            {
+              SingleUseToken: singleUseToken,
+              Customer: {
+                Name: customerInfo.name,
+                EmailAddress: customerInfo.email,
+                Phone: customerInfo.phone,
+                SearchMode: 0
+              },
+              Items: typedItems.map(item => ({
+                Item: {
+                  Name: item.name,
+                  Price: item.price
+                },
+                Quantity: item.quantity,
+                UnitPrice: item.price,
+                Total: item.quantity * item.price,
+                CompanyID: merchant.sumitCompanyId,
+                APIKey: merchant.sumitApiKey
+              })),
+              VATIncluded: true,
+              SendDocumentByEmail: true,
+              Credentials: {
+                CompanyID: COMPANY_ID,
+                APIKey: API_KEY
+              }
+            }
+          );
+       
+          if (response.data.Data.Payment.ValidPayment) {
+            return res.status(200).json({
+              success: true,
+              data: response.data.Data
+            });
+          }
+       
+          return res.status(400).json({
+            success: false, 
+            error: response.data.Data.Payment.StatusDescription
+          });
+       
+        } catch (error: any) {
+          return res.status(500).json({
+            success: false,
+            error: error.response?.data?.UserErrorMessage || 'Failed to process payment'
+          });
+        }
+       },
 
   async validateToken(req: Request, res: Response) {
     try {
