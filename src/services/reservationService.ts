@@ -25,7 +25,7 @@ export const updateExpiredReservations = async () => {
   
       if (expiredReservations.length > 0) {
         const expiredReservationIds = expiredReservations.map(r => r._id.toString());
-        const costumerId = expiredReservations.find(r => r.costumerId)?.costumerId; // Get one costumerId
+        const customerId = expiredReservations.find(r => r.customerId)?.customerId; // Get one customerId
 
         // Release time slots
         await Promise.all(
@@ -38,7 +38,7 @@ export const updateExpiredReservations = async () => {
         );
   
         // Clean up offline cart or trigger query invalidation through socket event
-         emitReservationUpdate( expiredReservationIds, costumerId || '' );
+         emitReservationUpdate( expiredReservationIds, customerId || '' );
         // Update reservation status to expired
         return  await ReservationModel.updateMany(
           {

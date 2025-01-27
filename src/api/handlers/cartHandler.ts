@@ -8,7 +8,7 @@ import CartItem from '../../types/cartItem.js';
 
 const addItemToCart = handleRequest(async (req: Request) => {
   const { userId, itemId } = req.params;
-  const { bookingDate, startTime, hours, comment, costumerName,costumerPhone, reservationId } = req.body ;  
+  const { bookingDate, startTime, hours, comment, customerName,customerPhone, reservationId } = req.body ;  
 
   if (!userId || !itemId) throw new ExpressError('User ID or Item ID not provided', 400);
   if (!bookingDate) throw new ExpressError('Booking date is required', 400);
@@ -52,8 +52,8 @@ if (existingCartItem) {
     bookingDate: bookingDate.toString(),
     startTime: startTime.toString(),
     studioId: item.studioId,
-    costumerName: costumerName || '',
-    costumerPhone: costumerPhone || '',
+    customerName: customerName || '',
+    customerPhone: customerPhone || '',
     comment:comment ||'',
     reservationId: reservationId || ''
   });
@@ -78,7 +78,7 @@ const addItemsToCart = handleRequest(async (req: Request) => {
   }
 
   items.forEach(async (itemData) => {
-    const { itemId, bookingDate, comment, costumerName,costumerPhone } = itemData;
+    const { itemId, bookingDate, comment, customerName,customerPhone } = itemData;
 
     if (!itemId || !bookingDate) {
       throw new ExpressError('Item ID and booking date are required', 400);
@@ -113,8 +113,8 @@ const addItemsToCart = handleRequest(async (req: Request) => {
         quantity: 1,
         bookingDate: bookingDate,
         studioId: item.studioId,
-        costumerName: costumerName || '',
-        costumerPhone: costumerPhone || '',
+        customerName: customerName || '',
+        customerPhone: customerPhone || '',
         comment: comment ||''
       });
     }

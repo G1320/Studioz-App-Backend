@@ -19,8 +19,8 @@ itemName: {
 itemPrice?: number;
 totalPrice?: number;
 orderId?: string;
-costumerName?: string;
-costumerPhone?: string;
-costumerId?: string;
+customerName?: string;
+customerPhone?: string;
+customerId?: string;
 comment?: string;
 }

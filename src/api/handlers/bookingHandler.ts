@@ -90,12 +90,12 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 });
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
-    const { itemId, bookingDate, startTime, hours, costumerId, costumerName, costumerPhone, comment } = req.body;
+    const { itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
 
-    const user = await UserModel.findById(costumerId);
+    const user = await UserModel.findById(customerId);
     // Initialize availability
     item.availability = initializeAvailability(item.availability) ;
         
@@ -121,9 +121,9 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         expiration,
         itemPrice: item.price||0,
         studioId: item.studioId,
-        costumerId,
-        costumerName,
-        costumerPhone,
+        customerId,
+        customerName,
+        customerPhone,
         comment
     });
     

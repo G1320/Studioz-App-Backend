@@ -18,8 +18,8 @@ interface CartItem {
 export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
     try {
-      const { singleUseToken, amount, description, costumerInfo } = req.body;
-      console.log('singleUseToken, amount, description, costumerInfo: ', singleUseToken, amount, description, costumerInfo);
+      const { singleUseToken, amount, description, customerInfo } = req.body;
+      console.log('singleUseToken, amount, description, customerInfo: ', singleUseToken, amount, description, customerInfo);
 
       // Call Sumit API to process the payment
       const response = await axios.post(
@@ -38,8 +38,8 @@ export const paymentHandler = {
             Description: description
           }],
           Customer: {
-            Name: costumerInfo.costumerName,
-            EmailAddress: costumerInfo.costumerEmail,
+            Name: customerInfo.customerName,
+            EmailAddress: customerInfo.customerEmail,
             SearchMode: 0
           },
           VATIncluded: true,
@@ -72,11 +72,11 @@ export const paymentHandler = {
   
   async createSubscription(req: Request, res: Response) {
     try {
-      const { singleUseToken, planDetails, costumerInfo } = req.body;
+      const { singleUseToken, planDetails, customerInfo } = req.body;
   
       // Find any active subscription for this user
       const existingSubscription = await SubscriptionModel.findOne({
-        customerEmail: costumerInfo.costumerEmail,
+        customerEmail: customerInfo.customerEmail,
         status: 'ACTIVE'
       });
   
@@ -130,8 +130,8 @@ export const paymentHandler = {
           SingleUseToken: singleUseToken,
           Customer: {
             SearchMode: 0,
-            Name: costumerInfo.costumerName,
-            EmailAddress: costumerInfo.costumerEmail
+            Name: customerInfo.customerName,
+            EmailAddress: customerInfo.customerEmail
           },
           Items: [{
             Item: {
@@ -246,12 +246,11 @@ export const paymentHandler = {
 
       async multivendorCharge(req: Request, res: Response) {
         try {
-          const { items, singleUseToken, customerInfo } = req.body;
+          const { items, singleUseToken, customerInfo, vendorId } = req.body;
        
 
            // Type check for items array
           if (!Array.isArray(items) || !items.every(item => 
-           typeof item.merchantId === 'string' &&
            typeof item.name === 'string' &&
            typeof item.price === 'number' &&
            typeof item.quantity === 'number'
@@ -264,11 +263,11 @@ export const paymentHandler = {
 
         const typedItems: CartItem[] = items;
           // Get merchant user for API key
-          const merchant = await UserModel.findById(typedItems[0].merchantId);
-          if (!merchant?.sumitApiKey) {
+          const vendor = await UserModel.findById(vendorId);
+          if (!vendor?.sumitApiKey) {
             return res.status(404).json({
               success: false,
-              error: 'Merchant not found or missing API credentials'
+              error: 'Vendor not found or missing API credentials'
             });
           }
        
@@ -290,8 +289,8 @@ export const paymentHandler = {
                 Quantity: item.quantity,
                 UnitPrice: item.price,
                 Total: item.quantity * item.price,
-                CompanyID: merchant.sumitCompanyId,
-                APIKey: merchant.sumitApiKey
+                CompanyID: vendor.sumitCompanyId,
+                APIKey: vendor.sumitApiKey
               })),
               VATIncluded: true,
               SendDocumentByEmail: true,

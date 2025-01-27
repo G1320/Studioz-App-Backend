@@ -29,7 +29,7 @@ const createReservation = handleRequest(async (req: Request) => {
     itemName: item.name,
     userId,
     reservationDetails,
-    status: RESERVATION_STATUS.PENDING,
+    status: RESERVATION_STATUS.CONFIRMED,
     expiration: expirationTime
   });
 
