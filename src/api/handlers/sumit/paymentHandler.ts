@@ -19,7 +19,6 @@ export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
     try {
       const { singleUseToken, amount, description, customerInfo } = req.body;
-      console.log('singleUseToken, amount, description, customerInfo: ', singleUseToken, amount, description, customerInfo);
 
       // Call Sumit API to process the payment
       const response = await axios.post(

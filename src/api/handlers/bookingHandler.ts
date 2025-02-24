@@ -124,7 +124,9 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         customerId,
         customerName,
         customerPhone,
-        comment
+        comment,
+        status: RESERVATION_STATUS.CONFIRMED
+
     });
     
     // Remove all selected time slots
