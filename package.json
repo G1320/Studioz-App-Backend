@@ -11,7 +11,7 @@
     "start:dev": "ts-node src/server.ts"
   },
   "engines": {
-    "node": ">=20.x"
+    "node": "18.x"
   },
   "author": "Darnell Green",
   "license": "ISC",
