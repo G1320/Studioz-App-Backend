@@ -47,6 +47,7 @@ const schema = Joi.object({
   items: Joi.array().items(itemSchema).optional().label('Items array'),
   categories: Joi.array().items(Joi.string()),
   subCategories: Joi.array().items(Joi.string()),
+  genres: Joi.array().items(Joi.string()).optional(),
   maxOccupancy: Joi.number().required(),
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional(),

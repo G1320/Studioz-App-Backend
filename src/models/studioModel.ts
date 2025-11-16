@@ -26,6 +26,7 @@ const studioSchema = new Schema({
   phone: { type: String, required: false },
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
+  genres: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
   city: { type: String, required: true },
   address: { type: String, required: false },

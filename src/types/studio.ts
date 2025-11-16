@@ -25,6 +25,7 @@ export default interface Studio {
   }
   categories?: string[];
   subCategories?: string[];
+  genres?: string[];
   maxOccupancy?: number;
   isSmokingAllowed?: boolean;
   city: string;

@@ -19,6 +19,7 @@ export default interface Item {
   lng?: number;
   categories?: string[];
   subCategories?: string[];
+  genres?: string[];
   price?: number;
   pricePer?: 'hour' | 'session' | 'unit' | 'song';
   imageUrl?: string;

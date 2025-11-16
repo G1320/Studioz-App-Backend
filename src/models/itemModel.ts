@@ -26,6 +26,7 @@ const itemSchema: Schema = new Schema({
   categories: [{ type: String, required: false }],
   subCategory: { type: String, required: false },
   subCategories: [{ type: String, required: false }],
+  genres: [{ type: String, required: false }],
   price: { type: Number, required: false },
   pricePer: { type: String, required: false },
   imgUrl: { type: String, required: false },
