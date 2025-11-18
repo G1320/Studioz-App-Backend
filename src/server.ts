@@ -7,6 +7,7 @@ import userRoutes from './api/routes/userRoutes.js';
 import studioRoutes from './api/routes/studioRoutes.js';
 import wishlistRoutes from './api/routes/wishlistRoutes.js';
 import itemRoutes from './api/routes/itemRoutes.js';
+import reviewRoutes from './api/routes/reviewRoutes.js';
 import cartRoutes from './api/routes/cartRoutes.js';
 import bookingRoutes from './api/routes/bookingRoutes.js';
 
@@ -88,6 +89,7 @@ app.use('/api/studios', studioRoutes);
 app.use('/api/wishlists', wishlistRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/search', searchRoutes);

@@ -5,7 +5,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --loader ts-node/esm --test src/tests/reviewAggregates.test.ts",
     "build": "npm i && tsc",
     "start": "node ./dist/server.js",
     "start:dev": "ts-node src/server.ts"

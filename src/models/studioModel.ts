@@ -28,6 +28,8 @@ const studioSchema = new Schema({
   subCategories: [{ type: String, required: false }],
   genres: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
+  averageRating: { type: Number, required: false, default: 0 },
+  reviewCount: { type: Number, required: false, default: 0 },
   city: { type: String, required: true },
   address: { type: String, required: false },
   lat: { type: Number, required: false },

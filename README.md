@@ -74,6 +74,25 @@ src/: Contains the source TypeScript files.
 
 server.ts: Entry point for the backend application.
 
+## Reviews API
+
+The backend now exposes rating-first studio reviews so the frontend can fetch and submit feedback.
+
+- `GET /api/studios/:studioId/reviews`: Returns a paginated list of reviews (rating, optional comment, reviewer info) plus the studio’s latest `averageRating` and `reviewCount`. Supports `page` and `limit` query parameters.
+- `POST /api/studios/:studioId/reviews`: Authenticated endpoint that creates or updates the current user’s review. Body shape:
+
+```json
+{
+  "rating": 5,
+  "comment": "Optional text up to 1000 characters"
+}
+```
+
+- `PUT /api/reviews/:reviewId`: Authenticated endpoint for the owner (or admin) to edit rating/comment.
+- `DELETE /api/reviews/:reviewId`: Authenticated endpoint for the owner (or admin) to remove their review.
+
+All mutating endpoints return the refreshed `averageRating` and `reviewCount` so the UI can update instantly.
+
 ### Author
 
 Developed by Darnell Green.
