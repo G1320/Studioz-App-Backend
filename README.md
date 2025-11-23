@@ -78,8 +78,8 @@ server.ts: Entry point for the backend application.
 
 The backend now exposes rating-first studio reviews so the frontend can fetch and submit feedback.
 
-- `GET /api/studios/:studioId/reviews`: Returns a paginated list of reviews (rating, optional comment, reviewer info) plus the studio’s latest `averageRating` and `reviewCount`. Supports `page` and `limit` query parameters.
-- `POST /api/studios/:studioId/reviews`: Authenticated endpoint that creates or updates the current user’s review. Body shape:
+- `GET /api/reviews/studio/:studioId`: Returns an array of reviews (rating, optional comment, reviewer info). Supports `page` and `limit` query parameters for pagination.
+- `POST /api/reviews/:studioId`: Authenticated endpoint that creates or updates the current user's review. Body shape:
 
 ```json
 {
@@ -88,10 +88,10 @@ The backend now exposes rating-first studio reviews so the frontend can fetch an
 }
 ```
 
-- `PUT /api/reviews/:reviewId`: Authenticated endpoint for the owner (or admin) to edit rating/comment.
+- `PUT /api/reviews/:reviewId`: Authenticated endpoint for the owner (or admin) to edit rating/comment. Both `rating` and `comment` are optional in the request body.
 - `DELETE /api/reviews/:reviewId`: Authenticated endpoint for the owner (or admin) to remove their review.
 
-All mutating endpoints return the refreshed `averageRating` and `reviewCount` so the UI can update instantly.
+All mutating endpoints automatically update the studio's `averageRating` and `reviewCount` aggregates.
 
 ### Author
 

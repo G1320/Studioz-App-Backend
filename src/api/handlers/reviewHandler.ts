@@ -48,19 +48,8 @@ const getStudioReviews = handleRequest(async (req: Request) => {
     StudioModel.findById(studioId).select('averageRating reviewCount')
   ]);
 
-  return {
-    reviews,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit) || 1
-    },
-    studio: {
-      averageRating: studio?.averageRating ?? 0,
-      reviewCount: studio?.reviewCount ?? 0
-    }
-  };
+  // Return array of reviews to match client expectation
+  return reviews;
 });
 
 const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
@@ -76,6 +65,10 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
 
   const user = await resolveAuthenticatedUser(req);
   const { rating, comment } = req.body;
+
+  if (!rating) {
+    throw new ExpressError('Rating is required', 400);
+  }
 
   let review = await ReviewModel.findOne({ studioId, userId: user._id });
   const isNewReview = !review;
@@ -107,13 +100,10 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
   }
 
   await review.populate('userId', 'name firstName lastName avatar');
-  const studioAggregates = await updateStudioReviewStats(studioId);
+  await updateStudioReviewStats(studioId);
 
-  return {
-    review,
-    studio: studioAggregates,
-    message: isNewReview ? 'Review created successfully.' : 'Review updated successfully.'
-  };
+  // Return just the review to match client expectation
+  return review;
 });
 
 const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
@@ -134,7 +124,10 @@ const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
     throw new ExpressError('You are not allowed to modify this review', 403);
   }
 
-  review.rating = rating;
+  // Only update fields that are provided
+  if (rating !== undefined) {
+    review.rating = rating;
+  }
   if (comment !== undefined) {
     review.comment = comment;
   }
@@ -142,13 +135,10 @@ const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
   await review.save();
   await review.populate('userId', 'name firstName lastName avatar');
 
-  const studioAggregates = await updateStudioReviewStats(review.studioId.toString());
+  await updateStudioReviewStats(review.studioId.toString());
 
-  return {
-    review,
-    studio: studioAggregates,
-    message: 'Review updated successfully.'
-  };
+  // Return just the review to match client expectation
+  return review;
 });
 
 const deleteReviewById = handleRequest(async (req: AuthenticatedRequest) => {
@@ -169,13 +159,10 @@ const deleteReviewById = handleRequest(async (req: AuthenticatedRequest) => {
   }
 
   await ReviewModel.findByIdAndDelete(reviewId);
-  const studioAggregates = await updateStudioReviewStats(review.studioId.toString());
+  await updateStudioReviewStats(review.studioId.toString());
 
-  return {
-    reviewId,
-    studio: studioAggregates,
-    message: 'Review deleted successfully.'
-  };
+  // Return void to match client expectation
+  return;
 });
 
 export default {
