@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt, {TokenExpiredError, JwtPayload, Secret } from 'jsonwebtoken';
+import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
 import { JWT_SECRET_KEY } from '../../config/index.js';
-
 
 interface CustomRequest extends Request {
   decodedJwt?: JwtPayload;
@@ -11,7 +10,14 @@ interface CustomRequest extends Request {
 }
 
 const verifyTokenMw = (req: CustomRequest, res: Response, next: NextFunction): void => {
-  const token = req.signedCookies.accessToken;
+  let token = req.signedCookies.accessToken;
+
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
 
   if (!token) {
     res.status(401).json({ message: 'Access denied. No token provided.' });
@@ -23,7 +29,7 @@ const verifyTokenMw = (req: CustomRequest, res: Response, next: NextFunction): v
     req.decodedJwt = decoded;
     next();
   } catch (error) {
-    if (error instanceof TokenExpiredError) {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'TokenExpiredError') {
       res.status(401).json({ message: 'Token expired' });
     } else {
       res.status(400).json({ message: 'Invalid access token' });

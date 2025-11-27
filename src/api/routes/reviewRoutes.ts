@@ -1,6 +1,6 @@
 import express from 'express';
 import reviewHandler from '../handlers/reviewHandler.js';
-import { validateReview, verifyTokenMw } from '../../middleware/index.js';
+import { validateReview,  verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/studio/:studioId', reviewHandler.getStudioReviews);
 
 // POST /api/reviews/:studioId - Create review
-router.post('/:studioId', verifyTokenMw, validateReview, reviewHandler.upsertReview);
+router.post('/:studioId', verifyTokenMw,  reviewHandler.upsertReview);
 
 // PUT /api/reviews/:reviewId - Update review
 router.put('/:reviewId', verifyTokenMw, validateReview, reviewHandler.updateReviewById);

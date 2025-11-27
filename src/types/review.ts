@@ -1,3 +1,7 @@
+import type User from './user.js';
+
+export type ReviewUser = Pick<User, 'name' | 'firstName' | 'lastName' | 'avatar'> & { _id: string };
+
 export default interface Review {
   _id: string;
   studioId: string;
@@ -8,5 +12,6 @@ export default interface Review {
   isVisible?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  user?: ReviewUser;
 }
 

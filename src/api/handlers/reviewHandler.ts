@@ -7,20 +7,27 @@ import { StudioModel } from '../../models/studioModel.js';
 import { UserModel } from '../../models/userModel.js';
 import { updateStudioReviewStats } from '../../utils/reviewStats.js';
 
-interface AuthenticatedRequest extends Request {
+type AuthenticatedRequest = Request & {
   decodedJwt?: {
     sub?: string;
-    [key: string]: unknown;
   };
-}
+};
 
 const resolveAuthenticatedUser = async (req: AuthenticatedRequest) => {
-  const userSub = req.decodedJwt?.sub;
-  if (!userSub) {
+  const decoded = req.decodedJwt ?? {};
+  const tokenUserId = (decoded as { _id?: string })._id;
+  const tokenSub = 'sub' in decoded ? (decoded as { sub?: string }).sub : undefined;
+  const identifier = tokenUserId ?? tokenSub;
+
+  if (!identifier) {
     throw new ExpressError('Authentication required', 401);
   }
 
-  const user = await UserModel.findOne({ sub: userSub });
+  const lookup = mongoose.Types.ObjectId.isValid(identifier)
+    ? UserModel.findById(identifier)
+    : UserModel.findOne({ sub: identifier });
+
+  const user = await lookup;
   if (!user) {
     throw new ExpressError('User not found', 404);
   }
@@ -38,17 +45,12 @@ const getStudioReviews = handleRequest(async (req: Request) => {
   const limit = Math.max(Math.min(Number(req.query.limit) || 10, 100), 1);
   const skip = (page - 1) * limit;
 
-  const [reviews, total, studio] = await Promise.all([
-    ReviewModel.find({ studioId, isVisible: true })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name firstName lastName avatar'),
-    ReviewModel.countDocuments({ studioId, isVisible: true }),
-    StudioModel.findById(studioId).select('averageRating reviewCount')
-  ]);
+  const reviews = await ReviewModel.find({ studioId, isVisible: true })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate('userId', 'name firstName lastName avatar');
 
-  // Return array of reviews to match client expectation
   return reviews;
 });
 
@@ -102,7 +104,6 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
   await review.populate('userId', 'name firstName lastName avatar');
   await updateStudioReviewStats(studioId);
 
-  // Return just the review to match client expectation
   return review;
 });
 
@@ -137,7 +138,6 @@ const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
 
   await updateStudioReviewStats(review.studioId.toString());
 
-  // Return just the review to match client expectation
   return review;
 });
 
