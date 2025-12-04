@@ -15,6 +15,7 @@ import searchRoutes from './api/routes/searchRoutes.js';
 import emailRoutes from './api/routes/emailRoutes.js';
 import invoiceRoutes from './api/routes/invoiceRoutes.js';
 import reservationRoutes from './api/routes/reservationRoutes.js';
+import notificationRoutes from './api/routes/notificationRoutes.js';
 import otpRoutes from './api/routes/otpRoutes.js';
 import sumitRoutes from './api/routes/sumit/paymentRoutes.js';
 import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
@@ -92,6 +93,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reservations', reservationRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 
 app.use("/api/emails", emailRoutes);

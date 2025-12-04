@@ -29,4 +29,28 @@ export const emitReservationUpdate = (reservationIds: string[], customerId:strin
   }
 }
 
+export const emitNotification = (userId: string, notification: any) => {
+  if (io) {
+    // Emit to a specific user's room
+    io.to(`user:${userId}`).emit('notification:new', { notification });
+  }
+}
+
+export const emitNotificationCount = (userId: string, count: number) => {
+  if (io) {
+    // Emit unread count update to specific user
+    io.to(`user:${userId}`).emit('notification:count', { count });
+  }
+}
+
+// Helper to handle user socket connections
+export const handleUserConnection = (socket: any, userId: string) => {
+  // Join user-specific room for targeted notifications
+  socket.join(`user:${userId}`);
+  
+  socket.on('disconnect', () => {
+    socket.leave(`user:${userId}`);
+  });
+}
+
 export default io;
