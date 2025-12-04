@@ -2,6 +2,7 @@ import { ReservationModel } from '../models/reservationModel.js';
 import { emitReservationUpdate } from '../webSockets/socket.js';
 import { UserModel } from '../models/userModel.js';
 import { releaseReservationTimeSlots } from '../api/handlers/bookingHandler.js';
+import { notifyCustomerReservationExpired } from '../utils/notificationUtils.js';
 
 export const RESERVATION_STATUS = {
   PENDING: 'pending' as const,
@@ -39,6 +40,17 @@ export const updateExpiredReservations = async () => {
   
         // Clean up offline cart or trigger query invalidation through socket event
          emitReservationUpdate( expiredReservationIds, customerId || '' );
+        
+        // Notify customers about expired reservations
+        for (const reservation of expiredReservations) {
+          if (reservation.customerId) {
+            await notifyCustomerReservationExpired(
+              reservation._id.toString(),
+              reservation.customerId.toString()
+            );
+          }
+        }
+
         // Update reservation status to expired
         return  await ReservationModel.updateMany(
           {

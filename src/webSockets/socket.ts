@@ -14,6 +14,22 @@ export const initializeSocket = (httpServer: HttpServer) => {
     path: '/socket.io/'
   });
 
+  // Handle socket connections
+  if (io) {
+    io.on('connection', (socket) => {
+      // Handle user room joining
+      socket.on('join:user', (data: { userId: string }) => {
+        if (data.userId) {
+          socket.join(`user:${data.userId}`);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        // Socket automatically leaves all rooms on disconnect
+      });
+    });
+  }
+
   return io;
 };
 

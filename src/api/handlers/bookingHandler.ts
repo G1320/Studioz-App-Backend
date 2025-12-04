@@ -15,6 +15,7 @@ import { ReservationModel } from '../../models/reservationModel.js';
 import { UserModel } from '../../models/userModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
+import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -143,6 +144,24 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     await item.save();
     await user?.save();
     emitAvailabilityUpdate(itemId);
+
+    // Notify vendor (studio owner) about new reservation
+    if (reservation.studioId && reservation._id) {
+      await notifyVendorNewReservation(
+        reservation._id.toString(),
+        reservation.studioId.toString(),
+        itemId.toString(),
+        customerName || user?.name
+      );
+    }
+
+    // Notify customer if reservation is confirmed
+    if (reservation.status === RESERVATION_STATUS.CONFIRMED && customerId) {
+      await notifyCustomerReservationConfirmed(
+        reservation._id.toString(),
+        customerId.toString()
+      );
+    }
 
     return reservation._id;
 });
@@ -279,6 +298,15 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     );
 
     if (reservation) {
+        // Notify vendor about cancellation before deleting
+        if (reservation.studioId && reservation.customerName) {
+          await notifyVendorReservationCancelled(
+            reservation._id.toString(),
+            reservation.studioId.toString(),
+            itemId.toString(),
+            reservation.customerName
+          );
+        }
         await ReservationModel.deleteOne({ _id: reservation._id });
     }
 
@@ -319,6 +347,16 @@ const confirmBooking = handleRequest(async (req: Request) => {
     confirmedReservations.forEach(reservation => {
         emitAvailabilityUpdate(reservation.itemId);
     });
+
+    // Notify customers that their reservations are confirmed
+    for (const reservation of confirmedReservations) {
+      if (reservation.customerId) {
+        await notifyCustomerReservationConfirmed(
+          reservation._id.toString(),
+          reservation.customerId.toString()
+        );
+      }
+    }
   
     return {
         message: 'Reservations confirmed successfully',
