@@ -68,6 +68,18 @@ const getReservationsByStudioId = handleRequest(async (req: Request) => {
   return reservations;
 });
 
+const getReservationsByPhone = handleRequest(async (req: Request) => {
+  const { phone } = req.params;
+
+  if (!phone) throw new ExpressError('Phone number not provided', 400);
+
+  // Update expired reservations before fetching
+  await updateExpiredReservations();
+  
+  const reservations = await ReservationModel.find({ customerPhone: phone });
+  return reservations;
+});
+
 const getReservationById = handleRequest(async (req: Request) => {
   const { reservationId } = req.params;
   if (!reservationId) throw new ExpressError('Reservation ID not provided', 400);
@@ -121,6 +133,7 @@ export default {
   createReservation,
   getReservations,
   getReservationsByStudioId,
+  getReservationsByPhone,
   getReservationById,
   updateReservationById,
   deleteReservationById,
