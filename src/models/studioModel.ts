@@ -42,6 +42,12 @@ const studioSchema = new Schema({
   isWheelchairAccessible: { type: Boolean, required: false },
   isSelfService: { type: Boolean, required: false },
   isFeatured: { type: Boolean, required: false },
+  parking: {
+    type: String,
+    enum: ['none', 'free', 'paid'],
+    required: false,
+    default: 'none'
+  },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   studioAvailability: { type: StudioAvailability, required: false },

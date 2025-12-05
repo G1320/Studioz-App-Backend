@@ -41,6 +41,7 @@ export default interface Studio {
   galleryAudioFiles?: string[];
   coverAudioFile?: string;
   isSelfService?: boolean;
+  parking?: 'none' | 'free' | 'paid';
   createdAt: Date;
   createdBy: string;
   isFeatured?: boolean;
