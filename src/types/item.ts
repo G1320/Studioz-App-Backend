@@ -32,4 +32,5 @@ export default interface Item {
   updatedAt?: Date;
   paypalMerchantId?: string;
   availability?: Availability[];
+  instantBook?: boolean;
 }

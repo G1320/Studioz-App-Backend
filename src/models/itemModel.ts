@@ -42,7 +42,8 @@ const itemSchema: Schema = new Schema({
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },
  sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
-  availability: { type: [availabilitySchema], required: false }
+  availability: { type: [availabilitySchema], required: false },
+  instantBook: { type: Boolean, required: false, default: false }
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);
