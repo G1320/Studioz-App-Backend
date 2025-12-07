@@ -23,13 +23,18 @@ const createReservation = handleRequest(async (req: Request) => {
   const expirationTime = new Date();
   expirationTime.setMinutes(expirationTime.getMinutes() + 15);
 
+  // Set status based on instantBook: CONFIRMED if true, PENDING if false
+  const reservationStatus = item.instantBook 
+    ? RESERVATION_STATUS.CONFIRMED 
+    : RESERVATION_STATUS.PENDING;
+
   const reservation = new ReservationModel({
     studioId,
     itemId,
     itemName: item.name,
     userId,
     reservationDetails,
-    status: RESERVATION_STATUS.CONFIRMED,
+    status: reservationStatus,
     expiration: expirationTime
   });
 

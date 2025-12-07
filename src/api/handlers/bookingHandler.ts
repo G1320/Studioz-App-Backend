@@ -111,6 +111,12 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         throw new ExpressError('One or more requested time slots are not available', 400);
     }
     const expiration = new Date(Date.now() + 15 * 60 * 1000); // 15-minute hold
+    
+    // Set status based on instantBook: CONFIRMED if true, PENDING if false
+    const reservationStatus = item.instantBook 
+        ? RESERVATION_STATUS.CONFIRMED 
+        : RESERVATION_STATUS.PENDING;
+    
     const reservation = new ReservationModel({
         itemId,
         itemName:{
@@ -126,7 +132,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         customerName,
         customerPhone,
         comment,
-        status: RESERVATION_STATUS.CONFIRMED
+        status: reservationStatus
 
     });
     
