@@ -41,9 +41,10 @@ const itemSchema: Schema = new Schema({
   address: { type: String, required: false },
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },
- sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
+  sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
   availability: { type: [availabilitySchema], required: false },
-  instantBook: { type: Boolean, required: false, default: false }
+  instantBook: { type: Boolean, required: false, default: false },
+  addOnIds: [{ type: Schema.Types.ObjectId, ref: 'AddOn' }]
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);

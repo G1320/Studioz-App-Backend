@@ -16,6 +16,16 @@ const createAddOn = handleRequest(async (req: Request) => {
   addOn.updatedAt = new Date();
   await addOn.save();
 
+  // Add the add-on ID to the item's addOnIds array
+  if (!item.addOnIds) {
+    item.addOnIds = [];
+  }
+  if (!item.addOnIds.includes(addOn._id)) {
+    item.addOnIds.push(addOn._id);
+    item.updatedAt = new Date();
+    await item.save();
+  }
+
   return addOn;
 });
 
@@ -81,8 +91,22 @@ const deleteAddOnById = handleRequest(async (req: Request) => {
   const { addOnId } = req.params;
   if (!addOnId) throw new ExpressError('Add-on ID not provided', 400);
 
-  const addOn = await AddOnModel.findByIdAndDelete(addOnId);
+  const addOn = await AddOnModel.findById(addOnId);
   if (!addOn) throw new ExpressError('Add-on not found', 404);
+
+  // Remove the add-on ID from the item's addOnIds array
+  if (addOn.itemId) {
+    const item = await ItemModel.findById(addOn.itemId);
+    if (item && item.addOnIds) {
+      item.addOnIds = item.addOnIds.filter(
+        (id) => id.toString() !== addOnId.toString()
+      );
+      item.updatedAt = new Date();
+      await item.save();
+    }
+  }
+
+  await AddOnModel.findByIdAndDelete(addOnId);
 
   return addOn;
 });

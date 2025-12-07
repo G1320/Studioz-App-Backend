@@ -33,4 +33,5 @@ export default interface Item {
   paypalMerchantId?: string;
   availability?: Availability[];
   instantBook?: boolean;
+  addOnIds?: string[];
 }
