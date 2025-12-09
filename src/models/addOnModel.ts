@@ -11,7 +11,7 @@ const addOnSchema: Schema = new Schema({
   description: { type: translationSchema, required: false },
   price: { type: Number, required: true },
   pricePer: { type: String, required: false },
-  itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: true },
+  itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false },
   isActive: { type: Boolean, required: false, default: true },
   idx: { type: Number, required: false },
   imageUrl: { type: String, required: false },
