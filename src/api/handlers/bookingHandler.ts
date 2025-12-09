@@ -150,6 +150,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     await item.save();
     await user?.save();
     emitAvailabilityUpdate(itemId);
+    emitReservationUpdate(
+      [reservation._id.toString()],
+      reservation.customerId?.toString() || reservation.userId?.toString() || ''
+    );
 
     // Notify vendor (studio owner) about new reservation
     if (reservation.studioId && reservation._id) {

@@ -42,6 +42,7 @@ const createReservation = handleRequest(async (req: Request) => {
   });
 
   await reservation.save();
+  emitReservationUpdate([reservation._id.toString()], userId.toString());
   return reservation;
 });
 
