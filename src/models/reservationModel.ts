@@ -23,7 +23,7 @@ const ReservationSchema = new mongoose.Schema({
     customerPhone: { type: String, required: false },
     comment: { type: String, required: false },
     orderId: { type: String, required: false },
-  });
+  }, { timestamps: true });
 
   ReservationSchema.pre('save', function (next) {
     this.totalPrice = this.itemPrice * this.timeSlots.length;
