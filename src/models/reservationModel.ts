@@ -13,7 +13,7 @@ const ReservationSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     bookingDate: { type: String, required: true },
     timeSlots: [{ type: String, required: true }],
-    status: { type: String, enum: ['pending', 'confirmed', 'expired'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'confirmed', 'expired', 'canceled', 'rejected'], default: 'pending' },
     expiration: { type: Date, required: true }, 
     itemPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: false },

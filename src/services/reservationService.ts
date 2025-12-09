@@ -8,6 +8,8 @@ export const RESERVATION_STATUS = {
   PENDING: 'pending' as const,
   EXPIRED: 'expired' as const,
   CONFIRMED: 'confirmed' as const,
+  CANCELED: 'canceled' as const,
+  REJECTED: 'rejected' as const,
 } as const;
 
 export type ReservationStatus = typeof RESERVATION_STATUS[keyof typeof RESERVATION_STATUS];
