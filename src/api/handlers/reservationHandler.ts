@@ -5,6 +5,7 @@ import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../services/reservationService.js';
+import { emitReservationUpdate } from '../../webSockets/socket.js';
 import { releaseReservationTimeSlots } from '../handlers/bookingHandler.js';
 import { notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
 
@@ -123,6 +124,13 @@ const updateReservationById = handleRequest(async (req: Request) => {
     { new: true }
   );
   
+  if (updatedReservation) {
+    emitReservationUpdate(
+      [updatedReservation._id.toString()],
+      updatedReservation.customerId?.toString() || updatedReservation.userId?.toString() || ''
+    );
+  }
+
   return updatedReservation;
 });
 
@@ -157,6 +165,11 @@ const cancelReservationById = handleRequest(async (req: Request) => {
       reservation.customerName
     );
   }
+
+  emitReservationUpdate(
+    [reservation._id.toString()],
+    reservation.customerId?.toString() || reservation.userId?.toString() || ''
+  );
 
   return reservation;
 });

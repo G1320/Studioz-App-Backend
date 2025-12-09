@@ -10,7 +10,7 @@ import {
     removeTimeSlots,
     addTimeSlots
 } from '../../utils/timeSlotUtils.js';
-import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
+import { emitAvailabilityUpdate, emitReservationUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
 import { UserModel } from '../../models/userModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
@@ -259,6 +259,11 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     if (hours === 0 && reservation) {
         reservation.status = RESERVATION_STATUS.CANCELED;
         await reservation.save();
+
+        emitReservationUpdate(
+          [reservation._id.toString()],
+          reservation.customerId?.toString() || reservation.userId?.toString() || ''
+        );
     }
     await item.save();
     emitAvailabilityUpdate(itemId);
@@ -317,6 +322,11 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
 
         reservation.status = RESERVATION_STATUS.CANCELED;
         await reservation.save();
+
+        emitReservationUpdate(
+          [reservation._id.toString()],
+          reservation.customerId?.toString() || reservation.userId?.toString() || ''
+        );
     }
 
 
@@ -355,6 +365,10 @@ const confirmBooking = handleRequest(async (req: Request) => {
     // Emit socket events for each updated item
     confirmedReservations.forEach(reservation => {
         emitAvailabilityUpdate(reservation.itemId);
+        emitReservationUpdate(
+          [reservation._id.toString()],
+          reservation.customerId?.toString() || reservation.userId?.toString() || ''
+        );
     });
 
     // Notify customers that their reservations are confirmed
