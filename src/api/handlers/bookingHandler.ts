@@ -257,7 +257,8 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     );
 
     if (hours === 0 && reservation) {
-        await ReservationModel.deleteOne({ _id: reservation._id });
+        reservation.status = RESERVATION_STATUS.CANCELED;
+        await reservation.save();
     }
     await item.save();
     emitAvailabilityUpdate(itemId);
@@ -304,7 +305,7 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     );
 
     if (reservation) {
-        // Notify vendor about cancellation before deleting
+        // Notify vendor about cancellation before updating status
         if (reservation.studioId && reservation.customerName) {
           await notifyVendorReservationCancelled(
             reservation._id.toString(),
@@ -313,7 +314,9 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
             reservation.customerName
           );
         }
-        await ReservationModel.deleteOne({ _id: reservation._id });
+
+        reservation.status = RESERVATION_STATUS.CANCELED;
+        await reservation.save();
     }
 
 

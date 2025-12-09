@@ -128,10 +128,16 @@ const deleteReservationById = handleRequest(async (req: Request) => {
   const { reservationId } = req.params;
   if (!reservationId) throw new ExpressError('Reservation ID not provided', 400);
 
-  const deletedReservation = await ReservationModel.findByIdAndDelete(reservationId);
-  if (!deletedReservation) throw new ExpressError('Reservation not found', 404);
+  const reservation = await ReservationModel.findById(reservationId);
+  if (!reservation) throw new ExpressError('Reservation not found', 404);
 
-  return deletedReservation;
+  // Treat DELETE as cancel: keep record but mark as canceled
+  if (reservation.status !== RESERVATION_STATUS.CANCELED) {
+    reservation.status = RESERVATION_STATUS.CANCELED;
+    await reservation.save();
+  }
+
+  return reservation;
 });
 
 export default {
