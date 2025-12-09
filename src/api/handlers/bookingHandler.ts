@@ -257,7 +257,7 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     );
 
     if (hours === 0 && reservation) {
-        reservation.status = RESERVATION_STATUS.CANCELED;
+        reservation.status = RESERVATION_STATUS.CANCELLED;
         await reservation.save();
 
         emitReservationUpdate(
@@ -320,7 +320,7 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
           );
         }
 
-        reservation.status = RESERVATION_STATUS.CANCELED;
+        reservation.status = RESERVATION_STATUS.CANCELLED;
         await reservation.save();
 
         emitReservationUpdate(

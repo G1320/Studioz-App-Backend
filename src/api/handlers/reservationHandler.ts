@@ -141,9 +141,9 @@ const cancelReservationById = handleRequest(async (req: Request) => {
   const reservation = await ReservationModel.findById(reservationId);
   if (!reservation) throw new ExpressError('Reservation not found', 404);
 
-  // If already canceled/rejected/expired, return as-is
+  // If already cancelled/rejected/expired, return as-is
   if (
-    reservation.status === RESERVATION_STATUS.CANCELED ||
+    reservation.status === RESERVATION_STATUS.CANCELLED ||
     reservation.status === RESERVATION_STATUS.REJECTED ||
     reservation.status === RESERVATION_STATUS.EXPIRED
   ) {
@@ -153,7 +153,7 @@ const cancelReservationById = handleRequest(async (req: Request) => {
   // Release held time slots back to availability
   await releaseReservationTimeSlots(reservation);
 
-  reservation.status = RESERVATION_STATUS.CANCELED;
+  reservation.status = RESERVATION_STATUS.CANCELLED;
   await reservation.save();
 
   // Notify vendor of the cancellation
