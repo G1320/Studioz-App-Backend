@@ -5,6 +5,8 @@ import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../services/reservationService.js';
+import { releaseReservationTimeSlots } from '../handlers/bookingHandler.js';
+import { notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails } = req.body;
@@ -124,17 +126,36 @@ const updateReservationById = handleRequest(async (req: Request) => {
   return updatedReservation;
 });
 
-const deleteReservationById = handleRequest(async (req: Request) => {
+const cancelReservationById = handleRequest(async (req: Request) => {
   const { reservationId } = req.params;
   if (!reservationId) throw new ExpressError('Reservation ID not provided', 400);
 
   const reservation = await ReservationModel.findById(reservationId);
   if (!reservation) throw new ExpressError('Reservation not found', 404);
 
-  // Treat DELETE as cancel: keep record but mark as canceled
-  if (reservation.status !== RESERVATION_STATUS.CANCELED) {
-    reservation.status = RESERVATION_STATUS.CANCELED;
-    await reservation.save();
+  // If already canceled/rejected/expired, return as-is
+  if (
+    reservation.status === RESERVATION_STATUS.CANCELED ||
+    reservation.status === RESERVATION_STATUS.REJECTED ||
+    reservation.status === RESERVATION_STATUS.EXPIRED
+  ) {
+    return reservation;
+  }
+
+  // Release held time slots back to availability
+  await releaseReservationTimeSlots(reservation);
+
+  reservation.status = RESERVATION_STATUS.CANCELED;
+  await reservation.save();
+
+  // Notify vendor of the cancellation
+  if (reservation.studioId) {
+    await notifyVendorReservationCancelled(
+      reservation._id.toString(),
+      reservation.studioId.toString(),
+      reservation.itemId.toString(),
+      reservation.customerName
+    );
   }
 
   return reservation;
@@ -147,5 +168,5 @@ export default {
   getReservationsByPhone,
   getReservationById,
   updateReservationById,
-  deleteReservationById,
+  cancelReservationById,
 };

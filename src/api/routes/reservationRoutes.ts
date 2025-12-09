@@ -10,6 +10,8 @@ router.get("/studio/:studioId", reservationHandler.getReservationsByStudioId);
 router.get("/phone/:phone", reservationHandler.getReservationsByPhone);
 router.get("/:reservationId", reservationHandler.getReservationById);
 router.put("/:reservationId", reservationHandler.updateReservationById);
-router.delete("/:reservationId", reservationHandler.deleteReservationById);
+// Cancel reservation (was delete)
+router.patch("/:reservationId/cancel", reservationHandler.cancelReservationById);
+router.delete("/:reservationId", reservationHandler.cancelReservationById); // backward compatibility
 
 export default router;
