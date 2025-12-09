@@ -35,6 +35,7 @@ const createReservation = handleRequest(async (req: Request) => {
     studioId,
     itemId,
     itemName: item.name,
+    studioName: studio.name,
     userId,
     reservationDetails,
     status: reservationStatus,

@@ -123,6 +123,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
             en: item.name?.en,
             he: item.name?.he
         },
+        studioName: item.studioName,
         bookingDate,
         timeSlots,
         expiration,

@@ -18,6 +18,7 @@ const ReservationSchema = new mongoose.Schema({
     itemPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: false },
     studioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Studio', required: true },
+    studioName: { type: translationSchema, required: false },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     customerName: { type: String, required: false },
     customerPhone: { type: String, required: false },

@@ -16,6 +16,10 @@ itemName: {
     en: string;
     he?: string;
   };
+studioName?: {
+    en?: string;
+    he?: string;
+};
 itemPrice?: number;
 totalPrice?: number;
 orderId?: string;
