@@ -7,7 +7,11 @@ import handleRequest from '../../utils/requestHandler.js';
 import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../services/reservationService.js';
 import { emitReservationUpdate } from '../../webSockets/socket.js';
 import { releaseReservationTimeSlots } from '../handlers/bookingHandler.js';
-import { notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
+import {
+  notifyVendorReservationCancelled,
+  notifyCustomerReservationConfirmed,
+  notifyBookerReservationCancelled
+} from '../../utils/notificationUtils.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails } = req.body;
@@ -120,6 +124,8 @@ const updateReservationById = handleRequest(async (req: Request) => {
     throw new ExpressError('Cannot update expired reservation', 400);
   }
 
+  const previousStatus = reservation.status;
+
   const updatedReservation = await ReservationModel.findByIdAndUpdate(
     reservationId,
     req.body,
@@ -127,10 +133,27 @@ const updateReservationById = handleRequest(async (req: Request) => {
   );
   
   if (updatedReservation) {
+    const bookerId = updatedReservation.customerId?.toString() || updatedReservation.userId?.toString() || '';
+
     emitReservationUpdate(
       [updatedReservation._id.toString()],
-      updatedReservation.customerId?.toString() || updatedReservation.userId?.toString() || ''
+      bookerId
     );
+
+    // Notify customer when status changes to confirmed or cancelled
+    if (previousStatus !== updatedReservation.status && bookerId) {
+      if (updatedReservation.status === RESERVATION_STATUS.CONFIRMED) {
+        await notifyCustomerReservationConfirmed(
+          updatedReservation._id.toString(),
+          bookerId
+        );
+      } else if (updatedReservation.status === RESERVATION_STATUS.CANCELLED) {
+        await notifyBookerReservationCancelled(
+          updatedReservation._id.toString(),
+          bookerId
+        );
+      }
+    }
   }
 
   return updatedReservation;
@@ -165,6 +188,15 @@ const cancelReservationById = handleRequest(async (req: Request) => {
       reservation.studioId.toString(),
       reservation.itemId.toString(),
       reservation.customerName
+    );
+  }
+
+  // Notify customer of the cancellation
+  const bookerId = reservation.customerId?.toString() || reservation.userId?.toString() || '';
+  if (bookerId) {
+    await notifyBookerReservationCancelled(
+      reservation._id.toString(),
+      bookerId
     );
   }
 

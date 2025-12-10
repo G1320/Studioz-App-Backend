@@ -137,6 +137,45 @@ export const notifyCustomerReservationConfirmed = async (
 };
 
 /**
+ * Notify the booker when a reservation is cancelled
+ */
+export const notifyBookerReservationCancelled = async (
+  reservationId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const reservation = await ReservationModel.findById(reservationId);
+    if (!reservation) {
+      console.log('Reservation not found for notification');
+      return;
+    }
+
+    const itemName = reservation.itemName?.en || 'your booking';
+    const bookingDate = reservation.bookingDate;
+    const startTime = reservation.timeSlots?.[0] || '';
+
+    const title = 'Booking Cancelled';
+    const message = `Your booking for ${itemName} on ${bookingDate}${startTime ? ` at ${startTime}` : ''} was cancelled`;
+    const actionUrl = `/reservations`;
+
+    await createAndEmitNotification(
+      userId,
+      'reservation_cancelled',
+      title,
+      message,
+      {
+        reservationId,
+        itemId: reservation.itemId.toString(),
+        studioId: reservation.studioId.toString()
+      },
+      actionUrl
+    );
+  } catch (error) {
+    console.error('Error notifying booker of cancelled reservation:', error);
+  }
+};
+
+/**
  * Notify customer when reservation expires
  */
 export const notifyCustomerReservationExpired = async (
