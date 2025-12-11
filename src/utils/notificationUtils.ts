@@ -149,9 +149,14 @@ export const notifyCustomerReservationConfirmed = async (
       return;
     }
 
+    const customer = await UserModel.findById(customerId);
+    const studio = await StudioModel.findById(reservation.studioId);
+    const item = await ItemModel.findById(reservation.itemId);
+
     const itemName = reservation.itemName?.en || 'your booking';
     const bookingDate = reservation.bookingDate;
     const startTime = reservation.timeSlots[0] || '';
+    const duration = `${reservation.timeSlots.length || 1}h`;
 
     const title = 'Booking Confirmed';
     const message = `Your booking for ${itemName} on ${bookingDate} at ${startTime} is confirmed`;
@@ -169,6 +174,35 @@ export const notifyCustomerReservationConfirmed = async (
       },
       actionUrl
     );
+
+    // Send Brevo transactional email (template 12) to customer
+    if (customer?.email) {
+      const manageUrl =
+        process.env.FRONTEND_URL
+          ? `${process.env.FRONTEND_URL}/reservations/${reservationId}`
+          : `/reservations/${reservationId}`;
+
+      await sendTemplateEmail({
+        to: [{ email: customer.email, name: customer.name }],
+        templateId: 12,
+        params: {
+          customerName: customer.name || 'Customer',
+          studioName: studio?.name?.en || studio?.name?.he || 'Studio',
+          itemName: item?.name?.en || item?.name?.he || itemName,
+          bookingDate,
+          startTime,
+          duration,
+          price: reservation.totalPrice ?? reservation.itemPrice ?? 0,
+          currency: 'ILS',
+          reservationId,
+          location: [studio?.city, studio?.address].filter(Boolean).join(' · '),
+          specialRequests: reservation.comment || 'None',
+          manageUrl
+        }
+      });
+    } else {
+      console.log('Customer email not found, skipping order confirmation email');
+    }
   } catch (error) {
     console.error('Error notifying customer of confirmed reservation:', error);
   }
