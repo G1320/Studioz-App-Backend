@@ -39,6 +39,7 @@ const itemSchema: Schema = new Schema({
   updatedAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   address: { type: String, required: false },
+  city: { type: String, required: false },
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },
   sellerId: { type: Schema.Types.ObjectId, ref: 'User' },

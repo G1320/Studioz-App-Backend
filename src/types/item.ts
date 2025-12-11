@@ -15,6 +15,7 @@ export default interface Item {
     he?: string;
   }
   address?: string;
+  city?: string;
   lat?: number;
   lng?: number;
   categories?: string[];
