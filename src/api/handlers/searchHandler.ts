@@ -5,43 +5,64 @@ import { UserModel } from "../../models/userModel.js";
 import { Request, Response } from 'express';  // Importing Request and Response for type safety
 
 const performSearch = async <T>(
-    model: Model<T>,
-    searchTerm: string,
-    paths: string[],
-    indexName = "default"
-    ): Promise<T[]> => {
-    try {
-        return await model.aggregate([
-            {
-                $search: {
-                    index: indexName,
-                    text: {
-                        query: searchTerm,
-                        path: paths,
-                        fuzzy: {
-                            maxEdits: 2,
-                            prefixLength: 2,
-                        },
-                    },
+  model: Model<T>,
+  searchTerm: string,
+  textPaths: string[],
+  indexName = "default",
+  autocompletePaths: string[] = textPaths
+): Promise<T[]> => {
+  try {
+    const autocompleteShould = autocompletePaths.map((path) => ({
+      autocomplete: {
+        query: searchTerm,
+        path,
+        fuzzy: {
+          maxEdits: 1,
+          prefixLength: 2,
+        },
+      },
+    }));
+
+    return await model.aggregate([
+      {
+        $search: {
+          index: indexName,
+          compound: {
+            should: [
+              ...autocompleteShould,
+              {
+                text: {
+                  query: searchTerm,
+                path: textPaths,
+                  fuzzy: {
+                    maxEdits: 2,
+                    prefixLength: 2,
+                  },
                 },
-            },
-            { $limit: 20 },
-            {
-                $project: {
-                    name: 1,
-                    description: 1,
-                    studioName: 1, 
-                    price: 1,
-                    categories: 1,
-                    subCategories: 1,
-                    score: { $meta: "searchScore" }
-                  }
-            },
-        ]);
-    } catch (error) {
-        console.error(`Error performing search on ${model.collection.name}:`, error);
-        throw new Error("Search operation failed");
-    }
+              },
+            ],
+          },
+        },
+      },
+      { $addFields: { score: { $meta: "searchScore" } } },
+      { $sort: { score: -1 } },
+      { $limit: 20 },
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          studioName: 1,
+          price: 1,
+          categories: 1,
+          subCategories: 1,
+          score: 1,
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error(`Error performing search on ${model.collection.name}:`, error);
+    throw new Error("Search operation failed");
+  }
 };
 
 export const searchStudiosAndItems = async (req: Request, res: Response) => {
@@ -53,8 +74,20 @@ export const searchStudiosAndItems = async (req: Request, res: Response) => {
 
     try {
         const [studios, items] = await Promise.all([
-            performSearch(StudioModel, searchTerm, ['name.en', 'name.he', 'description.en', 'description.he'], 'studios'),
-            performSearch(ItemModel, searchTerm, ['name.en', 'name.he', 'description.en', 'description.he'], 'items'),
+      performSearch(
+        StudioModel,
+        searchTerm,
+        ['name.en', 'name.he', 'description.en', 'description.he'],
+        'studios',
+        ['name.en', 'name.he']
+      ),
+      performSearch(
+        ItemModel,
+        searchTerm,
+        ['name.en', 'name.he', 'description.en', 'description.he'],
+        'items',
+        ['name.en', 'name.he']
+      ),
         ]);
         return res.status(200).json({
             studios,
@@ -77,8 +110,9 @@ export const searchItems = async (req: Request, res: Response) => {
         const items = await performSearch(
             ItemModel,
             searchTerm as string,
-            ["name", "description"],
-            "items" 
+      ["name.en", "name.he", "description.en", "description.he"],
+      "items",
+      ["name.en", "name.he"]
         );        console.log('items: ', items);
         return res.status(200).json(items);
     } catch (error) {
@@ -98,8 +132,9 @@ export const searchStudios = async (req: Request, res: Response) => {
         const studios = await performSearch(
             StudioModel,
             searchTerm as string,
-            ["name", "description"],
-            "studios" 
+      ["name.en", "name.he", "description.en", "description.he"],
+      "studios",
+      ["name.en", "name.he"]
         );        console.log('studios: ', studios);
         return res.status(200).json(studios);
     } catch (error) {
@@ -118,8 +153,9 @@ export const searchUsers = async (req: Request, res: Response) => {
         const users = await performSearch(
             UserModel,
             searchTerm as string,
-            ["name", "description"],
-            "users" 
+      ["name", "description"],
+      "users",
+      ["name"]
         );        console.log('users: ', users);
         return res.status(200).json(users);
     } catch (error) {
