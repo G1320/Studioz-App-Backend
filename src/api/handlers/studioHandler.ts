@@ -6,11 +6,32 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { UserModel } from '../../models/userModel.js';
 
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const createStudio = handleRequest(async (req: Request) => {
   const { userId } = req.params;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
   const user = await UserModel.findById(userId)
+
+  // Prevent duplicate studio names (English or Hebrew, case-insensitive)
+  const nameEn = req.body?.name?.en?.trim();
+  const nameHe = req.body?.name?.he?.trim();
+
+  const nameQueries = [];
+  if (nameEn) {
+    nameQueries.push({ 'name.en': { $regex: `^${escapeRegex(nameEn)}$`, $options: 'i' } });
+  }
+  if (nameHe) {
+    nameQueries.push({ 'name.he': { $regex: `^${escapeRegex(nameHe)}$`, $options: 'i' } });
+  }
+
+  if (nameQueries.length) {
+    const existingStudio = await StudioModel.findOne({ $or: nameQueries });
+    if (existingStudio) {
+      throw new ExpressError('Studio name already exists', 409);
+    }
+  }
 
   const studio = new StudioModel(req.body);
   studio.createdBy = userId;
