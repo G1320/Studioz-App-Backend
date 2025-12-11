@@ -3,6 +3,8 @@ import { emitNotification, emitNotificationCount } from '../webSockets/socket.js
 import { StudioModel } from '../models/studioModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
+import { UserModel } from '../models/userModel.js';
+import { sendTemplateEmail } from '../api/handlers/emailHandler.js';
 import Notification, { NotificationType } from '../types/notification.js';
 
 interface NotificationData {
@@ -46,7 +48,7 @@ export const createAndEmitNotification = async (
 
 /**
  * Notify vendor when a new reservation is created
- */
+*/
 export const notifyVendorNewReservation = async (
   reservationId: string,
   studioId: string,
@@ -60,21 +62,27 @@ export const notifyVendorNewReservation = async (
       console.log('Studio or studio owner not found for notification');
       return;
     }
-
+    
     // Get item details
     const item = await ItemModel.findById(itemId);
     const itemName = item?.name?.en || 'Item';
-
+    
     // Get reservation details
     const reservation = await ReservationModel.findById(reservationId);
     if (!reservation) {
       console.log('Reservation not found for notification');
       return;
     }
+    
+    const studioOwner = await UserModel.findById(studio.createdBy);
+    if (!studioOwner?.email) {
+      console.log('Studio owner email not found, skipping email notification');
+    }
 
     const customerDisplayName = customerName || reservation.customerName || 'A customer';
     const bookingDate = reservation.bookingDate;
     const startTime = reservation.timeSlots[0] || '';
+    const duration = `${reservation.timeSlots.length || 1}h`;
 
     const title = 'New Booking';
     const message = `${customerDisplayName} booked ${itemName} on ${bookingDate} at ${startTime}`;
@@ -92,6 +100,36 @@ export const notifyVendorNewReservation = async (
       },
       actionUrl
     );
+
+    // Send Brevo transactional email (template 11) to studio owner
+    if (studioOwner?.email) {
+      const manageUrl =
+        process.env.FRONTEND_URL
+          ? `${process.env.FRONTEND_URL}/dashboard/reservations/${reservationId}`
+          : `/dashboard/reservations/${reservationId}`;
+
+      await sendTemplateEmail({
+        to: [{ email: studioOwner.email, name: studioOwner.name }],
+        templateId: 11,
+        params: {
+          studioOwnerName: studioOwner.name || 'Studio owner',
+          studioName: studio.name?.en || studio.name?.he || 'Your studio',
+          itemName: item?.name?.en || item?.name?.he || 'Experience',
+          bookingDate,
+          startTime,
+          duration,
+          guestName: customerDisplayName,
+          guestEmail: reservation.customerId ? (await UserModel.findById(reservation.customerId))?.email || '' : '',
+          guestPhone: reservation.customerPhone || '',
+          price: reservation.totalPrice ?? reservation.itemPrice ?? 0,
+          currency: 'ILS',
+          reservationId,
+          location: [studio.city, studio.address].filter(Boolean).join(' · '),
+          specialRequests: reservation.comment || 'None',
+          manageUrl
+        }
+      });
+    }
   } catch (error) {
     console.error('Error notifying vendor of new reservation:', error);
   }
