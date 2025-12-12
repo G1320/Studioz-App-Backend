@@ -16,7 +16,6 @@ import { UserModel } from '../../models/userModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
 import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
-import { calculateReservationTotalPrice } from '../../utils/reservationPriceUtils.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -117,13 +116,6 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const reservationStatus = item.instantBook 
         ? RESERVATION_STATUS.CONFIRMED 
         : RESERVATION_STATUS.PENDING;
-    
-    // Calculate total price including add-ons
-    const totalPrice = await calculateReservationTotalPrice(
-        item.price || 0,
-        timeSlots,
-        addOnIds
-    );
 
     const reservation = new ReservationModel({
         itemId,
@@ -136,7 +128,6 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         timeSlots,
         expiration,
         itemPrice: item.price||0,
-        totalPrice,
         studioId: item.studioId,
         customerId,
         customerName,
@@ -144,7 +135,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         comment,
         status: reservationStatus,
         addOnIds: addOnIds || []
-
+        // totalPrice will be calculated by the pre-save hook
     });
     
     // Remove all selected time slots
@@ -222,16 +213,11 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
         { new: true, upsert: true }
         );
     
-    // Recalculate totalPrice after adding time slot
+    // Mark timeSlots as modified so pre-save hook knows to recalculate totalPrice
+    // Since findOneAndUpdate doesn't track modifications, we need to explicitly mark it
     if (reservation) {
-        // Convert ObjectIds to strings
-        const addOnIdsAsStrings = reservation.addOnIds?.map(id => id.toString()) || [];
-        reservation.totalPrice = await calculateReservationTotalPrice(
-            reservation.itemPrice || 0,
-            reservation.timeSlots || [],
-            addOnIdsAsStrings
-        );
-        await reservation.save();
+        reservation.markModified('timeSlots');
+        await reservation.save(); // Pre-save hook will recalculate totalPrice
     }
 
     // Update item availability with the modified dateAvailability
@@ -275,16 +261,11 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
         { new: true }
         );
 
-    // Recalculate totalPrice after removing time slot
+    // Mark timeSlots as modified so pre-save hook knows to recalculate totalPrice
+    // Since findOneAndUpdate doesn't track modifications, we need to explicitly mark it
     if (reservation) {
-        // Convert ObjectIds to strings
-        const addOnIdsAsStrings = reservation.addOnIds?.map(id => id.toString()) || [];
-        reservation.totalPrice = await calculateReservationTotalPrice(
-            reservation.itemPrice || 0,
-            reservation.timeSlots || [],
-            addOnIdsAsStrings
-        );
-        await reservation.save();
+        reservation.markModified('timeSlots');
+        await reservation.save(); // Pre-save hook will recalculate totalPrice
     }
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>

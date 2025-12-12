@@ -28,23 +28,16 @@ const ReservationSchema = new mongoose.Schema({
     addOnIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AddOn', required: false }],
   }, { timestamps: true });
 
-  // Pre-save hook as a safety net to ensure totalPrice is calculated
+  // Pre-save hook to ensure totalPrice is calculated
   // Note: This won't run for findOneAndUpdate/findByIdAndUpdate operations
-  // Handlers should explicitly calculate and set totalPrice when using those methods
+  // Handlers using those methods should mark price-affecting fields as modified, then call .save()
   ReservationSchema.pre('save', async function (next) {
-    // Recalculate if:
-    // 1. This is a new document (totalPrice not set)
-    // 2. Price-affecting fields have been modified
-    const shouldRecalculate = 
-      this.isNew || 
-      this.totalPrice === undefined || 
-      this.totalPrice === null ||
+    const priceFieldsModified = 
       this.isModified('addOnIds') ||
       this.isModified('timeSlots') ||
       this.isModified('itemPrice');
     
-    if (shouldRecalculate) {
-      // Convert ObjectIds to strings for the utility function
+    if (this.isNew || !this.totalPrice || priceFieldsModified) {
       const addOnIdsAsStrings = this.addOnIds?.map(id => id.toString()) || [];
       this.totalPrice = await calculateReservationTotalPrice(
         this.itemPrice || 0,

@@ -12,7 +12,6 @@ import {
   notifyCustomerReservationConfirmed,
   notifyBookerReservationCancelled
 } from '../../utils/notificationUtils.js';
-import { calculateReservationTotalPrice } from '../../utils/reservationPriceUtils.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails, addOnIds } = req.body;
@@ -127,7 +126,7 @@ const updateReservationById = handleRequest(async (req: Request) => {
   }
 
   const previousStatus = reservation.status;
-  
+
   // Check if fields that affect price are being updated
   const priceAffectingFields = ['addOnIds', 'timeSlots', 'itemPrice'];
   const shouldRecalculatePrice = priceAffectingFields.some(field => req.body[field] !== undefined);
@@ -139,16 +138,13 @@ const updateReservationById = handleRequest(async (req: Request) => {
   );
   
   if (updatedReservation) {
-    // Recalculate totalPrice if price-affecting fields were updated
+    // Mark price-affecting fields as modified so pre-save hook knows to recalculate totalPrice
+    // Since findByIdAndUpdate doesn't track modifications, we need to explicitly mark them
     if (shouldRecalculatePrice) {
-      // Convert ObjectIds to strings
-      const addOnIdsAsStrings = updatedReservation.addOnIds?.map(id => id.toString()) || [];
-      updatedReservation.totalPrice = await calculateReservationTotalPrice(
-        updatedReservation.itemPrice || 0,
-        updatedReservation.timeSlots || [],
-        addOnIdsAsStrings
-      );
-      await updatedReservation.save();
+      if (req.body.addOnIds !== undefined) updatedReservation.markModified('addOnIds');
+      if (req.body.timeSlots !== undefined) updatedReservation.markModified('timeSlots');
+      if (req.body.itemPrice !== undefined) updatedReservation.markModified('itemPrice');
+      await updatedReservation.save(); // Pre-save hook will recalculate totalPrice
     }
 
     const bookerId = updatedReservation.customerId?.toString() || updatedReservation.userId?.toString() || '';
