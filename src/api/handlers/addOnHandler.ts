@@ -140,8 +140,10 @@ const createAddOnsBatch = handleRequest(async (req: Request) => {
   // Create all add-ons
   const createdAddOns = [];
   for (const addOnData of addOns) {
+    // Remove _id if present (Mongoose will generate it)
+    const { _id, ...addOnFields } = addOnData;
     const addOn = new AddOnModel({
-      ...addOnData,
+      ...addOnFields,
       itemId,
       updatedAt: new Date()
     });
