@@ -3,6 +3,7 @@ import addOnHandler from '../handlers/addOnHandler.js';
 
 const router = express.Router();
 
+router.post('/batch', addOnHandler.createAddOnsBatch);
 router.post('/', addOnHandler.createAddOn);
 router.get('/', addOnHandler.getAddOns);
 router.get('/item/:itemId', addOnHandler.getAddOnsByItemId);

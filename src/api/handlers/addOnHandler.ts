@@ -111,8 +111,59 @@ const deleteAddOnById = handleRequest(async (req: Request) => {
   return addOn;
 });
 
+const createAddOnsBatch = handleRequest(async (req: Request) => {
+  const { itemId, addOns } = req.body;
+  
+  if (!itemId) throw new ExpressError('Item ID not provided', 400);
+  if (!addOns || !Array.isArray(addOns) || addOns.length === 0) {
+    throw new ExpressError('Add-ons array is required and must not be empty', 400);
+  }
+
+  const item = await ItemModel.findById(itemId);
+  if (!item) throw new ExpressError('Item not found', 404);
+
+  // Validate each add-on has required fields
+  for (const addOnData of addOns) {
+    if (!addOnData.name?.en) {
+      throw new ExpressError('Add-on must have a name (en)', 400);
+    }
+    if (addOnData.price === undefined || addOnData.price === null) {
+      throw new ExpressError('Add-on must have a price', 400);
+    }
+  }
+
+  // Initialize item's addOnIds array if it doesn't exist
+  if (!item.addOnIds) {
+    item.addOnIds = [];
+  }
+
+  // Create all add-ons
+  const createdAddOns = [];
+  for (const addOnData of addOns) {
+    const addOn = new AddOnModel({
+      ...addOnData,
+      itemId,
+      updatedAt: new Date()
+    });
+    await addOn.save();
+    createdAddOns.push(addOn);
+
+    // Add the add-on ID to the item's addOnIds array
+    if (!item.addOnIds.includes(addOn._id)) {
+      item.addOnIds.push(addOn._id);
+    }
+  }
+
+  // Update item with all add-on IDs
+  item.updatedAt = new Date();
+  await item.save();
+
+  return createdAddOns;
+});
+
 export default {
   createAddOn,
+  createAddOnsBatch,
   getAddOns,
   getAddOnById,
   getAddOnsByItemId,
