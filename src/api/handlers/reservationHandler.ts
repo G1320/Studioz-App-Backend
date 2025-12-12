@@ -12,6 +12,7 @@ import {
   notifyCustomerReservationConfirmed,
   notifyBookerReservationCancelled
 } from '../../utils/notificationUtils.js';
+import { calculateReservationTotalPrice } from '../../utils/reservationPriceUtils.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails, addOnIds } = req.body;
@@ -126,6 +127,10 @@ const updateReservationById = handleRequest(async (req: Request) => {
   }
 
   const previousStatus = reservation.status;
+  
+  // Check if fields that affect price are being updated
+  const priceAffectingFields = ['addOnIds', 'timeSlots', 'itemPrice'];
+  const shouldRecalculatePrice = priceAffectingFields.some(field => req.body[field] !== undefined);
 
   const updatedReservation = await ReservationModel.findByIdAndUpdate(
     reservationId,
@@ -134,6 +139,18 @@ const updateReservationById = handleRequest(async (req: Request) => {
   );
   
   if (updatedReservation) {
+    // Recalculate totalPrice if price-affecting fields were updated
+    if (shouldRecalculatePrice) {
+      // Convert ObjectIds to strings
+      const addOnIdsAsStrings = updatedReservation.addOnIds?.map(id => id.toString()) || [];
+      updatedReservation.totalPrice = await calculateReservationTotalPrice(
+        updatedReservation.itemPrice || 0,
+        updatedReservation.timeSlots || [],
+        addOnIdsAsStrings
+      );
+      await updatedReservation.save();
+    }
+
     const bookerId = updatedReservation.customerId?.toString() || updatedReservation.userId?.toString() || '';
 
     emitReservationUpdate(

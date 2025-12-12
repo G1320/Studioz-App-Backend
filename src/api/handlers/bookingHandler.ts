@@ -16,6 +16,7 @@ import { UserModel } from '../../models/userModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
 import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
+import { calculateReservationTotalPrice } from '../../utils/reservationPriceUtils.js';
 
 
 const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -117,6 +118,13 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         ? RESERVATION_STATUS.CONFIRMED 
         : RESERVATION_STATUS.PENDING;
     
+    // Calculate total price including add-ons
+    const totalPrice = await calculateReservationTotalPrice(
+        item.price || 0,
+        timeSlots,
+        addOnIds
+    );
+
     const reservation = new ReservationModel({
         itemId,
         itemName:{
@@ -128,6 +136,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         timeSlots,
         expiration,
         itemPrice: item.price||0,
+        totalPrice,
         studioId: item.studioId,
         customerId,
         customerName,
@@ -212,7 +221,18 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
         { $push: { timeSlots: nextSlot[0] } },
         { new: true, upsert: true }
         );
-     await reservation.save();
+    
+    // Recalculate totalPrice after adding time slot
+    if (reservation) {
+        // Convert ObjectIds to strings
+        const addOnIdsAsStrings = reservation.addOnIds?.map(id => id.toString()) || [];
+        reservation.totalPrice = await calculateReservationTotalPrice(
+            reservation.itemPrice || 0,
+            reservation.timeSlots || [],
+            addOnIdsAsStrings
+        );
+        await reservation.save();
+    }
 
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
@@ -255,8 +275,17 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
         { new: true }
         );
 
-        
-    await reservation?.save();
+    // Recalculate totalPrice after removing time slot
+    if (reservation) {
+        // Convert ObjectIds to strings
+        const addOnIdsAsStrings = reservation.addOnIds?.map(id => id.toString()) || [];
+        reservation.totalPrice = await calculateReservationTotalPrice(
+            reservation.itemPrice || 0,
+            reservation.timeSlots || [],
+            addOnIdsAsStrings
+        );
+        await reservation.save();
+    }
     // Update item availability with the modified dateAvailability
     item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
