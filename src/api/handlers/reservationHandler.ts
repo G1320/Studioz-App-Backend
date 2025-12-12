@@ -14,7 +14,7 @@ import {
 } from '../../utils/notificationUtils.js';
 
 const createReservation = handleRequest(async (req: Request) => {
-  const { studioId, itemId, userId, reservationDetails } = req.body;
+  const { studioId, itemId, userId, reservationDetails, addOnIds } = req.body;
 
   if (!studioId) throw new ExpressError('Studio ID not provided', 400);
   if (!itemId) throw new ExpressError('Item ID not provided', 400);
@@ -43,7 +43,8 @@ const createReservation = handleRequest(async (req: Request) => {
     userId,
     reservationDetails,
     status: reservationStatus,
-    expiration: expirationTime
+    expiration: expirationTime,
+    addOnIds: addOnIds || []
   });
 
   await reservation.save();

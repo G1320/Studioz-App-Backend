@@ -91,7 +91,7 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 });
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
-    const { itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment } = req.body;
+    const { itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
@@ -133,7 +133,8 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         customerName,
         customerPhone,
         comment,
-        status: reservationStatus
+        status: reservationStatus,
+        addOnIds: addOnIds || []
 
     });
     
