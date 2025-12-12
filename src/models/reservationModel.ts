@@ -24,6 +24,7 @@ const ReservationSchema = new mongoose.Schema({
     customerPhone: { type: String, required: false },
     comment: { type: String, required: false },
     orderId: { type: String, required: false },
+    addOnIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AddOn', required: false }],
   }, { timestamps: true });
 
   ReservationSchema.pre('save', function (next) {
