@@ -1,6 +1,7 @@
 import { ReservationModel } from '../models/reservationModel.js';
 import { emitReservationUpdate } from '../webSockets/socket.js';
 import { UserModel } from '../models/userModel.js';
+import { StudioModel } from '../models/studioModel.js';
 import { releaseReservationTimeSlots } from '../api/handlers/bookingHandler.js';
 import { notifyCustomerReservationExpired } from '../utils/notificationUtils.js';
 
@@ -28,20 +29,61 @@ export const updateExpiredReservations = async () => {
   
       if (expiredReservations.length > 0) {
         const expiredReservationIds = expiredReservations.map(r => r._id.toString());
-        const customerId = expiredReservations.find(r => r.customerId)?.customerId; // Get one customerId
+        
+        // Collect all unique customer/user IDs affected by expired reservations
+        const affectedUserIds = new Set<string>();
+        expiredReservations.forEach(reservation => {
+          if (reservation.customerId) {
+            affectedUserIds.add(reservation.customerId.toString());
+          }
+          if (reservation.userId) {
+            affectedUserIds.add(reservation.userId.toString());
+          }
+        });
+        
+        // Also collect studio owner IDs to invalidate their queries
+        const affectedStudioIds = new Set<string>();
+        expiredReservations.forEach(reservation => {
+          if (reservation.studioId) {
+            affectedStudioIds.add(reservation.studioId.toString());
+          }
+        });
+        
+        // Look up studio owners
+        if (affectedStudioIds.size > 0) {
+          const studios = await StudioModel.find({ 
+            _id: { $in: Array.from(affectedStudioIds) } 
+          }).select('createdBy');
+          studios.forEach(studio => {
+            if (studio.createdBy) {
+              affectedUserIds.add(studio.createdBy.toString());
+            }
+          });
+        }
 
-        // Release time slots
+        // Release time slots (this already emits availability updates)
         await Promise.all(
           expiredReservations.map(reservation => releaseReservationTimeSlots(reservation))
         );
+        
         // Clean up user carts in database
         await UserModel.updateMany(
           { 'cart.items.reservationId': { $in: expiredReservationIds } },
           { $pull: { 'cart.items': { reservationId: { $in: expiredReservationIds } } } }
         );
   
-        // Clean up offline cart or trigger query invalidation through socket event
-         emitReservationUpdate( expiredReservationIds, customerId || '' );
+        // Emit reservation updates for each affected user to invalidate their queries
+        // This ensures all users with expired reservations get their queries invalidated
+        // Since io.emit broadcasts to all clients, each user's frontend will receive the update
+        // and invalidate queries based on the reservationIds
+        if (affectedUserIds.size > 0) {
+          affectedUserIds.forEach(userId => {
+            emitReservationUpdate(expiredReservationIds, userId);
+          });
+        } else if (expiredReservationIds.length > 0) {
+          // Fallback: emit even if no userIds found (shouldn't happen, but safety check)
+          emitReservationUpdate(expiredReservationIds, '');
+        }
         
         // Notify customers about expired reservations
         for (const reservation of expiredReservations) {
