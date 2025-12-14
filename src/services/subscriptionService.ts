@@ -19,8 +19,8 @@ export const processSubscriptionEmailAndInvoice = async (
 
     // Get plan details
     const plans = {
-      starter: { name: 'Starter Plan', price: 79 },
-      pro: { name: 'Professional Plan', price: 149 }
+      starter: { name: 'Starter Plan', price: 49 },
+      pro: { name: 'Professional Plan', price: 99 }
     };
 
     const plan = plans[subscription.planId as keyof typeof plans];
