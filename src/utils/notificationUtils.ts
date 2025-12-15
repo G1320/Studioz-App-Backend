@@ -48,7 +48,7 @@ export const createAndEmitNotification = async (
 
 /**
  * Notify vendor when a new reservation is created
-*/
+ */
 export const notifyVendorNewReservation = async (
   reservationId: string,
   studioId: string,
@@ -62,18 +62,18 @@ export const notifyVendorNewReservation = async (
       console.log('Studio or studio owner not found for notification');
       return;
     }
-    
+
     // Get item details
     const item = await ItemModel.findById(itemId);
     const itemName = item?.name?.en || 'Item';
-    
+
     // Get reservation details
     const reservation = await ReservationModel.findById(reservationId);
     if (!reservation) {
       console.log('Reservation not found for notification');
       return;
     }
-    
+
     const studioOwner = await UserModel.findById(studio.createdBy);
     if (!studioOwner?.email) {
       console.log('Studio owner email not found, skipping email notification');
