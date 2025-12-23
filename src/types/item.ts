@@ -6,6 +6,10 @@ export default interface Item {
     en: string;
     he: string;
   };
+  subtitle?: {
+    en: string;
+    he?: string;
+  };
   description?: {
     en: string;
     he: string;

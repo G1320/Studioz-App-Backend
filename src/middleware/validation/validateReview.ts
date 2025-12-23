@@ -2,15 +2,22 @@ import Joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import handleJoiError from '../../utils/joiErrorHandler.js';
 
+const translationSchema = Joi.object({
+  en: Joi.string().allow('', null).optional(),
+  he: Joi.string().allow('', null).optional()
+}).optional();
+
 const reviewCreateSchema = Joi.object({
   rating: Joi.number().integer().min(1).max(5).required().label('Rating'),
-  comment: Joi.string().allow('', null).max(1000).optional().label('Comment')
+  name: translationSchema.label('Name'),
+  comment: translationSchema.label('Comment')
 });
 
 const reviewUpdateSchema = Joi.object({
   rating: Joi.number().integer().min(1).max(5).optional().label('Rating'),
-  comment: Joi.string().allow('', null).max(1000).optional().label('Comment')
-}).or('rating', 'comment'); // At least one field must be provided
+  name: translationSchema.label('Name'),
+  comment: translationSchema.label('Comment')
+}).or('rating', 'name', 'comment'); // At least one field must be provided
 
 const validatePayload =
   (schema: Joi.ObjectSchema) =>

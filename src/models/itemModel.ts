@@ -13,6 +13,7 @@ const translationSchema = new Schema({
 
 const itemSchema: Schema = new Schema({
   name: { type: translationSchema, required: false },
+  subtitle: { type: translationSchema, required: false },
   description: { type: translationSchema, required: false },
   studioName: { type: translationSchema, required: false },
   

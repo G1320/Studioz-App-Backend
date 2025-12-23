@@ -66,7 +66,7 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
   }
 
   const user = await resolveAuthenticatedUser(req);
-  const { rating, comment } = req.body;
+  const { rating, name, comment } = req.body;
 
   if (!rating) {
     throw new ExpressError('Rating is required', 400);
@@ -80,10 +80,14 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
       studioId,
       userId: user._id,
       rating,
+      name,
       comment
     });
   } else {
     review.rating = rating;
+    if (name !== undefined) {
+      review.name = name;
+    }
     if (comment !== undefined) {
       review.comment = comment;
     }
@@ -114,7 +118,7 @@ const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
   }
 
   const user = await resolveAuthenticatedUser(req);
-  const { rating, comment } = req.body;
+  const { rating, name, comment } = req.body;
 
   const review = await ReviewModel.findById(reviewId);
   if (!review) {
@@ -128,6 +132,9 @@ const updateReviewById = handleRequest(async (req: AuthenticatedRequest) => {
   // Only update fields that are provided
   if (rating !== undefined) {
     review.rating = rating;
+  }
+  if (name !== undefined) {
+    review.name = name;
   }
   if (comment !== undefined) {
     review.comment = comment;
