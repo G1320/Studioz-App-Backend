@@ -1,5 +1,23 @@
 import Availability from './availability.js';
 
+export interface Duration {
+  value: number;
+  unit: 'minutes' | 'hours' | 'days';
+}
+
+export interface AdvanceBookingRequired {
+  value: number;
+  unit: 'hours' | 'days';
+}
+
+export interface CancellationPolicy {
+  type: 'flexible' | 'moderate' | 'strict';
+  notes?: {
+    en?: string;
+    he?: string;
+  };
+}
+
 export default interface Item {
   _id: string;
   name?: {
@@ -39,4 +57,28 @@ export default interface Item {
   availability?: Availability[];
   instantBook?: boolean;
   addOnIds?: string[];
+  
+  // Booking Requirements
+  minimumBookingDuration?: Duration;
+  minimumQuantity?: number;
+  maximumBookingDuration?: Duration;
+  advanceBookingRequired?: AdvanceBookingRequired;
+  
+  // Setup & Preparation
+  preparationTime?: Duration;
+  bufferTime?: Duration;
+  
+  // Policies
+  cancellationPolicy?: CancellationPolicy;
+  
+  // Remote Service
+  remoteService?: boolean;
+  remoteAccessMethod?: 'zoom' | 'teams' | 'skype' | 'custom' | 'other';
+  softwareRequirements?: string[];
+  
+  // Quantity Management
+  maxQuantityPerBooking?: number;
+  
+  // Same-Day Booking
+  allowSameDayBooking?: boolean;
 }

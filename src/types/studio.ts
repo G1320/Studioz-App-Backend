@@ -33,6 +33,11 @@ export default interface Studio {
   city: string;
   address?: string;
   phone?: string;
+  website?: string;
+  socials?: {
+    instagram?: string;
+    facebook?: string;
+  };
   lat?: number;
   lng?: number;
   isWheelchairAccessible?: boolean;

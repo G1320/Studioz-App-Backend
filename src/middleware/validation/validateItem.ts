@@ -20,6 +20,24 @@ const availabilitySchema = Joi.object({
   times: Joi.array().items(Joi.string()).required()
 });
 
+const durationSchema = Joi.object({
+  value: Joi.number().positive().required(),
+  unit: Joi.string().valid('minutes', 'hours', 'days').required()
+}).optional();
+
+const advanceBookingSchema = Joi.object({
+  value: Joi.number().positive().required(),
+  unit: Joi.string().valid('hours', 'days').required()
+}).optional();
+
+const cancellationPolicySchema = Joi.object({
+  type: Joi.string().valid('flexible', 'moderate', 'strict').required(),
+  notes: Joi.object({
+    en: Joi.string().max(500).optional().allow('', null),
+    he: Joi.string().max(500).optional().allow('', null)
+  }).optional()
+}).optional();
+
 const schema = Joi.object({
   name: translationTitleSchema,
   description: translationDescriptionSchema,
@@ -44,7 +62,31 @@ const schema = Joi.object({
   sellerId: Joi.string().optional(),
   availability: Joi.array().items(availabilitySchema).optional(),
   instantBook: Joi.boolean().optional(),
-  addOnIds: Joi.array().items(Joi.string()).optional()
+  addOnIds: Joi.array().items(Joi.string()).optional(),
+  
+  // Booking Requirements
+  minimumBookingDuration: durationSchema,
+  minimumQuantity: Joi.number().positive().optional(),
+  maximumBookingDuration: durationSchema,
+  advanceBookingRequired: advanceBookingSchema,
+  
+  // Setup & Preparation
+  preparationTime: durationSchema,
+  bufferTime: durationSchema,
+  
+  // Policies
+  cancellationPolicy: cancellationPolicySchema,
+  
+  // Remote Service
+  remoteService: Joi.boolean().optional(),
+  remoteAccessMethod: Joi.string().valid('zoom', 'teams', 'skype', 'custom', 'other').optional(),
+  softwareRequirements: Joi.array().items(Joi.string()).optional(),
+  
+  // Quantity Management
+  maxQuantityPerBooking: Joi.number().positive().optional(),
+  
+  // Same-Day Booking
+  allowSameDayBooking: Joi.boolean().optional()
 }).unknown(true);
 
 const validateItem = (req: Request, res: Response, next: NextFunction): void => {

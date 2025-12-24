@@ -11,6 +11,36 @@ const translationSchema = new Schema({
   he: { type: String, required: true }
 }, { _id: false });
 
+const durationSchema = new Schema({
+  value: { type: Number, required: true },
+  unit: { 
+    type: String, 
+    enum: ['minutes', 'hours', 'days'],
+    required: true 
+  }
+}, { _id: false });
+
+const advanceBookingSchema = new Schema({
+  value: { type: Number, required: true },
+  unit: { 
+    type: String, 
+    enum: ['hours', 'days'],
+    required: true 
+  }
+}, { _id: false });
+
+const cancellationPolicySchema = new Schema({
+  type: {
+    type: String,
+    enum: ['flexible', 'moderate', 'strict'],
+    required: true
+  },
+  notes: {
+    en: { type: String, required: false },
+    he: { type: String, required: false }
+  }
+}, { _id: false });
+
 const itemSchema: Schema = new Schema({
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -38,7 +68,35 @@ const itemSchema: Schema = new Schema({
       lng: { type: Number, required: true },
   availability: { type: [availabilitySchema], required: true },
   instantBook: { type: Boolean, required: true, default: false },
-  addOnIds: [{ type: Schema.Types.ObjectId, ref: 'AddOn' }]
+  addOnIds: [{ type: Schema.Types.ObjectId, ref: 'AddOn' }],
+  
+  // Booking Requirements
+  minimumBookingDuration: { type: durationSchema, required: false },
+  minimumQuantity: { type: Number, required: false },
+  maximumBookingDuration: { type: durationSchema, required: false },
+  advanceBookingRequired: { type: advanceBookingSchema, required: false },
+  
+  // Setup & Preparation
+  preparationTime: { type: durationSchema, required: false },
+  bufferTime: { type: durationSchema, required: false },
+  
+  // Policies
+  cancellationPolicy: { type: cancellationPolicySchema, required: false },
+  
+  // Remote Service
+  remoteService: { type: Boolean, required: false, default: false },
+  remoteAccessMethod: {
+    type: String,
+    enum: ['zoom', 'teams', 'skype', 'custom', 'other'],
+    required: false
+  },
+  softwareRequirements: [{ type: String, required: false }],
+  
+  // Quantity Management
+  maxQuantityPerBooking: { type: Number, required: false },
+  
+  // Same-Day Booking
+  allowSameDayBooking: { type: Boolean, required: false, default: false }
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);

@@ -18,12 +18,19 @@ const translationSchema = new Schema({
   he: { type: String, required: false }
 }, { _id: false });
 
+const socialsSchema = new Schema({
+  instagram: { type: String, required: false },
+  facebook: { type: String, required: false }
+}, { _id: false });
+
 
 const studioSchema = new Schema({
   name: { type: translationSchema, required: false },
   subtitle: { type: translationSchema, required: false },
   description: { type: translationSchema, required: false },
   phone: { type: String, required: false },
+  website: { type: String, required: false },
+  socials: { type: socialsSchema, required: false },
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
   genres: [{ type: String, required: false }],
