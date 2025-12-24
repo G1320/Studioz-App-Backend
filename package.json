@@ -8,15 +8,8 @@
     "test": "node --loader ts-node/esm --test src/tests/reviewAggregates.test.ts",
     "build": "npm i && tsc",
     "start": "node ./dist/server.js",
-    "start:dev": "ts-node src/server.ts",
-    "translate:hebrew": "npm run build && node dist/scripts/translateToHebrew.js",
-    "translate:hebrew:dev": "ts-node --esm src/scripts/translateToHebrew.ts",
-    "generate:subtitles": "npm run build && node dist/scripts/generateSubtitles.js",
-    "generate:subtitles:dev": "ts-node --esm src/scripts/generateSubtitles.ts",
-    "update:instantbook": "npm run build && node dist/scripts/updateInstantBook.js",
-    "update:instantbook:dev": "ts-node --esm src/scripts/updateInstantBook.ts",
-    "generate:reviews": "npm run build && node dist/scripts/generateReviews.js",
-    "generate:reviews:dev": "ts-node --esm src/scripts/generateReviews.ts"
+    "start:dev": "ts-node src/server.ts"
+
   },
   "engines": {
     "node": "18.x"

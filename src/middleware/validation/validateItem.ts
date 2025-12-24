@@ -22,14 +22,8 @@ const availabilitySchema = Joi.object({
 
 const schema = Joi.object({
   name: translationTitleSchema,
-  nameEn: Joi.string().trim().max(TITLE_MAX).optional().allow('', null),
-  nameHe: Joi.string().trim().max(TITLE_MAX).optional().allow('', null),
   description: translationDescriptionSchema,
-  descriptionEn: Joi.string().trim().max(DESCRIPTION_MAX).optional().allow('', null),
-  descriptionHe: Joi.string().trim().max(DESCRIPTION_MAX).optional().allow('', null),
   studioName: translationTitleSchema,
-  studioNameEn: Joi.string().trim().max(TITLE_MAX).optional().allow('', null),
-  studioNameHe: Joi.string().trim().max(TITLE_MAX).optional().allow('', null),
   category: Joi.string().optional(),
   categories: Joi.array().items(Joi.string()).optional(),
   subCategory: Joi.string().optional(),

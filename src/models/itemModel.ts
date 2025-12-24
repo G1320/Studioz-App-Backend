@@ -7,45 +7,37 @@ const availabilitySchema: Schema = new Schema({
 });
 
 const translationSchema = new Schema({
-  en: { type: String, required: false },
-  he: { type: String, required: false }
+  en: { type: String, required: true },
+  he: { type: String, required: true }
 }, { _id: false });
 
 const itemSchema: Schema = new Schema({
-  name: { type: translationSchema, required: false },
-  subtitle: { type: translationSchema, required: false },
-  description: { type: translationSchema, required: false },
-  studioName: { type: translationSchema, required: false },
-  
-  nameEn: { type: String, required: false },
-  nameHe: { type: String, required: false },
-  descriptionEn: { type: String, required: false },
-  descriptionHe: { type: String, required: false },
-  studioNameEn: { type: String, required: false },
-  studioNameHe: { type: String, required: false },
-  category: { type: String, required: false },
-  categories: [{ type: String, required: false }],
-  subCategory: { type: String, required: false },
-  subCategories: [{ type: String, required: false }],
-  genres: [{ type: String, required: false }],
-  price: { type: Number, required: false },
-  pricePer: { type: String, required: false },
-  imgUrl: { type: String, required: false },
-  idx: { type: Number, required: false },
-  inStock: { type: Boolean, required: false },
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
+  sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
+  name: { type: translationSchema, required: true },
+  subtitle: { type: translationSchema, required: true },
+  description: { type: translationSchema, required: true },
+  studioName: { type: translationSchema, required: true },
+  categories: [{ type: String, required: true }],
+  subCategory: { type: String, required: true },
+  subCategories: [{ type: String, required: true }],
+  genres: [{ type: String, required: true }],
+  price: { type: Number, required: true },
+  pricePer: { type: String, required: true },
+  imgUrl: { type: String, required: true },
+  idx: { type: Number, required: true },
+  inStock: { type: Boolean, required: true },
   
-  studioImgUrl: { type: String, required: false },
+  studioImgUrl: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  address: { type: String, required: false },
-  city: { type: String, required: false },
-      lat: { type: Number, required: false },
-      lng: { type: Number, required: false },
-  sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
-  availability: { type: [availabilitySchema], required: false },
-  instantBook: { type: Boolean, required: false, default: false },
+  address: { type: String, required: true },
+  city: { type: String, required: true },
+      lat: { type: Number, required: true },
+      lng: { type: Number, required: true },
+  availability: { type: [availabilitySchema], required: true },
+  instantBook: { type: Boolean, required: true, default: false },
   addOnIds: [{ type: Schema.Types.ObjectId, ref: 'AddOn' }]
 });
 
