@@ -53,6 +53,11 @@ const schema = Joi.object({
   city: Joi.string().optional(),
   address: Joi.string().optional(),
   phone: Joi.string().optional(),
+  website: Joi.string().uri().optional().allow('', null),
+  socials: Joi.object({
+    instagram: Joi.string().uri().optional().allow('', null),
+    facebook: Joi.string().uri().optional().allow('', null)
+  }).optional(),
   lat: Joi.number().optional(),
   lng: Joi.number().optional(),
   isWheelchairAccessible: Joi.boolean().optional(),
