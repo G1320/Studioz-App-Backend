@@ -13,6 +13,7 @@ import {
 import { emitAvailabilityUpdate, emitReservationUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
 import { UserModel } from '../../models/userModel.js';
+import { StudioModel } from '../../models/studioModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
 import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
@@ -172,6 +173,14 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       await notifyCustomerReservationConfirmed(
         reservation._id.toString(),
         customerId.toString()
+      );
+    }
+
+    // Increment totalBookings on studio when reservation is confirmed
+    if (reservation.status === RESERVATION_STATUS.CONFIRMED && reservation.studioId) {
+      await StudioModel.findByIdAndUpdate(
+        reservation.studioId,
+        { $inc: { totalBookings: 1 } }
       );
     }
 
@@ -393,6 +402,19 @@ const confirmBooking = handleRequest(async (req: Request) => {
         await notifyCustomerReservationConfirmed(
           reservation._id.toString(),
           reservation.customerId.toString()
+        );
+      }
+    }
+
+    // Increment totalBookings for each unique studio
+    // Group by studioId to avoid multiple increments for the same studio
+    const studioIds = [...new Set(confirmedReservations.map(r => r.studioId?.toString()).filter(Boolean))];
+    for (const studioId of studioIds) {
+      const count = confirmedReservations.filter(r => r.studioId?.toString() === studioId).length;
+      if (count > 0) {
+        await StudioModel.findByIdAndUpdate(
+          studioId,
+          { $inc: { totalBookings: count } }
         );
       }
     }

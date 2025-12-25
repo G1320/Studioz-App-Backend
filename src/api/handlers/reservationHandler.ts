@@ -49,6 +49,15 @@ const createReservation = handleRequest(async (req: Request) => {
 
   await reservation.save();
   emitReservationUpdate([reservation._id.toString()], userId.toString());
+  
+  // Increment totalBookings on studio when reservation is confirmed
+  if (reservation.status === RESERVATION_STATUS.CONFIRMED && reservation.studioId) {
+    await StudioModel.findByIdAndUpdate(
+      reservation.studioId,
+      { $inc: { totalBookings: 1 } }
+    );
+  }
+  
   return reservation;
 });
 
@@ -161,6 +170,14 @@ const updateReservationById = handleRequest(async (req: Request) => {
           updatedReservation._id.toString(),
           bookerId
         );
+        
+        // Increment totalBookings on studio when reservation is confirmed
+        if (updatedReservation.studioId) {
+          await StudioModel.findByIdAndUpdate(
+            updatedReservation.studioId,
+            { $inc: { totalBookings: 1 } }
+          );
+        }
       } else if (updatedReservation.status === RESERVATION_STATUS.CANCELLED) {
         await notifyBookerReservationCancelled(
           updatedReservation._id.toString(),
