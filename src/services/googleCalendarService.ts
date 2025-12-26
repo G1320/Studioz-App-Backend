@@ -37,6 +37,7 @@ const getAndRefreshToken = async (userId: string, user: any): Promise<string> =>
  */
 export const connectCalendar = async (userId: string, authCode: string): Promise<void> => {
   try {
+    console.log('Connecting Google Calendar for user:', userId);
     const { exchangeCodeForTokens } = await import('../utils/googleOAuthUtils.js');
     const { accessToken, refreshToken, expiryDate } = await exchangeCodeForTokens(authCode);
 
@@ -44,23 +45,38 @@ export const connectCalendar = async (userId: string, authCode: string): Promise
       throw new ExpressError('Failed to get refresh token. Please try again.', 400);
     }
 
+    console.log('Tokens received, updating user in database...');
     // Update user with Google Calendar tokens
-    await UserModel.findByIdAndUpdate(userId, {
-      'googleCalendar.connected': true,
-      'googleCalendar.accessToken': accessToken,
-      'googleCalendar.refreshToken': refreshToken,
-      'googleCalendar.tokenExpiry': expiryDate,
-      'googleCalendar.calendarId': 'primary',
-      'googleCalendar.lastSyncAt': new Date()
-    });
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        'googleCalendar.connected': true,
+        'googleCalendar.accessToken': accessToken,
+        'googleCalendar.refreshToken': refreshToken,
+        'googleCalendar.tokenExpiry': expiryDate,
+        'googleCalendar.calendarId': 'primary',
+        'googleCalendar.lastSyncAt': new Date()
+      },
+      { new: true }
+    );
 
-    // Verify connection by getting calendar list
-    const calendar = google.calendar({ version: 'v3', auth: getAuthenticatedClient(accessToken) });
-    await calendar.calendarList.list();
+    if (!updatedUser) {
+      throw new ExpressError('User not found', 404);
+    }
+
+    console.log('User updated successfully');
+    // Note: We skip calendar list verification since it requires the full 'calendar' scope
+    // The connection will be verified when we actually create an event
+    console.log('Google Calendar connected successfully');
 
   } catch (error) {
     console.error('Error connecting Google Calendar:', error);
-    throw new ExpressError('Failed to connect Google Calendar', 500);
+    if (error instanceof ExpressError) {
+      throw error;
+    }
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new ExpressError(`Failed to connect Google Calendar: ${errorMessage}`, 500);
   }
 };
 

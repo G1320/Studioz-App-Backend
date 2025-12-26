@@ -61,10 +61,28 @@ const handleCallback = async (req: Request, res: Response, next: Function) => {
 
     // Redirect to frontend success page
     const { FRONTEND_URL } = await import('../../config/index.js');
-    res.redirect(`${FRONTEND_URL}/dashboard?calendar=connected`);
+    const redirectUrl = FRONTEND_URL || 'https://studioz.co.il';
+    console.log('Redirecting to:', `${redirectUrl}/dashboard?calendar=connected`);
+    res.redirect(`${redirectUrl}/dashboard?calendar=connected`);
   } catch (error) {
     console.error('Error in Google Calendar callback:', error);
-    next(error);
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    // Send error response instead of using next() to avoid double error handling
+    if (error instanceof ExpressError) {
+      res.status(error.statusCode || 500).json({ 
+        message: error.message,
+        error: 'Failed to connect Google Calendar'
+      });
+    } else {
+      res.status(500).json({ 
+        message: 'Failed to connect Google Calendar',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 };
 
