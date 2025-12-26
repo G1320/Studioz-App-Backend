@@ -17,21 +17,21 @@ const translationDescriptionSchema = Joi.object({
 
 const availabilitySchema = Joi.object({
   date: Joi.string().required(),
-  times: Joi.array().items(Joi.string()).required()
+  times: Joi.array().items(Joi.string()).optional()
 });
 
 const durationSchema = Joi.object({
-  value: Joi.number().positive().required(),
-  unit: Joi.string().valid('minutes', 'hours', 'days').required()
+  value: Joi.number().positive().optional(),
+  unit: Joi.string().valid('minutes', 'hours', 'days').optional()
 }).optional();
 
 const advanceBookingSchema = Joi.object({
-  value: Joi.number().positive().required(),
-  unit: Joi.string().valid('hours', 'days').required()
+  value: Joi.number().positive().optional(),
+  unit: Joi.string().valid('hours', 'days').optional()
 }).optional();
 
 const cancellationPolicySchema = Joi.object({
-  type: Joi.string().valid('flexible', 'moderate', 'strict').required(),
+  type: Joi.string().valid('flexible', 'moderate', 'strict').optional(),
   notes: Joi.object({
     en: Joi.string().max(500).optional().allow('', null),
     he: Joi.string().max(500).optional().allow('', null)

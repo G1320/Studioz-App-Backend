@@ -2,30 +2,30 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 import { Item } from '../types/index.js';
 
 const availabilitySchema: Schema = new Schema({
-  date: { type: String, required: true },
-  times: { type: [String], required: true }
+  date: { type: String, required: false },
+  times: { type: [String], required: false }
 });
 
 const translationSchema = new Schema({
-  en: { type: String, required: true },
-  he: { type: String, required: true }
+  en: { type: String, required: false },
+  he: { type: String, required: false }
 }, { _id: false });
 
 const durationSchema = new Schema({
-  value: { type: Number, required: true },
+  value: { type: Number, required: false },
   unit: { 
     type: String, 
     enum: ['minutes', 'hours', 'days'],
-    required: true 
+    required: false 
   }
 }, { _id: false });
 
 const advanceBookingSchema = new Schema({
-  value: { type: Number, required: true },
+  value: { type: Number, required: false },
   unit: { 
     type: String, 
     enum: ['hours', 'days'],
-    required: true 
+    required: false 
   }
 }, { _id: false });
 
@@ -33,7 +33,7 @@ const cancellationPolicySchema = new Schema({
   type: {
     type: String,
     enum: ['flexible', 'moderate', 'strict'],
-    required: true
+    required: false
   },
   notes: {
     en: { type: String, required: false },
@@ -44,30 +44,30 @@ const cancellationPolicySchema = new Schema({
 const itemSchema: Schema = new Schema({
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
-  name: { type: translationSchema, required: true },
-  subtitle: { type: translationSchema, required: true },
-  description: { type: translationSchema, required: true },
-  studioName: { type: translationSchema, required: true },
-  categories: [{ type: String, required: true }],
+  name: { type: translationSchema, required: false },
+  subtitle: { type: translationSchema, required: false },
+  description: { type: translationSchema, required: false },
+  studioName: { type: translationSchema, required: false },
+  categories: [{ type: String, required: false }],
   subCategory: { type: String, required: false },
-  subCategories: [{ type: String, required: true }],
-  genres: [{ type: String, required: true }],
-  price: { type: Number, required: true },
-  pricePer: { type: String, required: true },
+  subCategories: [{ type: String, required: false }],
+  genres: [{ type: String, required: false }],
+  price: { type: Number, required: false },
+  pricePer: { type: String, required: false },
   imgUrl: { type: String, required: false },
   idx: { type: Number, required: false },
-  inStock: { type: Boolean, required: true },
+  inStock: { type: Boolean, required: false },
   
-  studioImgUrl: { type: String, required: true },
+  studioImgUrl: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  address: { type: String, required: true },
-  city: { type: String, required: true },
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
-  availability: { type: [availabilitySchema], required: true },
-  instantBook: { type: Boolean, required: true, default: false },
+  address: { type: String, required: false },
+  city: { type: String, required: false },
+      lat: { type: Number, required: false },
+      lng: { type: Number, required: false },
+  availability: { type: [availabilitySchema], required: false },
+  instantBook: { type: Boolean, required: false, default: false },
   addOnIds: [{ type: Schema.Types.ObjectId, ref: 'AddOn' }],
   
   // Booking Requirements
