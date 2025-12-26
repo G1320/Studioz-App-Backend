@@ -26,6 +26,7 @@ const ReservationSchema = new mongoose.Schema({
     comment: { type: String, required: false },
     orderId: { type: String, required: false },
     addOnIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AddOn', required: false }],
+    googleCalendarEventId: { type: String, required: false },
   }, { timestamps: true });
 
   // Pre-save hook to ensure totalPrice is calculated

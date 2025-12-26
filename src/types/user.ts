@@ -42,5 +42,13 @@ export default interface User {
   sumitApiKey?: string;  
   sumitApiPublicKey?: string;
   role?: 'user' | 'vendor' | 'admin';
+  googleCalendar?: {
+    connected: boolean;
+    accessToken?: string;
+    refreshToken?: string;
+    tokenExpiry?: Date;
+    calendarId?: string;
+    lastSyncAt?: Date;
+  };
   __v?: number;
 }

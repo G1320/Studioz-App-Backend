@@ -184,6 +184,15 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       );
     }
 
+    // Sync to Google Calendar if connected
+    try {
+      const { syncReservationToCalendar } = await import('../../services/googleCalendarService.js');
+      await syncReservationToCalendar(reservation);
+    } catch (error) {
+      console.error('Error syncing reservation to Google Calendar:', error);
+      // Don't fail the reservation creation if calendar sync fails
+    }
+
     return reservation._id;
 });
 

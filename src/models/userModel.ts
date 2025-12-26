@@ -68,6 +68,14 @@ const userSchema = new Schema(
   },
     subscriptionStatus: { type: String },
     subscriptionId: { type: String },
+    googleCalendar: {
+      connected: { type: Boolean, default: false },
+      accessToken: { type: String, select: false },
+      refreshToken: { type: String, select: false },
+      tokenExpiry: { type: Date },
+      calendarId: { type: String, default: 'primary' },
+      lastSyncAt: { type: Date }
+    }
   },
   
   { timestamps: true }
