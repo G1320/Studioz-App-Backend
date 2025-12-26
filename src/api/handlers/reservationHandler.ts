@@ -230,40 +230,44 @@ const cancelReservationById = handleRequest(async (req: Request) => {
   reservation.status = RESERVATION_STATUS.CANCELLED;
   await reservation.save();
 
+  // Refresh reservation from database to ensure we have all fields including googleCalendarEventId
+  const cancelledReservation = await ReservationModel.findById(reservationId);
+  if (!cancelledReservation) throw new ExpressError('Reservation not found after cancellation', 404);
+
   // Notify vendor of the cancellation
-  if (reservation.studioId) {
+  if (cancelledReservation.studioId) {
     await notifyVendorReservationCancelled(
-      reservation._id.toString(),
-      reservation.studioId.toString(),
-      reservation.itemId.toString(),
-      reservation.customerName
+      cancelledReservation._id.toString(),
+      cancelledReservation.studioId.toString(),
+      cancelledReservation.itemId.toString(),
+      cancelledReservation.customerName
     );
   }
 
   // Notify customer of the cancellation
-  const bookerId = reservation.customerId?.toString() || reservation.userId?.toString() || '';
+  const bookerId = cancelledReservation.customerId?.toString() || cancelledReservation.userId?.toString() || '';
   if (bookerId) {
     await notifyBookerReservationCancelled(
-      reservation._id.toString(),
+      cancelledReservation._id.toString(),
       bookerId
     );
   }
 
   emitReservationUpdate(
-    [reservation._id.toString()],
-    reservation.customerId?.toString() || reservation.userId?.toString() || ''
+    [cancelledReservation._id.toString()],
+    cancelledReservation.customerId?.toString() || cancelledReservation.userId?.toString() || ''
   );
 
   // Sync to Google Calendar if connected (will delete event)
   try {
     const { syncReservationToCalendar } = await import('../../services/googleCalendarService.js');
-    await syncReservationToCalendar(reservation);
+    await syncReservationToCalendar(cancelledReservation);
   } catch (error) {
     console.error('Error syncing reservation to Google Calendar:', error);
     // Don't fail the reservation cancellation if calendar sync fails
   }
 
-  return reservation;
+  return cancelledReservation;
 });
 
 export default {
