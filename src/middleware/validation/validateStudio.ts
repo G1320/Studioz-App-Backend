@@ -15,7 +15,7 @@ const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.object({
     en: Joi.string().regex(/^[a-zA-Z0-9\s]*$/).min(3).max(20).required().label('English Name'),
-    he: Joi.string().regex(/^[\u0590-\u05FF\s'.,:;?!\-()]*$/).min(3).max(20).required().label('Hebrew Name')
+    he: Joi.string().min(3).max(20).required().label('Hebrew Name')
   }).required(),
  
   subtitle: Joi.object({
@@ -25,7 +25,7 @@ const schema = Joi.object({
  
   description: Joi.object({
     en: Joi.string().required().label('English Description'),
-    he: Joi.string().required().regex(/^[\u0590-\u05FF\s'.,:;?!\-()]*$/).label('Hebrew Description')
+    he: Joi.string().required().label('Hebrew Description')
   }).required(),
  
   studioAvailability: Joi.object({
