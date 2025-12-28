@@ -33,9 +33,23 @@ export const initializeSocket = (httpServer: HttpServer) => {
   return io;
 };
 
+/**
+ * Emit availability update for a single item (instant - for normal bookings)
+ */
 export const emitAvailabilityUpdate = (itemId: string) => {
   if (io) {
     io.emit('availabilityUpdated', { itemId }); 
+  }
+};
+
+/**
+ * Emit availability update for multiple items at once (for batch operations like calendar sync)
+ * This prevents flooding the frontend with multiple events
+ */
+export const emitBulkAvailabilityUpdate = (itemIds: string[]) => {
+  if (io && itemIds.length > 0) {
+    // Emit a single event with all item IDs
+    io.emit('availabilityUpdated', { itemIds, itemId: itemIds[0] });
   }
 };
 

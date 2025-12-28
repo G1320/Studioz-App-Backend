@@ -6,7 +6,7 @@ import { ReservationModel } from '../models/reservationModel.js';
 import { getValidAccessToken, getAuthenticatedClient, isTokenExpired, refreshAccessToken } from '../utils/googleOAuthUtils.js';
 import { formatReservationToCalendarEvent, parseCalendarEventToTimeSlots, shouldBlockTimeSlotsForEvent } from '../utils/googleCalendarUtils.js';
 import { initializeAvailability, findOrCreateDateAvailability, removeTimeSlots, generateTimeSlots } from '../utils/timeSlotUtils.js';
-import { emitAvailabilityUpdate } from '../webSockets/socket.js';
+import { emitAvailabilityUpdate, emitBulkAvailabilityUpdate } from '../webSockets/socket.js';
 import ExpressError from '../utils/expressError.js';
 import Reservation from '../types/reservation.js';
 
@@ -362,22 +362,27 @@ export const syncReservationToCalendar = async (reservation: Reservation): Promi
  * Block time slots for all items in a user's studios based on a calendar event
  * @param userId - User ID (studio owner)
  * @param event - Google Calendar event
+ * @param skipEmit - If true, don't emit socket events (for batch operations)
+ * @returns Array of affected item IDs (for batch emit)
  */
 export const blockTimeSlotsFromCalendarEvent = async (
   userId: string,
-  event: calendar_v3.Schema$Event
-): Promise<void> => {
+  event: calendar_v3.Schema$Event,
+  skipEmit: boolean = false
+): Promise<string[]> => {
+  const affectedItemIds: string[] = [];
+  
   try {
     // Check if we should block time slots for this event
     if (!shouldBlockTimeSlotsForEvent(event)) {
       console.log('Skipping time slot blocking for app-created event:', event.id);
-      return;
+      return affectedItemIds;
     }
 
     // Parse event to get booking date and time slots
     if (!event.start?.dateTime || !event.end?.dateTime) {
       console.log('Event missing start or end time:', event.id);
-      return;
+      return affectedItemIds;
     }
 
     const { bookingDate, timeSlots } = parseCalendarEventToTimeSlots(
@@ -389,7 +394,7 @@ export const blockTimeSlotsFromCalendarEvent = async (
     const studios = await StudioModel.find({ createdBy: userId });
     if (!studios || studios.length === 0) {
       console.log('No studios found for user:', userId);
-      return;
+      return affectedItemIds;
     }
 
     // Get all items from all studios
@@ -398,7 +403,7 @@ export const blockTimeSlotsFromCalendarEvent = async (
     
     if (!items || items.length === 0) {
       console.log('No items found for user studios:', userId);
-      return;
+      return affectedItemIds;
     }
 
     const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -416,13 +421,20 @@ export const blockTimeSlotsFromCalendarEvent = async (
       );
       
       await item.save();
-      emitAvailabilityUpdate(item._id);
+      affectedItemIds.push(item._id.toString());
+      
+      // Only emit if not in batch mode
+      if (!skipEmit) {
+        emitAvailabilityUpdate(item._id.toString());
+      }
     }
 
     console.log(`Blocked time slots for ${items.length} items from calendar event:`, event.id);
+    return affectedItemIds;
   } catch (error) {
     console.error('Error blocking time slots from calendar event:', error);
     // Don't throw - calendar event processing should not break the system
+    return affectedItemIds;
   }
 };
 
@@ -431,12 +443,17 @@ export const blockTimeSlotsFromCalendarEvent = async (
  * @param userId - User ID (studio owner)
  * @param eventStart - Event start datetime
  * @param eventEnd - Event end datetime
+ * @param skipEmit - If true, don't emit socket events (for batch operations)
+ * @returns Array of affected item IDs (for batch emit)
  */
 export const unblockTimeSlotsFromCalendarEvent = async (
   userId: string,
   eventStart: string | Date,
-  eventEnd: string | Date
-): Promise<void> => {
+  eventEnd: string | Date,
+  skipEmit: boolean = false
+): Promise<string[]> => {
+  const affectedItemIds: string[] = [];
+  
   try {
     // Parse event to get booking date and time slots
     const { bookingDate, timeSlots } = parseCalendarEventToTimeSlots(eventStart, eventEnd);
@@ -444,7 +461,7 @@ export const unblockTimeSlotsFromCalendarEvent = async (
     // Find all studios owned by this user
     const studios = await StudioModel.find({ createdBy: userId });
     if (!studios || studios.length === 0) {
-      return;
+      return affectedItemIds;
     }
 
     // Get all items from all studios
@@ -452,7 +469,7 @@ export const unblockTimeSlotsFromCalendarEvent = async (
     const items = await ItemModel.find({ studioId: { $in: studioIds } });
     
     if (!items || items.length === 0) {
-      return;
+      return affectedItemIds;
     }
 
     const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -471,13 +488,20 @@ export const unblockTimeSlotsFromCalendarEvent = async (
       );
       
       await item.save();
-      emitAvailabilityUpdate(item._id);
+      affectedItemIds.push(item._id.toString());
+      
+      // Only emit if not in batch mode
+      if (!skipEmit) {
+        emitAvailabilityUpdate(item._id.toString());
+      }
     }
 
     console.log(`Unblocked time slots for ${items.length} items from deleted calendar event`);
+    return affectedItemIds;
   } catch (error) {
     console.error('Error unblocking time slots from calendar event:', error);
     // Don't throw - calendar event processing should not break the system
+    return affectedItemIds;
   }
 };
 
@@ -520,7 +544,10 @@ export const syncCalendarEventsToTimeSlots = async (
     const events = response.data.items || [];
     const nextSyncToken = response.data.nextSyncToken;
 
-    // Process each event
+    // Collect all affected item IDs to emit once at the end
+    const allAffectedItemIds: Set<string> = new Set();
+
+    // Process each event in batch mode (skipEmit = true)
     for (const event of events) {
       if (!event.start || !event.end) continue;
 
@@ -533,12 +560,29 @@ export const syncCalendarEventsToTimeSlots = async (
       if (event.status === 'cancelled') {
         // Event was deleted, unblock time slots
         if (event.start.dateTime && event.end.dateTime) {
-          await unblockTimeSlotsFromCalendarEvent(userId, event.start.dateTime, event.end.dateTime);
+          const itemIds = await unblockTimeSlotsFromCalendarEvent(
+            userId, 
+            event.start.dateTime, 
+            event.end.dateTime,
+            true // skipEmit - we'll emit once at the end
+          );
+          itemIds.forEach(id => allAffectedItemIds.add(id));
         }
       } else if (event.status === 'confirmed') {
         // Event exists or was created/updated, block time slots
-        await blockTimeSlotsFromCalendarEvent(userId, event);
+        const itemIds = await blockTimeSlotsFromCalendarEvent(
+          userId, 
+          event,
+          true // skipEmit - we'll emit once at the end
+        );
+        itemIds.forEach(id => allAffectedItemIds.add(id));
       }
+    }
+
+    // Emit a single bulk update for all affected items
+    if (allAffectedItemIds.size > 0) {
+      emitBulkAvailabilityUpdate(Array.from(allAffectedItemIds));
+      console.log(`Emitted bulk availability update for ${allAffectedItemIds.size} items`);
     }
 
     // Update sync token in user model
