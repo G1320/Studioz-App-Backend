@@ -44,7 +44,7 @@ export default interface Item {
   subCategories?: string[];
   genres?: string[];
   price?: number;
-  pricePer?: 'hour' | 'session' | 'unit' | 'project' | 'day';
+  pricePer?: 'hour' | 'session' | 'unit' | 'song' | 'project' | 'day';
   imageUrl?: string;
   idx?: number;
   inStock: boolean;

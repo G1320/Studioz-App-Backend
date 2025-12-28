@@ -48,7 +48,7 @@ const schema = Joi.object({
   subCategories: Joi.array().items(Joi.string()).optional(),
   genres: Joi.array().items(Joi.string()).optional(),
   price: Joi.number().optional(),
-  pricePer: Joi.string().valid('hour', 'session', 'unit', 'project', 'day').optional(),
+  pricePer: Joi.string().valid('hour', 'session', 'unit', 'song', 'project', 'day').optional(),
   imgUrl: Joi.string().uri().optional(),
   idx: Joi.number().optional(),
   inStock: Joi.boolean().optional(),
