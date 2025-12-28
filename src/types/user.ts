@@ -49,6 +49,7 @@ export default interface User {
     tokenExpiry?: Date;
     calendarId?: string;
     lastSyncAt?: Date;
+    syncToken?: string;
   };
   __v?: number;
 }

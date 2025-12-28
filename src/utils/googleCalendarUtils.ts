@@ -131,3 +131,54 @@ export const formatReservationToCalendarEvent = (
   return event;
 };
 
+/**
+ * Parse Google Calendar event datetime to booking date and time slots
+ * @param eventStart - Event start datetime (ISO string or Date object)
+ * @param eventEnd - Event end datetime (ISO string or Date object)
+ * @returns Object with bookingDate (DD/MM/YYYY) and timeSlots array
+ */
+export const parseCalendarEventToTimeSlots = (
+  eventStart: string | Date,
+  eventEnd: string | Date
+): { bookingDate: string; timeSlots: string[] } => {
+  const start = typeof eventStart === 'string' ? new Date(eventStart) : eventStart;
+  const end = typeof eventEnd === 'string' ? new Date(eventEnd) : eventEnd;
+
+  // Format date as DD/MM/YYYY
+  const day = String(start.getDate()).padStart(2, '0');
+  const month = String(start.getMonth() + 1).padStart(2, '0');
+  const year = start.getFullYear();
+  const bookingDate = `${day}/${month}/${year}`;
+
+  // Calculate duration in hours
+  const durationMs = end.getTime() - start.getTime();
+  const durationHours = Math.ceil(durationMs / (1000 * 60 * 60)); // Round up to nearest hour
+
+  // Generate time slots starting from the event start hour
+  const startHour = start.getHours();
+  const timeSlots: string[] = [];
+  for (let i = 0; i < durationHours; i++) {
+    const hour = (startHour + i) % 24;
+    timeSlots.push(`${String(hour).padStart(2, '0')}:00`);
+  }
+
+  return { bookingDate, timeSlots };
+};
+
+/**
+ * Check if a calendar event should block studio time slots
+ * Events created by the app (with reservation ID in description) should be ignored
+ * @param event - Google Calendar event
+ * @returns true if the event should block time slots
+ */
+export const shouldBlockTimeSlotsForEvent = (event: calendar_v3.Schema$Event): boolean => {
+  // If event has a description with "Reservation ID:", it was created by our app
+  // We should ignore these to avoid double-blocking
+  if (event.description && event.description.includes('Reservation ID:')) {
+    return false;
+  }
+
+  // Block time slots for all other events
+  return true;
+};
+

@@ -74,7 +74,8 @@ const userSchema = new Schema(
       refreshToken: { type: String, select: false },
       tokenExpiry: { type: Date },
       calendarId: { type: String, default: 'primary' },
-      lastSyncAt: { type: Date }
+      lastSyncAt: { type: Date },
+      syncToken: { type: String }
     }
   },
   

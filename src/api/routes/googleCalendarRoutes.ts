@@ -16,5 +16,8 @@ router.post('/disconnect', verifyTokenMw, googleCalendarHandler.disconnect);
 // Get connection status (requires auth)
 router.get('/status', verifyTokenMw, googleCalendarHandler.getStatus);
 
+// Sync calendar events to block time slots (requires auth)
+router.post('/sync', verifyTokenMw, googleCalendarHandler.syncCalendar);
+
 export default router;
 

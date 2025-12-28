@@ -4,7 +4,9 @@ import { StudioModel } from '../models/studioModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
 import { getValidAccessToken, getAuthenticatedClient, isTokenExpired, refreshAccessToken } from '../utils/googleOAuthUtils.js';
-import { formatReservationToCalendarEvent } from '../utils/googleCalendarUtils.js';
+import { formatReservationToCalendarEvent, parseCalendarEventToTimeSlots, shouldBlockTimeSlotsForEvent } from '../utils/googleCalendarUtils.js';
+import { initializeAvailability, findOrCreateDateAvailability, removeTimeSlots, generateTimeSlots } from '../utils/timeSlotUtils.js';
+import { emitAvailabilityUpdate } from '../webSockets/socket.js';
 import ExpressError from '../utils/expressError.js';
 import Reservation from '../types/reservation.js';
 
@@ -68,6 +70,15 @@ export const connectCalendar = async (userId: string, authCode: string): Promise
     // Note: We skip calendar list verification since it requires the full 'calendar' scope
     // The connection will be verified when we actually create an event
     console.log('Google Calendar connected successfully');
+
+    // Trigger initial sync to block time slots from existing calendar events
+    try {
+      await syncCalendarEventsToTimeSlots(userId);
+      console.log('Initial calendar sync completed');
+    } catch (error) {
+      console.error('Error during initial calendar sync:', error);
+      // Don't fail the connection if sync fails
+    }
 
   } catch (error) {
     console.error('Error connecting Google Calendar:', error);
@@ -344,6 +355,205 @@ export const syncReservationToCalendar = async (reservation: Reservation): Promi
   } catch (error) {
     console.error('Error syncing reservation to calendar:', error);
     // Don't throw - calendar sync should not break reservation flow
+  }
+};
+
+/**
+ * Block time slots for all items in a user's studios based on a calendar event
+ * @param userId - User ID (studio owner)
+ * @param event - Google Calendar event
+ */
+export const blockTimeSlotsFromCalendarEvent = async (
+  userId: string,
+  event: calendar_v3.Schema$Event
+): Promise<void> => {
+  try {
+    // Check if we should block time slots for this event
+    if (!shouldBlockTimeSlotsForEvent(event)) {
+      console.log('Skipping time slot blocking for app-created event:', event.id);
+      return;
+    }
+
+    // Parse event to get booking date and time slots
+    if (!event.start?.dateTime || !event.end?.dateTime) {
+      console.log('Event missing start or end time:', event.id);
+      return;
+    }
+
+    const { bookingDate, timeSlots } = parseCalendarEventToTimeSlots(
+      event.start.dateTime,
+      event.end.dateTime
+    );
+
+    // Find all studios owned by this user
+    const studios = await StudioModel.find({ createdBy: userId });
+    if (!studios || studios.length === 0) {
+      console.log('No studios found for user:', userId);
+      return;
+    }
+
+    // Get all items from all studios
+    const studioIds = studios.map(studio => studio._id);
+    const items = await ItemModel.find({ studioId: { $in: studioIds } });
+    
+    if (!items || items.length === 0) {
+      console.log('No items found for user studios:', userId);
+      return;
+    }
+
+    const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
+    // Block time slots for all items
+    for (const item of items) {
+      item.availability = initializeAvailability(item.availability);
+      const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+      
+      // Remove time slots that overlap with the calendar event
+      dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
+      
+      item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+      );
+      
+      await item.save();
+      emitAvailabilityUpdate(item._id);
+    }
+
+    console.log(`Blocked time slots for ${items.length} items from calendar event:`, event.id);
+  } catch (error) {
+    console.error('Error blocking time slots from calendar event:', error);
+    // Don't throw - calendar event processing should not break the system
+  }
+};
+
+/**
+ * Unblock time slots for all items in a user's studios when a calendar event is deleted
+ * @param userId - User ID (studio owner)
+ * @param eventStart - Event start datetime
+ * @param eventEnd - Event end datetime
+ */
+export const unblockTimeSlotsFromCalendarEvent = async (
+  userId: string,
+  eventStart: string | Date,
+  eventEnd: string | Date
+): Promise<void> => {
+  try {
+    // Parse event to get booking date and time slots
+    const { bookingDate, timeSlots } = parseCalendarEventToTimeSlots(eventStart, eventEnd);
+
+    // Find all studios owned by this user
+    const studios = await StudioModel.find({ createdBy: userId });
+    if (!studios || studios.length === 0) {
+      return;
+    }
+
+    // Get all items from all studios
+    const studioIds = studios.map(studio => studio._id);
+    const items = await ItemModel.find({ studioId: { $in: studioIds } });
+    
+    if (!items || items.length === 0) {
+      return;
+    }
+
+    const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    const { addTimeSlots } = await import('../utils/timeSlotUtils.js');
+
+    // Unblock time slots for all items
+    for (const item of items) {
+      item.availability = initializeAvailability(item.availability);
+      const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+      
+      // Add time slots back
+      dateAvailability.times = addTimeSlots(dateAvailability.times, timeSlots);
+      
+      item.availability = item.availability.map(avail =>
+        avail.date === bookingDate ? dateAvailability : avail
+      );
+      
+      await item.save();
+      emitAvailabilityUpdate(item._id);
+    }
+
+    console.log(`Unblocked time slots for ${items.length} items from deleted calendar event`);
+  } catch (error) {
+    console.error('Error unblocking time slots from calendar event:', error);
+    // Don't throw - calendar event processing should not break the system
+  }
+};
+
+/**
+ * Process calendar events and update time slots
+ * Fetches changed events from Google Calendar and processes them
+ * @param userId - User ID (studio owner)
+ * @param syncToken - Optional sync token for incremental sync
+ */
+export const syncCalendarEventsToTimeSlots = async (
+  userId: string,
+  syncToken?: string
+): Promise<string | undefined> => {
+  try {
+    const user = await UserModel.findById(userId).select('googleCalendar');
+    if (!user || !user.googleCalendar?.connected) {
+      console.log('Google Calendar not connected for user:', userId);
+      return;
+    }
+
+    // Get and refresh token if needed
+    const accessToken = await getAndRefreshToken(userId, user);
+    const calendar = google.calendar({ version: 'v3', auth: getAuthenticatedClient(accessToken) });
+    const calendarId = user.googleCalendar.calendarId || 'primary';
+
+    // Fetch events
+    const params: calendar_v3.Params$Resource$Events$List = {
+      calendarId: calendarId,
+      timeMin: new Date().toISOString(), // Only future events
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 100
+    };
+
+    if (syncToken) {
+      params.syncToken = syncToken;
+    }
+
+    const response = await calendar.events.list(params);
+    const events = response.data.items || [];
+    const nextSyncToken = response.data.nextSyncToken;
+
+    // Process each event
+    for (const event of events) {
+      if (!event.start || !event.end) continue;
+
+      // Skip all-day events (they have 'date' instead of 'dateTime')
+      if (event.start.date || event.end.date) {
+        continue;
+      }
+
+      // Check event status
+      if (event.status === 'cancelled') {
+        // Event was deleted, unblock time slots
+        if (event.start.dateTime && event.end.dateTime) {
+          await unblockTimeSlotsFromCalendarEvent(userId, event.start.dateTime, event.end.dateTime);
+        }
+      } else if (event.status === 'confirmed') {
+        // Event exists or was created/updated, block time slots
+        await blockTimeSlotsFromCalendarEvent(userId, event);
+      }
+    }
+
+    // Update sync token in user model
+    if (nextSyncToken) {
+      await UserModel.findByIdAndUpdate(userId, {
+        'googleCalendar.lastSyncAt': new Date(),
+        'googleCalendar.syncToken': nextSyncToken
+      });
+    }
+
+    return nextSyncToken || undefined;
+  } catch (error) {
+    console.error('Error syncing calendar events to time slots:', error);
+    // Don't throw - calendar sync should not break the system
+    return undefined;
   }
 };
 

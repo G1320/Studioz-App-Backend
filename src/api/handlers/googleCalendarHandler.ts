@@ -4,8 +4,10 @@ import ExpressError from '../../utils/expressError.js';
 import {
   connectCalendar,
   disconnectCalendar,
-  getConnectionStatus
+  getConnectionStatus,
+  syncCalendarEventsToTimeSlots
 } from '../../services/googleCalendarService.js';
+import { UserModel } from '../../models/userModel.js';
 import { generateAuthUrl } from '../../utils/googleOAuthUtils.js';
 
 interface CustomRequest extends Request {
@@ -114,11 +116,37 @@ const getStatus = handleRequest(async (req: CustomRequest) => {
   return status;
 });
 
+/**
+ * Sync calendar events to block time slots
+ * POST /api/auth/google/calendar/sync
+ */
+const syncCalendar = handleRequest(async (req: CustomRequest) => {
+  const userId = req.decodedJwt?._id || req.decodedJwt?.userId;
+  if (!userId) {
+    throw new ExpressError('User not authenticated', 401);
+  }
+
+  const user = await UserModel.findById(userId).select('googleCalendar');
+  
+  if (!user || !user.googleCalendar?.connected) {
+    throw new ExpressError('Google Calendar not connected', 400);
+  }
+
+  const syncToken = user.googleCalendar.syncToken;
+  const newSyncToken = await syncCalendarEventsToTimeSlots(userId.toString(), syncToken || undefined);
+  
+  return { 
+    message: 'Calendar synced successfully',
+    syncToken: newSyncToken 
+  };
+});
+
 const googleCalendarHandler = {
   getAuthUrl,
   handleCallback, // No auth required - handled by Google OAuth
   disconnect,
-  getStatus
+  getStatus,
+  syncCalendar
 };
 
 export default googleCalendarHandler;
