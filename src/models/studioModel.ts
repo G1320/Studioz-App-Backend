@@ -38,7 +38,7 @@ const studioSchema = new Schema({
   averageRating: { type: Number, required: false, default: 0 },
   reviewCount: { type: Number, required: false, default: 0 },
   totalBookings: { type: Number, required: false, default: 0 },
-  city: { type: String, required: true },
+  city: { type: String, required: false },
   address: { type: String, required: false },
   lat: { type: Number, required: false },
   lng: { type: Number, required: false },
