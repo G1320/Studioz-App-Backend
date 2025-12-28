@@ -49,6 +49,25 @@ export const releaseReservationTimeSlots = async (reservation: Reservation) => {
   
     await item.save();
     emitAvailabilityUpdate(item._id);
+
+    // Release time slots for all other items in the studio (studio is no longer busy during this session)
+    if (item.studioId && reservation.timeSlots) {
+        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: reservation.itemId } });
+        for (const studioItem of studioItems) {
+            studioItem.availability = initializeAvailability(studioItem.availability);
+            const studioItemDateAvailability = findOrCreateDateAvailability(
+                studioItem.availability, 
+                reservation.bookingDate, 
+                defaultHours
+            );
+            studioItemDateAvailability.times = addTimeSlots(studioItemDateAvailability.times, reservation.timeSlots);
+            studioItem.availability = studioItem.availability.map(avail =>
+                avail.date === reservation.bookingDate ? studioItemDateAvailability : avail
+            );
+            await studioItem.save();
+            emitAvailabilityUpdate(studioItem._id);
+        }
+    }
 };
 
 
@@ -153,6 +172,21 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     await item.save();
     await user?.save();
     emitAvailabilityUpdate(itemId);
+
+    // Update time slots for all other items in the studio (studio will be busy during this session)
+    if (item.studioId) {
+        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        for (const studioItem of studioItems) {
+            studioItem.availability = initializeAvailability(studioItem.availability);
+            const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
+            studioItemDateAvailability.times = removeTimeSlots(studioItemDateAvailability.times, timeSlots);
+            studioItem.availability = studioItem.availability.map(avail =>
+                avail.date === bookingDate ? studioItemDateAvailability : avail
+            );
+            await studioItem.save();
+            emitAvailabilityUpdate(studioItem._id);
+        }
+    }
     emitReservationUpdate(
       [reservation._id.toString()],
       reservation.customerId?.toString() || reservation.userId?.toString() || ''
@@ -246,6 +280,21 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
     await item.save();
     emitAvailabilityUpdate(itemId);
 
+    // Update time slots for all other items in the studio (studio will be busy during this session)
+    if (item.studioId) {
+        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        for (const studioItem of studioItems) {
+            studioItem.availability = initializeAvailability(studioItem.availability);
+            const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
+            studioItemDateAvailability.times = removeTimeSlots(studioItemDateAvailability.times, nextSlot);
+            studioItem.availability = studioItem.availability.map(avail =>
+                avail.date === bookingDate ? studioItemDateAvailability : avail
+            );
+            await studioItem.save();
+            emitAvailabilityUpdate(studioItem._id);
+        }
+    }
+
     return item;
 });
 
@@ -301,6 +350,22 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     }
     await item.save();
     emitAvailabilityUpdate(itemId);
+
+    // Release time slots for all other items in the studio (studio is no longer busy during this slot)
+    if (item.studioId) {
+        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        for (const studioItem of studioItems) {
+            studioItem.availability = initializeAvailability(studioItem.availability);
+            const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
+            studioItemDateAvailability.times = addTimeSlots(studioItemDateAvailability.times, [lastBookedSlot]);
+            studioItemDateAvailability.times = Array.from(new Set(studioItemDateAvailability.times));
+            studioItem.availability = studioItem.availability.map(avail =>
+                avail.date === bookingDate ? studioItemDateAvailability : avail
+            );
+            await studioItem.save();
+            emitAvailabilityUpdate(studioItem._id);
+        }
+    }
 
     return item;
 });
@@ -366,6 +431,23 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
 
     await item.save();
     emitAvailabilityUpdate(itemId);
+
+    // Release time slots for all other items in the studio (studio is no longer busy during these slots)
+    if (item.studioId && slotsToRelease.length > 0) {
+        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        for (const studioItem of studioItems) {
+            studioItem.availability = initializeAvailability(studioItem.availability);
+            const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
+            studioItemDateAvailability.times = addTimeSlots(studioItemDateAvailability.times, slotsToRelease);
+            studioItemDateAvailability.times = Array.from(new Set(studioItemDateAvailability.times));
+            studioItemDateAvailability.times.sort((a: string, b: string) => parseInt(a.split(':')[0]) - parseInt(b.split(':')[0]));
+            studioItem.availability = studioItem.availability.map(avail =>
+                avail.date === bookingDate ? studioItemDateAvailability : avail
+            );
+            await studioItem.save();
+            emitAvailabilityUpdate(studioItem._id);
+        }
+    }
 
     return item;
 });
