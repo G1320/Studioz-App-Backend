@@ -68,8 +68,6 @@ const couponSchema = new Schema<ICoupon>(
 );
 
 // Index for faster lookups
-couponSchema.index({ code: 1 });
-couponSchema.index({ isActive: 1, validUntil: 1 });
 
 export const CouponModel: Model<ICoupon> = mongoose.models.Coupon || mongoose.model<ICoupon>('Coupon', couponSchema);
 export default CouponModel;
