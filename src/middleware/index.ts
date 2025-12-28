@@ -6,6 +6,7 @@ import logRequestsMw from './logging/logRequestsMw.js';
 import handleDbErrorMw from './errorHandling/handleDbErrorMw.js';
 import handleErrorMw from './errorHandling/handleErrorMw.js';
 import verifyTokenMw from './auth/verifyTokenMw.js';
+import verifyAdminMw from './auth/verifyAdminMw.js';
 
 export {
   validateUser,
@@ -16,5 +17,6 @@ export {
   logRequestsMw,
   handleDbErrorMw,
   handleErrorMw,
-  verifyTokenMw
+  verifyTokenMw,
+  verifyAdminMw
 };
