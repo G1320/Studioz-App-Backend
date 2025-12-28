@@ -50,7 +50,7 @@ const schema = Joi.object({
   genres: Joi.array().items(Joi.string()).optional(),
   maxOccupancy: Joi.number().required(),
   isSmokingAllowed: Joi.boolean().optional(),
-  city: Joi.string().optional(),
+  city: Joi.string().optional().allow('', null),
   address: Joi.string().optional(),
   phone: Joi.string().optional(),
   website: Joi.string().uri().optional().allow('', null),
