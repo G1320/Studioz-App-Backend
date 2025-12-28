@@ -22,6 +22,7 @@ import sumitRoutes from './api/routes/sumit/paymentRoutes.js';
 import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
 import vendorRoutes from './api/routes/sumit/vendorRoutes.js';
 import googleCalendarRoutes from './api/routes/googleCalendarRoutes.js';
+import googleCalendarWebhookRoutes from './api/routes/googleCalendarWebhookRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -109,6 +110,7 @@ app.use('/api/vendors', vendorRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
+app.use('/api/webhooks', googleCalendarWebhookRoutes);
 
 app.use(handleDbErrorMw);
 app.use(handleErrorMw);

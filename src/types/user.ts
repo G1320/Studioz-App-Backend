@@ -50,6 +50,9 @@ export default interface User {
     calendarId?: string;
     lastSyncAt?: Date;
     syncToken?: string;
+    watchChannelId?: string;
+    watchResourceId?: string;
+    watchExpiration?: Date;
   };
   __v?: number;
 }
