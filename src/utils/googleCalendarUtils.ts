@@ -4,42 +4,6 @@ import Item from '../types/item.js';
 import { calendar_v3 } from 'googleapis';
 
 /**
- * Parse time slots to start and end datetime
- * @param bookingDate - Date string in DD/MM/YYYY format
- * @param timeSlots - Array of time slots in HH:00 format (e.g., ["09:00", "10:00", "11:00"])
- * @returns Start and end Date objects
- */
-export const parseTimeSlotsToDateTime = (
-  bookingDate: string,
-  timeSlots: string[]
-): { start: Date; end: Date } => {
-  if (!timeSlots || timeSlots.length === 0) {
-    throw new Error('Time slots are required');
-  }
-
-  // Parse booking date (DD/MM/YYYY format)
-  const [day, month, year] = bookingDate.split('/').map(Number);
-  if (!day || !month || !year) {
-    throw new Error(`Invalid booking date format: ${bookingDate}. Expected DD/MM/YYYY`);
-  }
-
-  // Get first time slot for start time
-  const startTimeSlot = timeSlots[0];
-  const [startHour, startMinute] = startTimeSlot.split(':').map(Number);
-
-  // Calculate end time (last slot + 1 hour)
-  const lastTimeSlot = timeSlots[timeSlots.length - 1];
-  const [lastHour, lastMinute] = lastTimeSlot.split(':').map(Number);
-  const endHour = lastHour + 1; // Each slot is 1 hour
-
-  // Create Date objects (month is 0-indexed in JavaScript Date)
-  const start = new Date(year, month - 1, day, startHour, startMinute || 0);
-  const end = new Date(year, month - 1, day, endHour, lastMinute || 0);
-
-  return { start, end };
-};
-
-/**
  * Build event description from reservation details
  * @param reservation - The reservation object
  * @param item - The item object (optional)
@@ -96,7 +60,26 @@ export const formatReservationToCalendarEvent = (
   studio: Studio,
   item?: Item
 ): calendar_v3.Schema$Event => {
-  const { start, end } = parseTimeSlotsToDateTime(reservation.bookingDate, reservation.timeSlots);
+  // Parse booking date (DD/MM/YYYY format)
+  const [day, month, year] = reservation.bookingDate.split('/').map(Number);
+  
+  // Get start time
+  const startTimeSlot = reservation.timeSlots[0];
+  const [startHour, startMinute] = startTimeSlot.split(':').map(Number);
+  
+  // Calculate end time
+  const lastTimeSlot = reservation.timeSlots[reservation.timeSlots.length - 1];
+  const [lastHour, lastMinute] = lastTimeSlot.split(':').map(Number);
+  const endHour = lastHour + 1; // Each slot is 1 hour
+  
+  // Format as ISO string without timezone (YYYY-MM-DDTHH:mm:ss)
+  // This ensures Google Calendar interprets it in the specified timeZone
+  const formatDateTime = (y: number, m: number, d: number, h: number, min: number) => {
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+  };
+  
+  const startDateTime = formatDateTime(year, month, day, startHour, startMinute || 0);
+  const endDateTime = formatDateTime(year, month, day, endHour, lastMinute || 0);
 
   // Format event title
   const studioName = studio.name?.en || 'Studio';
@@ -114,19 +97,15 @@ export const formatReservationToCalendarEvent = (
     summary: title,
     description: description,
     start: {
-      dateTime: start.toISOString(),
+      dateTime: startDateTime,
       timeZone: 'Asia/Jerusalem' // Israel timezone
     },
     end: {
-      dateTime: end.toISOString(),
+      dateTime: endDateTime,
       timeZone: 'Asia/Jerusalem'
     },
     location: location
   };
-
-  // Add customer email as attendee if available
-  // Note: We'd need to fetch customer email from User model if needed
-  // For now, we'll skip this to keep it simple
 
   return event;
 };
@@ -144,18 +123,35 @@ export const parseCalendarEventToTimeSlots = (
   const start = typeof eventStart === 'string' ? new Date(eventStart) : eventStart;
   const end = typeof eventEnd === 'string' ? new Date(eventEnd) : eventEnd;
 
-  // Format date as DD/MM/YYYY
-  const day = String(start.getDate()).padStart(2, '0');
-  const month = String(start.getMonth() + 1).padStart(2, '0');
-  const year = start.getFullYear();
-  const bookingDate = `${day}/${month}/${year}`;
+  // Use Intl.DateTimeFormat to get date/time parts in Israel timezone
+  const israelTz = 'Asia/Jerusalem';
+  const dateFormatter = new Intl.DateTimeFormat('en-GB', { 
+    timeZone: israelTz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  // Helper to get parts map
+  const getParts = (date: Date) => {
+    const parts = dateFormatter.formatToParts(date);
+    const map: Record<string, string> = {};
+    parts.forEach(p => map[p.type] = p.value);
+    return map;
+  };
+
+  const startParts = getParts(start);
+  const bookingDate = `${startParts.day}/${startParts.month}/${startParts.year}`;
 
   // Calculate duration in hours
   const durationMs = end.getTime() - start.getTime();
   const durationHours = Math.ceil(durationMs / (1000 * 60 * 60)); // Round up to nearest hour
 
-  // Generate time slots starting from the event start hour
-  const startHour = start.getHours();
+  // Generate time slots starting from the event start hour (in Israel time)
+  const startHour = parseInt(startParts.hour, 10);
   const timeSlots: string[] = [];
   for (let i = 0; i < durationHours; i++) {
     const hour = (startHour + i) % 24;
