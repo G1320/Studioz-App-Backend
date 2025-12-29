@@ -29,4 +29,5 @@ customerId?: string;
 comment?: string;
 addOnIds?: string[];
 googleCalendarEventId?: string;
+address?: string;
 }
