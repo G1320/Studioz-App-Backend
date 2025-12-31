@@ -8,7 +8,8 @@
     "test": "node --loader ts-node/esm --test src/tests/reviewAggregates.test.ts",
     "build": "npm i && tsc",
     "start": "node ./dist/server.js",
-    "start:dev": "ts-node src/server.ts"
+    "start:dev": "ts-node src/server.ts",
+    "cleanup:subcategories": "node --loader ts-node/esm src/scripts/cleanupSubCategories.ts"
   },
   "engines": {
     "node": "18.x"

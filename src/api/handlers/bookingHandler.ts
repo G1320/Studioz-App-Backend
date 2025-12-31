@@ -116,6 +116,11 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
 
+    // Get studio address and cover image for the reservation
+    const studio = await StudioModel.findById(item.studioId);
+    const studioAddress = studio?.address || '';
+    const studioImgUrl = studio?.coverImage || '';
+
     const user = await UserModel.findById(customerId);
     // Initialize availability
     item.availability = initializeAvailability(item.availability) ;
@@ -154,7 +159,9 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         customerPhone,
         comment,
         status: reservationStatus,
-        addOnIds: addOnIds || []
+        addOnIds: addOnIds || [],
+        address: studioAddress,
+        studioImgUrl
         // totalPrice will be calculated by the pre-save hook
     });
     
