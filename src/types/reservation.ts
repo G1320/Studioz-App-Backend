@@ -31,4 +31,5 @@ addOnIds?: string[];
 googleCalendarEventId?: string;
 address?: string;
 studioImgUrl?: string;
+quantity?: number;
 }
