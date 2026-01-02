@@ -62,7 +62,8 @@ const schema = Joi.object({
   lng: Joi.number().optional(),
   isWheelchairAccessible: Joi.boolean().optional(),
   isSelfService: Joi.boolean().optional(),
-  parking: Joi.string().valid('private_spot', 'street_parking', 'paid_garage', 'no_parking').optional().default('no_parking'),
+  parking: Joi.string().valid('private', 'street', 'paid', 'none').optional().default('none'),
+  arrivalInstructions: Joi.string().max(500).optional().allow('', null),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
   isFeatured: Joi.boolean().optional()
 });
