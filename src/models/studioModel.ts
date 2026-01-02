@@ -55,9 +55,9 @@ const studioSchema = new Schema({
   isFeatured: { type: Boolean, required: false },
   parking: {
     type: String,
-    enum: ['none', 'free', 'paid'],
+    enum: ['private_spot', 'street_parking', 'paid_garage', 'no_parking'],
     required: false,
-    default: 'none'
+    default: 'no_parking'
   },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },

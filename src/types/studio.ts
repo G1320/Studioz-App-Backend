@@ -50,7 +50,7 @@ export default interface Studio {
   galleryAudioFiles?: string[];
   coverAudioFile?: string;
   isSelfService?: boolean;
-  parking?: 'none' | 'free' | 'paid';
+  parking?: 'private_spot' | 'street_parking' | 'paid_garage' | 'no_parking';
   createdAt: Date;
   createdBy: string;
   isFeatured?: boolean;
