@@ -34,7 +34,10 @@ const studioSchema = new Schema({
   categories: [{ type: String, required: false }],
   subCategories: [{ type: String, required: false }],
   genres: [{ type: String, required: false }],
+  amenities: [{ type: String, required: false }],
+  equipment: [{ type: String, required: false }],
   maxOccupancy: { type: Number, required: false },
+  size: { type: Number, required: false }, // Square meters
   averageRating: { type: Number, required: false, default: 0 },
   reviewCount: { type: Number, required: false, default: 0 },
   totalBookings: { type: Number, required: false, default: 0 },

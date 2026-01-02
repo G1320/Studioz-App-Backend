@@ -26,10 +26,13 @@ export default interface Studio {
   categories?: string[];
   subCategories?: string[];
   genres?: string[];
+  amenities?: string[];
+  equipment?: string[];
   averageRating?: number;
   reviewCount?: number;
   totalBookings?: number;
   maxOccupancy?: number;
+  size?: number; // Square meters
   isSmokingAllowed?: boolean;
   city: string;
   address?: string;
