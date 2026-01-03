@@ -38,6 +38,11 @@ const cancellationPolicySchema = Joi.object({
   }).optional()
 }).optional();
 
+const blockDiscountsSchema = Joi.object({
+  eightHour: Joi.number().positive().optional().allow(null),
+  twelveHour: Joi.number().positive().optional().allow(null)
+}).optional();
+
 const schema = Joi.object({
   name: translationTitleSchema,
   description: translationDescriptionSchema,
@@ -49,6 +54,7 @@ const schema = Joi.object({
   genres: Joi.array().items(Joi.string()).optional(),
   price: Joi.number().optional(),
   pricePer: Joi.string().valid('hour', 'session', 'unit', 'song', 'project', 'day').optional(),
+  blockDiscounts: blockDiscountsSchema,
   imgUrl: Joi.string().uri().optional(),
   idx: Joi.number().optional(),
   inStock: Joi.boolean().optional(),
@@ -67,12 +73,10 @@ const schema = Joi.object({
   // Booking Requirements
   minimumBookingDuration: durationSchema,
   minimumQuantity: Joi.number().positive().optional(),
-  maximumBookingDuration: durationSchema,
   advanceBookingRequired: advanceBookingSchema,
   
   // Setup & Preparation
   preparationTime: durationSchema,
-  bufferTime: durationSchema,
   
   // Policies
   cancellationPolicy: cancellationPolicySchema,
@@ -83,10 +87,7 @@ const schema = Joi.object({
   softwareRequirements: Joi.array().items(Joi.string()).optional(),
   
   // Quantity Management
-  maxQuantityPerBooking: Joi.number().positive().optional(),
-  
-  // Same-Day Booking
-  allowSameDayBooking: Joi.boolean().optional()
+  maxQuantityPerBooking: Joi.number().positive().optional()
 }).unknown(true);
 
 const validateItem = (req: Request, res: Response, next: NextFunction): void => {

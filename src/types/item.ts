@@ -18,6 +18,11 @@ export interface CancellationPolicy {
   };
 }
 
+export interface BlockDiscounts {
+  eightHour?: number;
+  twelveHour?: number;
+}
+
 export default interface Item {
   _id: string;
   name?: {
@@ -45,6 +50,7 @@ export default interface Item {
   genres?: string[];
   price?: number;
   pricePer?: 'hour' | 'session' | 'unit' | 'song' | 'project' | 'day';
+  blockDiscounts?: BlockDiscounts;
   imageUrl?: string;
   idx?: number;
   inStock: boolean;
@@ -61,12 +67,10 @@ export default interface Item {
   // Booking Requirements
   minimumBookingDuration?: Duration;
   minimumQuantity?: number;
-  maximumBookingDuration?: Duration;
   advanceBookingRequired?: AdvanceBookingRequired;
   
   // Setup & Preparation
   preparationTime?: Duration;
-  bufferTime?: Duration;
   
   // Policies
   cancellationPolicy?: CancellationPolicy;
@@ -78,7 +82,4 @@ export default interface Item {
   
   // Quantity Management
   maxQuantityPerBooking?: number;
-  
-  // Same-Day Booking
-  allowSameDayBooking?: boolean;
 }

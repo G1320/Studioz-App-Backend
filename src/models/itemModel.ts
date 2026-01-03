@@ -41,6 +41,11 @@ const cancellationPolicySchema = new Schema({
   }
 }, { _id: false });
 
+const blockDiscountsSchema = new Schema({
+  eightHour: { type: Number, required: false },
+  twelveHour: { type: Number, required: false }
+}, { _id: false });
+
 const itemSchema: Schema = new Schema({
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -54,6 +59,7 @@ const itemSchema: Schema = new Schema({
   genres: [{ type: String, required: false }],
   price: { type: Number, required: false },
   pricePer: { type: String, required: false },
+  blockDiscounts: { type: blockDiscountsSchema, required: false },
   imgUrl: { type: String, required: false },
   idx: { type: Number, required: false },
   inStock: { type: Boolean, required: false },
@@ -73,12 +79,10 @@ const itemSchema: Schema = new Schema({
   // Booking Requirements
   minimumBookingDuration: { type: durationSchema, required: false },
   minimumQuantity: { type: Number, required: false },
-  maximumBookingDuration: { type: durationSchema, required: false },
   advanceBookingRequired: { type: advanceBookingSchema, required: false },
   
   // Setup & Preparation
   preparationTime: { type: durationSchema, required: false },
-  bufferTime: { type: durationSchema, required: false },
   
   // Policies
   cancellationPolicy: { type: cancellationPolicySchema, required: false },
@@ -93,10 +97,7 @@ const itemSchema: Schema = new Schema({
   softwareRequirements: [{ type: String, required: false }],
   
   // Quantity Management
-  maxQuantityPerBooking: { type: Number, required: false },
-  
-  // Same-Day Booking
-  allowSameDayBooking: { type: Boolean, required: false, default: false }
+  maxQuantityPerBooking: { type: Number, required: false }
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);
