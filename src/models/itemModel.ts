@@ -24,7 +24,7 @@ const advanceBookingSchema = new Schema({
   value: { type: Number, required: false },
   unit: { 
     type: String, 
-    enum: ['hours', 'days'],
+    enum: ['minutes', 'hours', 'days'],
     required: false 
   }
 }, { _id: false });

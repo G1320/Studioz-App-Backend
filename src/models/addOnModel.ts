@@ -10,7 +10,12 @@ const addOnSchema: Schema = new Schema({
   name: { type: translationSchema, required: true },
   description: { type: translationSchema, required: false },
   price: { type: Number, required: true },
-  pricePer: { type: String, required: false },
+  pricePer: { 
+    type: String, 
+    enum: ['flat', 'hour', 'day'],
+    required: false,
+    default: 'flat'
+  },
   itemId: { type: Schema.Types.ObjectId, ref: 'Item', required: false },
   isActive: { type: Boolean, required: false, default: true },
   idx: { type: Number, required: false },

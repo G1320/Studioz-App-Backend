@@ -9,7 +9,7 @@ export default interface AddOn {
     he?: string;
   };
   price: number;
-  pricePer?: 'hour' | 'session' | 'unit' | 'song';
+  pricePer?: 'flat' | 'hour' | 'day';
   itemId?: string;
   isActive: boolean;
   idx?: number;

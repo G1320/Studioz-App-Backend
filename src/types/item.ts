@@ -7,7 +7,7 @@ export interface Duration {
 
 export interface AdvanceBookingRequired {
   value: number;
-  unit: 'hours' | 'days';
+  unit: 'minutes' | 'hours' | 'days';
 }
 
 export interface CancellationPolicy {

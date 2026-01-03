@@ -27,7 +27,7 @@ const durationSchema = Joi.object({
 
 const advanceBookingSchema = Joi.object({
   value: Joi.number().positive().optional(),
-  unit: Joi.string().valid('hours', 'days').optional()
+  unit: Joi.string().valid('minutes', 'hours', 'days').optional()
 }).optional();
 
 const cancellationPolicySchema = Joi.object({
