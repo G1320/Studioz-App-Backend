@@ -67,6 +67,13 @@ const schema = Joi.object({
   isSelfService: Joi.boolean().optional(),
   parking: Joi.string().valid('private', 'street', 'paid', 'none').optional().default('none'),
   arrivalInstructions: Joi.string().max(500).optional().allow('', null),
+  cancellationPolicy: Joi.object({
+    type: Joi.string().valid('flexible', 'moderate', 'strict').optional(),
+    houseRules: Joi.object({
+      en: Joi.string().max(1000).optional().allow('', null),
+      he: Joi.string().max(1000).optional().allow('', null)
+    }).optional()
+  }).optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
   isFeatured: Joi.boolean().optional()
 });

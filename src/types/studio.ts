@@ -9,6 +9,14 @@ export interface StudioAvailability {
   times: { start: string; end: string }[];
 }
 
+export interface CancellationPolicy {
+  type: 'flexible' | 'moderate' | 'strict';
+  houseRules?: {
+    en?: string;
+    he?: string;
+  };
+}
+
 export default interface Studio {
   _id: string;
   name:{
@@ -52,6 +60,7 @@ export default interface Studio {
   isSelfService?: boolean;
   parking?: 'private' | 'street' | 'paid' | 'none';
   arrivalInstructions?: string;
+  cancellationPolicy?: CancellationPolicy;
   createdAt: Date;
   createdBy: string;
   isFeatured?: boolean;

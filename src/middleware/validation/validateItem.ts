@@ -30,14 +30,6 @@ const advanceBookingSchema = Joi.object({
   unit: Joi.string().valid('minutes', 'hours', 'days').optional()
 }).optional();
 
-const cancellationPolicySchema = Joi.object({
-  type: Joi.string().valid('flexible', 'moderate', 'strict').optional(),
-  notes: Joi.object({
-    en: Joi.string().max(500).optional().allow('', null),
-    he: Joi.string().max(500).optional().allow('', null)
-  }).optional()
-}).optional();
-
 const blockDiscountsSchema = Joi.object({
   eightHour: Joi.number().positive().optional().allow(null),
   twelveHour: Joi.number().positive().optional().allow(null)
@@ -77,9 +69,6 @@ const schema = Joi.object({
   
   // Setup & Preparation
   preparationTime: durationSchema,
-  
-  // Policies
-  cancellationPolicy: cancellationPolicySchema,
   
   // Remote Service
   remoteService: Joi.boolean().optional(),

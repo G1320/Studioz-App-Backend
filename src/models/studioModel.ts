@@ -23,6 +23,17 @@ const socialsSchema = new Schema({
   facebook: { type: String, required: false }
 }, { _id: false });
 
+const cancellationPolicySchema = new Schema({
+  type: {
+    type: String,
+    enum: ['flexible', 'moderate', 'strict'],
+    required: false
+  },
+  houseRules: {
+    en: { type: String, required: false },
+    he: { type: String, required: false }
+  }
+}, { _id: false });
 
 const studioSchema = new Schema({
   name: { type: translationSchema, required: false },
@@ -60,6 +71,7 @@ const studioSchema = new Schema({
     default: 'none'
   },
   arrivalInstructions: { type: String, required: false },
+  cancellationPolicy: { type: cancellationPolicySchema, required: false },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   studioAvailability: { type: StudioAvailability, required: false },

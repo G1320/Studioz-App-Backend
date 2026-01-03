@@ -29,18 +29,6 @@ const advanceBookingSchema = new Schema({
   }
 }, { _id: false });
 
-const cancellationPolicySchema = new Schema({
-  type: {
-    type: String,
-    enum: ['flexible', 'moderate', 'strict'],
-    required: false
-  },
-  notes: {
-    en: { type: String, required: false },
-    he: { type: String, required: false }
-  }
-}, { _id: false });
-
 const blockDiscountsSchema = new Schema({
   eightHour: { type: Number, required: false },
   twelveHour: { type: Number, required: false }
@@ -83,9 +71,6 @@ const itemSchema: Schema = new Schema({
   
   // Setup & Preparation
   preparationTime: { type: durationSchema, required: false },
-  
-  // Policies
-  cancellationPolicy: { type: cancellationPolicySchema, required: false },
   
   // Remote Service
   remoteService: { type: Boolean, required: false, default: false },

@@ -10,14 +10,6 @@ export interface AdvanceBookingRequired {
   unit: 'minutes' | 'hours' | 'days';
 }
 
-export interface CancellationPolicy {
-  type: 'flexible' | 'moderate' | 'strict';
-  notes?: {
-    en?: string;
-    he?: string;
-  };
-}
-
 export interface BlockDiscounts {
   eightHour?: number;
   twelveHour?: number;
@@ -71,9 +63,6 @@ export default interface Item {
   
   // Setup & Preparation
   preparationTime?: Duration;
-  
-  // Policies
-  cancellationPolicy?: CancellationPolicy;
   
   // Remote Service
   remoteService?: boolean;
