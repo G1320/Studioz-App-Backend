@@ -17,6 +17,11 @@ export interface CancellationPolicy {
   };
 }
 
+export interface EquipmentCategory {
+  category: string;
+  items: string; // Raw text input - items separated by newlines or commas
+}
+
 export default interface Studio {
   _id: string;
   name:{
@@ -35,7 +40,7 @@ export default interface Studio {
   subCategories?: string[];
   genres?: string[];
   amenities?: string[];
-  equipment?: string[];
+  equipment?: EquipmentCategory[];
   averageRating?: number;
   reviewCount?: number;
   totalBookings?: number;

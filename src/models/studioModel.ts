@@ -35,6 +35,11 @@ const cancellationPolicySchema = new Schema({
   }
 }, { _id: false });
 
+const equipmentCategorySchema = new Schema({
+  category: { type: String, required: true },
+  items: { type: String, required: false } // Raw text input - items separated by newlines or commas
+}, { _id: false });
+
 const studioSchema = new Schema({
   name: { type: translationSchema, required: false },
   subtitle: { type: translationSchema, required: false },
@@ -46,7 +51,7 @@ const studioSchema = new Schema({
   subCategories: [{ type: String, required: false }],
   genres: [{ type: String, required: false }],
   amenities: [{ type: String, required: false }],
-  equipment: [{ type: String, required: false }],
+  equipment: [{ type: equipmentCategorySchema, required: false }],
   maxOccupancy: { type: Number, required: false },
   size: { type: Number, required: false }, // Square meters
   averageRating: { type: Number, required: false, default: 0 },
