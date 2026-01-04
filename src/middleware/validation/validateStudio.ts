@@ -46,7 +46,7 @@ const schema = Joi.object({
   galleryAudioFiles: Joi.array().items(Joi.string()).optional().label('Gallery audio files'),
   items: Joi.array().items(itemSchema).optional().label('Items array'),
   categories: Joi.array().items(Joi.string()),
-  subCategories: Joi.array().items(Joi.string()),
+  subCategories: Joi.array().items(Joi.string()).optional(),
   genres: Joi.array().items(Joi.string()).optional(),
   amenities: Joi.array().items(Joi.string()).optional(),
   equipment: Joi.array().items(Joi.string()).optional(),
