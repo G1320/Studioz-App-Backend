@@ -11,6 +11,25 @@ const itemSchema = Joi.object({
   quantity: Joi.number().optional()
 });
 
+const portfolioItemSchema = Joi.object({
+  id: Joi.string().required(),
+  title: Joi.string().required(),
+  artist: Joi.string().required(),
+  type: Joi.string().valid('audio', 'video', 'album').required(),
+  coverUrl: Joi.string().uri().optional().allow('', null),
+  link: Joi.string().uri().required(),
+  role: Joi.string().optional().allow('', null)
+});
+
+const socialLinksSchema = Joi.object({
+  spotify: Joi.string().uri().optional().allow('', null),
+  soundcloud: Joi.string().uri().optional().allow('', null),
+  appleMusic: Joi.string().uri().optional().allow('', null),
+  youtube: Joi.string().uri().optional().allow('', null),
+  instagram: Joi.string().uri().optional().allow('', null),
+  website: Joi.string().uri().optional().allow('', null)
+}).optional();
+
 const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.object({
@@ -80,7 +99,9 @@ const schema = Joi.object({
     }).optional()
   }).optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
-  isFeatured: Joi.boolean().optional()
+  isFeatured: Joi.boolean().optional(),
+  portfolio: Joi.array().items(portfolioItemSchema).optional(),
+  socialLinks: socialLinksSchema
 });
 
 const validateStudio = (req: Request, res: Response, next: NextFunction): void => {

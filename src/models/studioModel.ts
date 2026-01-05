@@ -40,6 +40,25 @@ const equipmentCategorySchema = new Schema({
   items: { type: String, required: false } // Raw text input - items separated by newlines or commas
 }, { _id: false });
 
+const portfolioItemSchema = new Schema({
+  id: { type: String, required: true },
+  title: { type: String, required: true },
+  artist: { type: String, required: true },
+  type: { type: String, enum: ['audio', 'video', 'album'], required: true },
+  coverUrl: { type: String, required: false },
+  link: { type: String, required: true },
+  role: { type: String, required: false }
+}, { _id: false });
+
+const socialLinksSchema = new Schema({
+  spotify: { type: String, required: false },
+  soundcloud: { type: String, required: false },
+  appleMusic: { type: String, required: false },
+  youtube: { type: String, required: false },
+  instagram: { type: String, required: false },
+  website: { type: String, required: false }
+}, { _id: false });
+
 const studioSchema = new Schema({
   name: { type: translationSchema, required: false },
   subtitle: { type: translationSchema, required: false },
@@ -80,6 +99,8 @@ const studioSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   studioAvailability: { type: StudioAvailability, required: false },
+  portfolio: [{ type: portfolioItemSchema, required: false }],
+  socialLinks: { type: socialLinksSchema, required: false },
   items: [
     {
       idx: { type: Number, required: true },
