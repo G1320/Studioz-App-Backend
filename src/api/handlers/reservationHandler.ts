@@ -5,7 +5,7 @@ import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { RESERVATION_STATUS, isReservationExpired, updateExpiredReservations } from '../../services/reservationService.js';
-import { emitReservationUpdate } from '../../webSockets/socket.js';
+import { emitReservationUpdate, emitAvailabilityUpdate } from '../../webSockets/socket.js';
 import { releaseReservationTimeSlots } from '../handlers/bookingHandler.js';
 import {
   notifyVendorReservationCancelled,
@@ -144,10 +144,15 @@ const updateReservationById = handleRequest(async (req: Request) => {
   }
 
   const previousStatus = reservation.status;
+  const previousItemId = reservation.itemId?.toString();
 
   // Check if fields that affect price are being updated
   const priceAffectingFields = ['addOnIds', 'timeSlots', 'itemPrice'];
   const shouldRecalculatePrice = priceAffectingFields.some(field => req.body[field] !== undefined);
+
+  // Check if availability-affecting fields are being updated
+  const availabilityAffectingFields = ['timeSlots', 'bookingDate'];
+  const shouldUpdateAvailability = availabilityAffectingFields.some(field => req.body[field] !== undefined);
 
   const updatedReservation = await ReservationModel.findByIdAndUpdate(
     reservationId,
@@ -171,6 +176,15 @@ const updateReservationById = handleRequest(async (req: Request) => {
       [updatedReservation._id.toString()],
       bookerId
     );
+
+    // Emit availability update if time slots or booking date changed
+    if (shouldUpdateAvailability && updatedReservation.itemId) {
+      // Emit for both the previous item (if changed) and current item
+      emitAvailabilityUpdate(updatedReservation.itemId.toString());
+      if (previousItemId && previousItemId !== updatedReservation.itemId.toString()) {
+        emitAvailabilityUpdate(previousItemId);
+      }
+    }
 
     // Notify customer when status changes to confirmed or cancelled
     if (previousStatus !== updatedReservation.status && bookerId) {
