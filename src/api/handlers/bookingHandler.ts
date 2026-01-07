@@ -8,8 +8,12 @@ import {
     generateTimeSlots,
     areAllSlotsAvailable,
     removeTimeSlots,
-    addTimeSlots
+    addTimeSlots,
+    DEFAULT_HOURS
 } from '../../utils/timeSlotUtils.js';
+
+// Alias for backwards compatibility - TODO: Refactor to use getStudioOperatingHours
+const defaultHours = DEFAULT_HOURS;
 import { emitAvailabilityUpdate, emitReservationUpdate } from '../../webSockets/socket.js';
 import { ReservationModel } from '../../models/reservationModel.js';
 import { UserModel } from '../../models/userModel.js';
@@ -17,56 +21,29 @@ import { StudioModel } from '../../models/studioModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
 import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
+import {
+    releaseItemTimeSlots as releaseItemSlots,
+    releaseStudioWideTimeSlots,
+    getStudioOperatingHours
+} from '../../services/availabilityService.js';
 
-
-const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
 export const releaseReservationTimeSlots = async (reservation: Reservation) => {
-    const item = await ItemModel.findById(reservation.itemId);
-    if (!item) {
-        console.log('Item not found for reservation:', reservation._id);
-        return;
-    }
-  
-    // Initialize availability if needed
-    item.availability = initializeAvailability(item.availability);
-    
-    // Find or create availability entry for the booking date
-    const dateAvailability = findOrCreateDateAvailability(
-      item.availability, 
-      reservation.bookingDate, 
-      defaultHours
+    // Release time slots for the main item
+    await releaseItemSlots(
+        reservation.itemId.toString(),
+        reservation.bookingDate,
+        reservation.timeSlots
     );
 
-    // Add the expired reservation's time slots back to availability
-    dateAvailability.times = addTimeSlots(dateAvailability.times, reservation.timeSlots);
-  
-
-    // Update item's availability
-    item.availability = item.availability.map(avail =>
-      avail.date === reservation.bookingDate ? dateAvailability : avail
-    );
-  
-    await item.save();
-    emitAvailabilityUpdate(item._id);
-
-    // Release time slots for all other items in the studio (studio is no longer busy during this session)
-    if (item.studioId && reservation.timeSlots) {
-        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: reservation.itemId } });
-        for (const studioItem of studioItems) {
-            studioItem.availability = initializeAvailability(studioItem.availability);
-            const studioItemDateAvailability = findOrCreateDateAvailability(
-                studioItem.availability, 
-                reservation.bookingDate, 
-                defaultHours
-            );
-            studioItemDateAvailability.times = addTimeSlots(studioItemDateAvailability.times, reservation.timeSlots);
-            studioItem.availability = studioItem.availability.map(avail =>
-                avail.date === reservation.bookingDate ? studioItemDateAvailability : avail
-            );
-            await studioItem.save();
-            emitAvailabilityUpdate(studioItem._id);
-        }
+    // Release time slots for all other items in the studio
+    if (reservation.studioId && reservation.timeSlots) {
+        await releaseStudioWideTimeSlots(
+            reservation.studioId.toString(),
+            reservation.bookingDate,
+            reservation.timeSlots,
+            reservation.itemId.toString() // exclude the main item
+        );
     }
 };
 
