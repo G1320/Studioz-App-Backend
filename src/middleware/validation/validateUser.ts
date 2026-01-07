@@ -76,7 +76,16 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     sumitCompanyId: Joi.number().label('Sumit Company ID').optional(),
     sumitApiKey: Joi.string().label('Sumit API Key').optional(),
     sumitApiPublicKey: Joi.string().label('Sumit API Public Key').optional(),
-    role: Joi.string().valid('user', 'vendor', 'admin').label('User Role').optional()
+    role: Joi.string().valid('user', 'vendor', 'admin').label('User Role').optional(),
+    googleCalendar: Joi.object({
+      connected: Joi.boolean().optional(),
+      accessToken: Joi.string().optional(),
+      refreshToken: Joi.string().optional(),
+      tokenExpiry: Joi.date().optional(),
+      calendarId: Joi.string().optional(),
+      lastSyncAt: Joi.date().optional(),
+      syncToken: Joi.string().optional()
+    }).label('Google Calendar Integration').optional()
  });
   
 
