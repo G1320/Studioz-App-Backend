@@ -38,9 +38,9 @@ const schema = Joi.object({
   }).required(),
  
   subtitle: Joi.object({
-    en: Joi.string().required().label('English Subtitle'), 
-    he: Joi.string().required().label('Hebrew Subtitle')
-  }).required(),
+    en: Joi.string().max(100).optional().allow('', null).label('English Subtitle'), 
+    he: Joi.string().max(100).optional().allow('', null).label('Hebrew Subtitle')
+  }).optional(),
  
   description: Joi.object({
     en: Joi.string().required().label('English Description'),
