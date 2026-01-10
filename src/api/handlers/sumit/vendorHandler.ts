@@ -15,6 +15,19 @@ const createVendor = handleRequest(async (req: Request) => {
     throw new ExpressError('Company details are required', 400);
   }
 
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  // Validate required fields
+  const requiredFields = ['Name', 'EmailAddress', 'Phone', 'CorporateNumber', 'bankCode', 'branchCode', 'accountNumber'];
+  for (const field of requiredFields) {
+    if (!companyDetails[field]) {
+      throw new ExpressError(`${field} is required`, 400);
+    }
+  }
+
+  // Step 1: Create the vendor company in Sumit
   const createResponse = await axios.post(
     `${SUMIT_API_URL}/website/companies/create/`,
     {
@@ -27,42 +40,70 @@ const createVendor = handleRequest(async (req: Request) => {
         APIKey: API_KEY
       }
     }
-    );
-    if (!createResponse.data?.Data) {
-      throw new ExpressError('Failed to create vendor', 400);
-    }
-    const paymentResponse = await axios.post(
-      `${SUMIT_API_URL}/billing/generalbilling/openupayterminal/`,
-      {
-        Credentials: {
-          CompanyID: createResponse.data.Data.CompanyID,
-          APIKey: createResponse.data.Data.APIKey
-        },
-        BankCode: companyDetails.bankCode,
-        BranchCode: companyDetails.branchCode,
-        AccountNumber: companyDetails.accountNumber,
-        Program: "OFFICEGUYNEW10"
-      }
-      );
-      console.log('paymentResponse: ', paymentResponse);
-      
-  
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      {
-        sumitCompanyId: createResponse.data.Data.CompanyID,
-        sumitApiKey: createResponse.data.Data.APIKey,
-        sumitApiPublicKey: createResponse.data.Data.APIPublicKey,
-        role: 'vendor'
-      },
-      { new: true }
-      );
-  
-    if (!updatedUser) {
-      throw new ExpressError('Failed to update user with vendor details', 400);
-    }
+  );
 
-  return {createResponse, paymentResponse, updatedUser};
+  if (!createResponse.data?.Data?.CompanyID) {
+    const errorMsg = createResponse.data?.UserErrorMessage || 'Failed to create vendor in Sumit';
+    throw new ExpressError(errorMsg, 400);
+  }
+
+  const vendorCredentials = {
+    CompanyID: createResponse.data.Data.CompanyID,
+    APIKey: createResponse.data.Data.APIKey,
+    APIPublicKey: createResponse.data.Data.APIPublicKey
+  };
+
+  // Step 2: Open payment terminal for the vendor
+  const paymentResponse = await axios.post(
+    `${SUMIT_API_URL}/billing/generalbilling/openupayterminal/`,
+    {
+      Credentials: {
+        CompanyID: vendorCredentials.CompanyID,
+        APIKey: vendorCredentials.APIKey
+      },
+      BankCode: companyDetails.bankCode,
+      BranchCode: companyDetails.branchCode,
+      AccountNumber: companyDetails.accountNumber,
+      Program: "OFFICEGUYNEW10"
+    }
+  );
+
+  // Validate payment terminal was opened successfully
+  if (paymentResponse.data?.Status !== 0 && !paymentResponse.data?.Data) {
+    const errorMsg = paymentResponse.data?.UserErrorMessage || 'Failed to open payment terminal';
+    console.error('Payment terminal error:', paymentResponse.data);
+    throw new ExpressError(errorMsg, 400);
+  }
+
+  console.log('Payment terminal opened successfully:', paymentResponse.data);
+
+  // Step 3: Update user with vendor credentials
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    {
+      sumitCompanyId: vendorCredentials.CompanyID,
+      sumitApiKey: vendorCredentials.APIKey,
+      sumitApiPublicKey: vendorCredentials.APIPublicKey,
+      role: 'vendor'
+    },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    throw new ExpressError('Failed to update user with vendor details', 400);
+  }
+
+  return {
+    success: true,
+    vendor: {
+      companyId: vendorCredentials.CompanyID,
+      hasPaymentTerminal: true
+    },
+    user: {
+      _id: updatedUser._id,
+      role: updatedUser.role
+    }
+  };
 });
 
 export default {
