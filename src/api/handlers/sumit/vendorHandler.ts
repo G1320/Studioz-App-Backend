@@ -36,6 +36,7 @@ const createVendor = handleRequest(async (req: Request) => {
         ...companyDetails,
         CompanyType: 0
       },
+      Applications: ['CreditCard'], // Enable credit card processing module
       Credentials: {
         CompanyID: COMPANY_ID,
         APIKey: API_KEY
