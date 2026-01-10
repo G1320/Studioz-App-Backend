@@ -14,4 +14,10 @@ router.post('/multivendor-charge', paymentHandler.multivendorCharge);
 router.post('/validate-token',paymentHandler.validateToken);
 
 router.post('/webhook', paymentHandler.handleWebhook);
+
+// Reservation payment routes (save card for later, charge on approval)
+router.post('/save-card', paymentHandler.saveCardForLaterCharge);
+router.post('/charge-saved-card', paymentHandler.chargeSavedCard);
+router.post('/refund', paymentHandler.refundPayment);
+
 export default router ;

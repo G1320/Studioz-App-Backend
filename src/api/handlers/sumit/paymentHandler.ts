@@ -384,5 +384,170 @@ export const paymentHandler = {
     //   logger.error('Failed to handle webhook', { error });
       return res.status(500).json({ error: 'Failed to process webhook' });
     }
+  },
+
+  /**
+   * Save a customer's card for later charging (used for reservation payments)
+   * This creates a Sumit customer with SaveCreditCard: true
+   * The card is saved under the VENDOR's Sumit account for marketplace payments
+   */
+  async saveCardForLaterCharge(req: Request, res: Response) {
+    try {
+      const { singleUseToken, customerInfo, vendorId } = req.body;
+
+      if (!singleUseToken || !customerInfo || !vendorId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: singleUseToken, customerInfo, vendorId'
+        });
+      }
+
+      // Use the payment service for consistency
+      const { paymentService } = await import('../../../services/paymentService.js');
+      
+      const credentials = await paymentService.getVendorCredentials(vendorId);
+      if (!credentials) {
+        return res.status(404).json({
+          success: false,
+          error: 'Vendor not found or missing payment credentials'
+        });
+      }
+
+      const result = await paymentService.saveCardForLaterCharge(
+        singleUseToken,
+        customerInfo,
+        credentials
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Failed to save payment method'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          customerId: result.customerId,
+          creditCardToken: result.creditCardToken,
+          lastFourDigits: result.lastFourDigits
+        }
+      });
+    } catch (error: any) {
+      console.error('Save card error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save card'
+      });
+    }
+  },
+
+  /**
+   * Charge a previously saved card (used when reservation is approved)
+   * Uses the Sumit CustomerID to charge the saved card
+   */
+  async chargeSavedCard(req: Request, res: Response) {
+    try {
+      const { sumitCustomerId, amount, description, vendorId } = req.body;
+
+      if (!sumitCustomerId || !amount || !vendorId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: sumitCustomerId, amount, vendorId'
+        });
+      }
+
+      // Use the payment service for consistency
+      const { paymentService } = await import('../../../services/paymentService.js');
+      
+      const credentials = await paymentService.getVendorCredentials(vendorId);
+      if (!credentials) {
+        return res.status(404).json({
+          success: false,
+          error: 'Vendor not found or missing payment credentials'
+        });
+      }
+
+      const result = await paymentService.chargeSavedCard(
+        sumitCustomerId,
+        amount,
+        description || 'Reservation payment',
+        credentials
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Payment failed'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          paymentId: result.paymentId
+        }
+      });
+    } catch (error: any) {
+      console.error('Charge saved card error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment failed'
+      });
+    }
+  },
+
+  /**
+   * Refund a payment (used when cancelling a charged reservation)
+   */
+  async refundPayment(req: Request, res: Response) {
+    try {
+      const { sumitPaymentId, amount, vendorId } = req.body;
+
+      if (!sumitPaymentId || !amount || !vendorId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: sumitPaymentId, amount, vendorId'
+        });
+      }
+
+      // Use the payment service for consistency
+      const { paymentService } = await import('../../../services/paymentService.js');
+      
+      const credentials = await paymentService.getVendorCredentials(vendorId);
+      if (!credentials) {
+        return res.status(404).json({
+          success: false,
+          error: 'Vendor not found or missing payment credentials'
+        });
+      }
+
+      const result = await paymentService.refundPayment(
+        sumitPaymentId,
+        amount,
+        credentials
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Refund failed'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          refundId: result.refundId
+        }
+      });
+    } catch (error: any) {
+      console.error('Refund error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Refund failed'
+      });
+    }
   }
 };

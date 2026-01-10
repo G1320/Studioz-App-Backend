@@ -26,6 +26,7 @@ import {
     releaseStudioWideTimeSlots,
     getStudioOperatingHours
 } from '../../services/availabilityService.js';
+import { paymentService } from '../../services/paymentService.js';
 
 
 export const releaseReservationTimeSlots = async (reservation: Reservation) => {
@@ -88,7 +89,11 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 });
 
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
-    const { itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds } = req.body;
+    const { 
+        itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds,
+        // Optional payment fields - only used when vendor accepts payments
+        singleUseToken, customerEmail 
+    } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
@@ -209,6 +214,51 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     } catch (error) {
       console.error('Error syncing reservation to Google Calendar:', error);
       // Don't fail the reservation creation if calendar sync fails
+    }
+
+    // ============================================================
+    // OPTIONAL PAYMENT HANDLING
+    // Only processes payment if:
+    // 1. singleUseToken is provided (customer entered card details)
+    // 2. Reservation has a price > 0
+    // 3. Vendor (studio owner) has Sumit credentials configured
+    // ============================================================
+    if (singleUseToken && reservation.totalPrice && reservation.totalPrice > 0 && studio?.createdBy) {
+      try {
+        const paymentResult = await paymentService.handleReservationPayment({
+          singleUseToken,
+          customerInfo: {
+            name: customerName || user?.name || 'Customer',
+            email: customerEmail || user?.email || '',
+            phone: customerPhone || ''
+          },
+          vendorId: studio.createdBy.toString(),
+          amount: reservation.totalPrice,
+          itemName: item.name?.en || 'Reservation',
+          instantCharge: !!item.instantBook
+        });
+
+        // If payment was processed, update reservation
+        if (paymentResult) {
+          reservation.paymentStatus = paymentResult.paymentStatus;
+          reservation.paymentDetails = paymentResult.paymentDetails;
+          
+          // If instant book payment failed, set reservation status to payment_failed
+          // and release the blocked time slots
+          if (paymentResult.paymentStatus === 'failed' && item.instantBook) {
+            reservation.status = RESERVATION_STATUS.PAYMENT_FAILED;
+            
+            // Release the time slots since payment failed
+            await releaseReservationTimeSlots(reservation);
+          }
+          
+          await reservation.save();
+        }
+        // If paymentResult is null, vendor doesn't accept payments - reservation continues without payment
+      } catch (paymentError) {
+        // Payment processing failed - log but don't fail the reservation
+        console.error('Payment processing error (reservation still created):', paymentError);
+      }
     }
 
     return reservation._id;

@@ -14,4 +14,7 @@ router.put("/:reservationId", reservationHandler.updateReservationById);
 router.patch("/:reservationId/cancel", reservationHandler.cancelReservationById);
 router.delete("/:reservationId", reservationHandler.cancelReservationById); // backward compatibility
 
+// Approve reservation (vendor action - charges saved card if present)
+router.patch("/:reservationId/approve", reservationHandler.approveReservation);
+
 export default router;

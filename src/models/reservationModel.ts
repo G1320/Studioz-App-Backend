@@ -7,6 +7,21 @@ const translationSchema = new Schema({
   he: { type: String, required: false }
 }, { _id: false });
 
+// Payment details schema (optional - only when vendor accepts payments)
+const paymentDetailsSchema = new mongoose.Schema({
+  sumitCustomerId: { type: String },
+  sumitCreditCardToken: { type: String },
+  lastFourDigits: { type: String },
+  amount: { type: Number },
+  currency: { type: String, default: 'ILS' },
+  sumitPaymentId: { type: String },
+  chargedAt: { type: Date },
+  failureReason: { type: String },
+  vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  refundId: { type: String },
+  refundedAt: { type: Date }
+}, { _id: false });
+
 const ReservationSchema = new mongoose.Schema({
   
     itemName: { type: translationSchema, required: false },
@@ -14,7 +29,7 @@ const ReservationSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     bookingDate: { type: String, required: true },
     timeSlots: [{ type: String, required: true }],
-    status: { type: String, enum: ['pending', 'confirmed', 'expired', 'cancelled', 'rejected'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'confirmed', 'expired', 'cancelled', 'rejected', 'payment_failed'], default: 'pending' },
     expiration: { type: Date, required: true }, 
     itemPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: false },
@@ -30,6 +45,13 @@ const ReservationSchema = new mongoose.Schema({
     address: { type: String, required: false },
     studioImgUrl: { type: String, required: false },
     quantity: { type: Number, required: false, default: 1 },
+    // Payment fields (optional - only populated when vendor accepts payments)
+    paymentStatus: { 
+      type: String, 
+      enum: ['pending', 'card_saved', 'charged', 'failed', 'refunded'],
+      required: false 
+    },
+    paymentDetails: { type: paymentDetailsSchema, required: false },
   }, { timestamps: true });
 
   // Pre-save hook to ensure totalPrice is calculated

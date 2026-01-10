@@ -13,6 +13,7 @@ import {
   notifyCustomerReservationConfirmed,
   notifyBookerReservationCancelled
 } from '../../utils/notificationUtils.js';
+import { paymentService } from '../../services/paymentService.js';
 
 const createReservation = handleRequest(async (req: Request) => {
   const { studioId, itemId, userId, reservationDetails, addOnIds } = req.body;
@@ -255,6 +256,31 @@ const cancelReservationById = handleRequest(async (req: Request) => {
     return reservation;
   }
 
+  // ============================================================
+  // OPTIONAL REFUND HANDLING
+  // If reservation was charged, attempt to refund
+  // ============================================================
+  if (reservation.paymentStatus === 'charged' && reservation.paymentDetails?.sumitPaymentId) {
+    try {
+      const refundResult = await paymentService.refundReservation(reservation);
+      
+      if (refundResult.success) {
+        reservation.paymentStatus = 'refunded';
+        if (reservation.paymentDetails) {
+          reservation.paymentDetails.refundId = refundResult.refundId;
+          reservation.paymentDetails.refundedAt = new Date();
+        }
+      } else {
+        // Refund failed - log but still cancel the reservation
+        // Vendor will need to handle refund manually
+        console.error('Refund failed for reservation:', reservationId, refundResult.error);
+      }
+    } catch (refundError) {
+      // Refund error - log but still cancel the reservation
+      console.error('Refund error for reservation:', reservationId, refundError);
+    }
+  }
+
   // Release held time slots back to availability
   await releaseReservationTimeSlots(reservation);
 
@@ -301,6 +327,103 @@ const cancelReservationById = handleRequest(async (req: Request) => {
   return cancelledReservation;
 });
 
+/**
+ * Approve a pending reservation (vendor action)
+ * If the reservation has a saved card (paymentStatus === 'card_saved'), 
+ * this will charge the card before confirming.
+ * If no payment is attached, it simply confirms the reservation.
+ */
+const approveReservation = handleRequest(async (req: Request) => {
+  const { reservationId } = req.params;
+  if (!reservationId) throw new ExpressError('Reservation ID not provided', 400);
+
+  const reservation = await ReservationModel.findById(reservationId);
+  if (!reservation) throw new ExpressError('Reservation not found', 404);
+
+  // Only pending reservations can be approved
+  if (reservation.status !== RESERVATION_STATUS.PENDING) {
+    throw new ExpressError(`Cannot approve reservation with status: ${reservation.status}`, 400);
+  }
+
+  // Check if pending reservation is expired
+  if (isReservationExpired(reservation.expiration)) {
+    reservation.status = RESERVATION_STATUS.EXPIRED;
+    await reservation.save();
+    throw new ExpressError('Cannot approve expired reservation', 400);
+  }
+
+  // ============================================================
+  // OPTIONAL PAYMENT CHARGING
+  // Only charges if reservation has a saved card (paymentStatus === 'card_saved')
+  // If no payment is attached, reservation is simply confirmed
+  // ============================================================
+  if (reservation.paymentStatus === 'card_saved' && reservation.paymentDetails?.sumitCustomerId) {
+    try {
+      const chargeResult = await paymentService.chargeReservation(reservation);
+
+      if (chargeResult.paymentStatus === 'charged') {
+        reservation.paymentStatus = 'charged';
+        if (reservation.paymentDetails) {
+          reservation.paymentDetails.sumitPaymentId = chargeResult.sumitPaymentId;
+          reservation.paymentDetails.chargedAt = chargeResult.chargedAt;
+        }
+      } else {
+        // Payment failed - don't confirm the reservation
+        reservation.paymentStatus = 'failed';
+        if (reservation.paymentDetails) {
+          reservation.paymentDetails.failureReason = chargeResult.failureReason;
+        }
+        await reservation.save();
+        throw new ExpressError(
+          `Payment failed: ${chargeResult.failureReason}. Reservation not approved.`,
+          400
+        );
+      }
+    } catch (paymentError: any) {
+      // If it's our ExpressError, re-throw it
+      if (paymentError instanceof ExpressError) {
+        throw paymentError;
+      }
+      // Otherwise log and continue (vendor may have removed payment requirement)
+      console.error('Payment error during approval:', paymentError);
+    }
+  }
+
+  // Confirm the reservation
+  reservation.status = RESERVATION_STATUS.CONFIRMED;
+  await reservation.save();
+
+  const bookerId = reservation.customerId?.toString() || reservation.userId?.toString() || '';
+
+  // Notify customer
+  if (bookerId) {
+    await notifyCustomerReservationConfirmed(
+      reservation._id.toString(),
+      bookerId
+    );
+  }
+
+  // Increment totalBookings on studio
+  if (reservation.studioId) {
+    await StudioModel.findByIdAndUpdate(
+      reservation.studioId,
+      { $inc: { totalBookings: 1 } }
+    );
+  }
+
+  emitReservationUpdate([reservation._id.toString()], bookerId);
+
+  // Sync to Google Calendar if connected
+  try {
+    const { syncReservationToCalendar } = await import('../../services/googleCalendarService.js');
+    await syncReservationToCalendar(reservation);
+  } catch (error) {
+    console.error('Error syncing reservation to Google Calendar:', error);
+  }
+
+  return reservation;
+});
+
 export default {
   createReservation,
   getReservations,
@@ -309,4 +432,5 @@ export default {
   getReservationById,
   updateReservationById,
   cancelReservationById,
+  approveReservation,
 };

@@ -11,6 +11,7 @@ export const RESERVATION_STATUS = {
   CONFIRMED: 'confirmed' as const,
   CANCELLED: 'cancelled' as const,
   REJECTED: 'rejected' as const,
+  PAYMENT_FAILED: 'payment_failed' as const,
 } as const;
 
 export type ReservationStatus = typeof RESERVATION_STATUS[keyof typeof RESERVATION_STATUS];
