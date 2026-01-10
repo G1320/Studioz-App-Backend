@@ -100,6 +100,7 @@ const schema = Joi.object({
   }).optional(),
   createdAt: Joi.date().default(Date.now).label('Creation Date'),
   isFeatured: Joi.boolean().optional(),
+  paymentEnabled: Joi.boolean().optional().default(false),
   portfolio: Joi.array().items(portfolioItemSchema).optional(),
   socialLinks: socialLinksSchema
 });

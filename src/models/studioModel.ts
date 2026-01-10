@@ -88,6 +88,7 @@ const studioSchema = new Schema({
   isWheelchairAccessible: { type: Boolean, required: false },
   isSelfService: { type: Boolean, required: false },
   isFeatured: { type: Boolean, required: false },
+  paymentEnabled: { type: Boolean, required: false, default: false },
   parking: {
     type: String,
     enum: ['private', 'street', 'paid', 'none'],

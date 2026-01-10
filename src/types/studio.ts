@@ -58,6 +58,8 @@ export default interface Studio {
   categories?: string[];
   subCategories?: string[];
   genres?: string[];
+  // Payment integration
+  paymentEnabled?: boolean;
   amenities?: string[];
   equipment?: EquipmentCategory[];
   averageRating?: number;

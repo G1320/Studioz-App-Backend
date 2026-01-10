@@ -36,6 +36,11 @@ const createStudio = handleRequest(async (req: Request) => {
   const studio = new StudioModel(req.body);
   studio.createdBy = userId;
 
+  // Auto-enable payments if user has completed vendor onboarding (has Sumit credentials)
+  if (user?.sumitCompanyId && user?.sumitApiKey) {
+    studio.paymentEnabled = true;
+  }
+
   if (user && studio){
     if (!user.studios) user.studios = [];
     user.studios.push(studio._id);

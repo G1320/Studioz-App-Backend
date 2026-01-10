@@ -3,6 +3,7 @@ import axios from 'axios';
 import ExpressError from '../../../utils/expressError.js';
 import handleRequest from '../../../utils/requestHandler.js';
 import { UserModel } from '../../../models/userModel.js';
+import { StudioModel } from '../../../models/studioModel.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -93,6 +94,12 @@ const createVendor = handleRequest(async (req: Request) => {
     throw new ExpressError('Failed to update user with vendor details', 400);
   }
 
+  // Step 4: Enable payments on all studios owned by this user
+  const studioUpdateResult = await StudioModel.updateMany(
+    { createdBy: userId },
+    { paymentEnabled: true }
+  );
+
   return {
     success: true,
     vendor: {
@@ -102,7 +109,8 @@ const createVendor = handleRequest(async (req: Request) => {
     user: {
       _id: updatedUser._id,
       role: updatedUser.role
-    }
+    },
+    studiosUpdated: studioUpdateResult.modifiedCount
   };
 });
 
