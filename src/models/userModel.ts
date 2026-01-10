@@ -61,6 +61,10 @@ const userSchema = new Schema(
     sumitCompanyId: { type: Number },
   sumitApiKey: { type: String },
   sumitApiPublicKey: { type: String },
+  // Customer's saved card info (for paying, not receiving)
+  sumitCustomerId: { type: String },
+  savedCardLastFour: { type: String },
+  savedCardBrand: { type: String },
   role: { 
     type: String,
     enum: ['user', 'vendor', 'admin'],

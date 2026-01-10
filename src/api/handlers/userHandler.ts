@@ -4,6 +4,7 @@ import { UserModel } from '../../models/userModel.js';
 import { StudioModel } from '../../models/studioModel.js';
 import handleRequest from '../../utils/requestHandler.js';
 import ExpressError from '../../utils/expressError.js';
+import { paymentService } from '../../services/paymentService.js';
 
 const createUser = handleRequest(async (req: Request) => {
   const { username, name } = req.body;
@@ -107,6 +108,36 @@ const deleteUser = handleRequest(async (req: Request) => {
   return null;
 });
 
+/**
+ * Get user's saved cards
+ * Returns an array with 0 or 1 cards (we only support one saved card per user currently)
+ */
+const getSavedCards = handleRequest(async (req: Request) => {
+  const userId = req.params.id;
+  if (!userId) throw new ExpressError('User ID not provided', 400);
+
+  const savedCard = await paymentService.getUserSavedCard(userId);
+  
+  // Return as array for future multi-card support
+  return savedCard ? [savedCard] : [];
+});
+
+/**
+ * Remove user's saved card
+ */
+const removeSavedCard = handleRequest(async (req: Request) => {
+  const userId = req.params.id;
+  if (!userId) throw new ExpressError('User ID not provided', 400);
+
+  const success = await paymentService.removeUserSavedCard(userId);
+  
+  if (!success) {
+    throw new ExpressError('Failed to remove saved card', 500);
+  }
+
+  return { success: true };
+});
+
 export default {
   createUser,
   getUserBySub,
@@ -116,5 +147,7 @@ export default {
   removeStudioFromUser,
   getAllUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  getSavedCards,
+  removeSavedCard
 };

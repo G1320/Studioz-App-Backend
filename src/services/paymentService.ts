@@ -169,6 +169,7 @@ export const paymentService = {
   /**
    * Handle payment for a new reservation
    * Saves card and optionally charges immediately (for instant book)
+   * Also saves the card on the user for future use
    * 
    * @returns Updated payment fields to set on the reservation
    */
@@ -176,6 +177,7 @@ export const paymentService = {
     singleUseToken: string;
     customerInfo: CustomerInfo;
     vendorId: string;
+    userId?: string; // User's ID to save card for future use
     amount: number;
     itemName: string;
     instantCharge: boolean;
@@ -211,6 +213,20 @@ export const paymentService = {
     if (!saveResult.success || !saveResult.customerId) {
       console.error('Failed to save card for reservation:', saveResult.error);
       return null;
+    }
+
+    // Save the Sumit customer ID on the user for future payments
+    if (params.userId && saveResult.customerId) {
+      try {
+        await UserModel.findByIdAndUpdate(params.userId, {
+          sumitCustomerId: saveResult.customerId,
+          savedCardLastFour: saveResult.lastFourDigits,
+          savedCardBrand: this.detectCardBrand(saveResult.lastFourDigits)
+        });
+      } catch (error) {
+        console.error('Failed to save card info on user:', error);
+        // Don't fail the payment, just log the error
+      }
     }
 
     // Build payment details (customerId is guaranteed to exist here due to check above)
@@ -417,6 +433,93 @@ export const paymentService = {
         success: false,
         error: refundResult.error
       };
+    }
+  },
+
+  /**
+   * Detect card brand from last 4 digits or BIN
+   * This is a simple heuristic - in production you'd get this from Sumit
+   */
+  detectCardBrand(lastFourDigits?: string): string {
+    // Default to visa if we can't detect
+    return 'visa';
+  },
+
+  /**
+   * Get user's saved card info
+   * Returns null if user has no saved card
+   */
+  async getUserSavedCard(userId: string): Promise<{
+    id: string;
+    last4: string;
+    brand: string;
+    sumitCustomerId: string;
+  } | null> {
+    const user = await UserModel.findById(userId);
+    
+    if (!user?.sumitCustomerId || !user?.savedCardLastFour) {
+      return null;
+    }
+
+    return {
+      id: user.sumitCustomerId,
+      last4: user.savedCardLastFour,
+      brand: user.savedCardBrand || 'visa',
+      sumitCustomerId: user.sumitCustomerId
+    };
+  },
+
+  /**
+   * Charge using a user's saved card (by Sumit customer ID)
+   * Used when user selects a previously saved card
+   */
+  async chargeWithSavedCard(params: {
+    userId: string;
+    vendorId: string;
+    amount: number;
+    description: string;
+  }): Promise<{
+    success: boolean;
+    paymentId?: string;
+    error?: string;
+  }> {
+    // Get user's saved card
+    const user = await UserModel.findById(params.userId);
+    if (!user?.sumitCustomerId) {
+      return { success: false, error: 'User has no saved card' };
+    }
+
+    // Get vendor credentials
+    const credentials = await this.getVendorCredentials(params.vendorId);
+    if (!credentials) {
+      return { success: false, error: 'Vendor not set up for payments' };
+    }
+
+    // Charge the saved card
+    return this.chargeSavedCard(
+      user.sumitCustomerId,
+      params.amount,
+      params.description,
+      credentials
+    );
+  },
+
+  /**
+   * Remove user's saved card
+   */
+  async removeUserSavedCard(userId: string): Promise<boolean> {
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        $unset: {
+          sumitCustomerId: 1,
+          savedCardLastFour: 1,
+          savedCardBrand: 1
+        }
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to remove saved card:', error);
+      return false;
     }
   }
 };

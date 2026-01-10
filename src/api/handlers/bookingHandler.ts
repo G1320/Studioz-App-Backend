@@ -92,7 +92,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { 
         itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds,
         // Optional payment fields - only used when vendor accepts payments
-        singleUseToken, customerEmail 
+        singleUseToken, customerEmail, useSavedCard 
     } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
@@ -218,34 +218,89 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
 
     // ============================================================
     // OPTIONAL PAYMENT HANDLING
-    // Only processes payment if:
-    // 1. singleUseToken is provided (customer entered card details)
-    // 2. Reservation has a price > 0
-    // 3. Vendor (studio owner) has Sumit credentials configured
+    // Processes payment if customer provides payment info and vendor accepts payments
     // ============================================================
-    if (singleUseToken && reservation.totalPrice && reservation.totalPrice > 0 && studio?.createdBy) {
+    const hasPaymentInfo = singleUseToken || useSavedCard;
+    const canProcessPayment = reservation.totalPrice && reservation.totalPrice > 0 && studio?.createdBy;
+    
+    if (hasPaymentInfo && canProcessPayment) {
       try {
-        const paymentResult = await paymentService.handleReservationPayment({
-          singleUseToken,
-          customerInfo: {
-            name: customerName || user?.name || 'Customer',
-            email: customerEmail || user?.email || '',
-            phone: customerPhone || ''
-          },
-          vendorId: studio.createdBy.toString(),
-          amount: reservation.totalPrice,
-          itemName: item.name?.en || 'Reservation',
-          instantCharge: !!item.instantBook
-        });
+        let paymentResult = null;
+        
+        // Option 1: New card payment via single-use token
+        if (singleUseToken) {
+          paymentResult = await paymentService.handleReservationPayment({
+            singleUseToken,
+            customerInfo: {
+              name: customerName || user?.name || 'Customer',
+              email: customerEmail || user?.email || '',
+              phone: customerPhone || ''
+            },
+            vendorId: studio.createdBy.toString(),
+            userId: customerId, // Save card on user for future payments
+            amount: reservation.totalPrice || 0,
+            itemName: item.name?.en || 'Reservation',
+            instantCharge: !!item.instantBook
+          });
+        }
+        // Option 2: Saved card payment
+        else if (useSavedCard && customerId && user?.sumitCustomerId) {
+          const paymentAmount = reservation.totalPrice || 0;
+          
+          // If instant book, charge immediately
+          if (item.instantBook) {
+            const chargeResult = await paymentService.chargeWithSavedCard({
+              userId: customerId,
+              vendorId: studio.createdBy.toString(),
+              amount: paymentAmount,
+              description: `Booking: ${item.name?.en || 'Reservation'}`
+            });
+            
+            if (chargeResult.success) {
+              paymentResult = {
+                paymentStatus: 'charged' as const,
+                paymentDetails: {
+                  sumitCustomerId: user.sumitCustomerId,
+                  amount: paymentAmount,
+                  currency: 'ILS',
+                  vendorId: studio.createdBy.toString(),
+                  sumitPaymentId: chargeResult.paymentId,
+                  chargedAt: new Date()
+                }
+              };
+            } else {
+              paymentResult = {
+                paymentStatus: 'failed' as const,
+                paymentDetails: {
+                  sumitCustomerId: user.sumitCustomerId,
+                  amount: paymentAmount,
+                  currency: 'ILS',
+                  vendorId: studio.createdBy.toString(),
+                  failureReason: chargeResult.error
+                }
+              };
+            }
+          } else {
+            // Not instant book - just mark card as ready, charge on approval
+            paymentResult = {
+              paymentStatus: 'card_saved' as const,
+              paymentDetails: {
+                sumitCustomerId: user.sumitCustomerId,
+                amount: paymentAmount,
+                currency: 'ILS',
+                vendorId: studio.createdBy.toString()
+              }
+            };
+          }
+        }
 
         // If payment was processed, update reservation
         if (paymentResult) {
           reservation.paymentStatus = paymentResult.paymentStatus;
           reservation.paymentDetails = paymentResult.paymentDetails;
           
-          // If instant book payment failed, set reservation status to payment_failed
-          // and release the blocked time slots
-          if (paymentResult.paymentStatus === 'failed' && item.instantBook) {
+          // If payment failed (instant book or saved card), set status and release slots
+          if (paymentResult.paymentStatus === 'failed') {
             reservation.status = RESERVATION_STATUS.PAYMENT_FAILED;
             
             // Release the time slots since payment failed

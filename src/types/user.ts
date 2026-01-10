@@ -41,6 +41,10 @@ export default interface User {
   sumitCompanyId?: number;
   sumitApiKey?: string;  
   sumitApiPublicKey?: string;
+  // Customer's saved card info (for paying, not receiving)
+  sumitCustomerId?: string;
+  savedCardLastFour?: string;
+  savedCardBrand?: string;
   role?: 'user' | 'vendor' | 'admin';
   googleCalendar?: {
     connected: boolean;

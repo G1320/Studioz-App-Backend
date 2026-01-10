@@ -15,4 +15,8 @@ router.delete('/:id',  userHandler.deleteUser);
 router.post('/:id/add-studio/:studioId',  userHandler.addStudioToUser);
 router.post('/:id/remove-studio/:studioId',  userHandler.removeStudioFromUser);
 
+// Saved cards
+router.get('/:id/saved-cards', userHandler.getSavedCards);
+router.delete('/:id/saved-cards', userHandler.removeSavedCard);
+
 export default router;
