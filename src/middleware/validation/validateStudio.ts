@@ -33,8 +33,8 @@ const socialLinksSchema = Joi.object({
 const schema = Joi.object({
   _id: Joi.string().optional(),
   name: Joi.object({
-    en: Joi.string().regex(/^[a-zA-Z0-9\s]*$/).min(3).max(20).required().label('English Name'),
-    he: Joi.string().min(3).max(20).required().label('Hebrew Name')
+    en: Joi.string().regex(/^[a-zA-Z0-9\s.,;:!?'"()@#$%&*_+=-]*$/).min(3).max(50).required().label('English Name'),
+    he: Joi.string().min(3).max(50).required().label('Hebrew Name')
   }).required(),
  
   subtitle: Joi.object({
