@@ -299,20 +299,30 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
           reservation.paymentStatus = paymentResult.paymentStatus;
           reservation.paymentDetails = paymentResult.paymentDetails;
           
-          // If payment failed (instant book or saved card), set status and release slots
+          // If payment failed, release slots and throw error to client
           if (paymentResult.paymentStatus === 'failed') {
             reservation.status = RESERVATION_STATUS.PAYMENT_FAILED;
+            await reservation.save();
             
             // Release the time slots since payment failed
             await releaseReservationTimeSlots(reservation);
+            
+            // Throw error so client knows payment failed
+            const failureReason = paymentResult.paymentDetails?.failureReason || 'Payment processing failed';
+            throw new ExpressError(`Payment failed: ${failureReason}`, 402);
           }
           
           await reservation.save();
         }
         // If paymentResult is null, vendor doesn't accept payments - reservation continues without payment
-      } catch (paymentError) {
-        // Payment processing failed - log but don't fail the reservation
-        console.error('Payment processing error (reservation still created):', paymentError);
+      } catch (paymentError: any) {
+        // If it's our ExpressError, rethrow it
+        if (paymentError instanceof ExpressError) {
+          throw paymentError;
+        }
+        // Unexpected payment error - log and throw
+        console.error('Payment processing error:', paymentError);
+        throw new ExpressError('Payment processing failed. Please try again.', 500);
       }
     }
 

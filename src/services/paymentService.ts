@@ -212,7 +212,17 @@ export const paymentService = {
 
     if (!saveResult.success || !saveResult.customerId) {
       console.error('Failed to save card for reservation:', saveResult.error);
-      return null;
+      // Return a failed status so the client knows what happened
+      return {
+        paymentStatus: 'failed' as const,
+        paymentDetails: {
+          sumitCustomerId: '',
+          amount: params.amount,
+          currency: 'ILS',
+          vendorId: params.vendorId,
+          failureReason: saveResult.error || 'Failed to save card'
+        }
+      };
     }
 
     // Save the Sumit customer ID on the user for future payments
