@@ -100,19 +100,24 @@ export const paymentService = {
         }
       );
 
+      // Sumit response can be either { CustomerID, PaymentMethod } or { Data: { CustomerID, PaymentMethod } }
+      const responseData = response.data?.Data || response.data;
+      
       console.log('[Payment Debug] Sumit setforcustomer response:', {
         status: response.status,
-        hasCustomerId: !!response.data?.Data?.CustomerID,
-        hasPaymentMethod: !!response.data?.Data?.PaymentMethod,
+        hasCustomerId: !!responseData?.CustomerID,
+        hasPaymentMethod: !!responseData?.PaymentMethod,
+        customerId: responseData?.CustomerID,
+        lastDigits: responseData?.PaymentMethod?.CreditCard_LastDigits,
         error: response.data?.UserErrorMessage
       });
 
       // Response contains CustomerID and PaymentMethod with card details
-      if (response.data?.Data?.CustomerID) {
-        const paymentMethod = response.data.Data.PaymentMethod;
+      if (responseData?.CustomerID) {
+        const paymentMethod = responseData.PaymentMethod;
         return {
           success: true,
-          customerId: response.data.Data.CustomerID.toString(),
+          customerId: responseData.CustomerID.toString(),
           creditCardToken: paymentMethod?.CreditCard_Token,
           lastFourDigits: paymentMethod?.CreditCard_LastDigits
         };
@@ -237,13 +242,17 @@ export const paymentService = {
         }
       );
 
+      // Sumit response can be either { PaymentMethod } or { Data: { PaymentMethod } }
+      const responseData = response.data?.Data || response.data;
+      
       console.log('[Payment Debug] getSavedPaymentMethods response:', {
-        hasPaymentMethod: !!response.data?.Data?.PaymentMethod,
-        status: response.data?.Status
+        hasPaymentMethod: !!responseData?.PaymentMethod,
+        status: response.data?.Status,
+        responseData
       });
 
-      if (response.data?.Data?.PaymentMethod) {
-        const pm = response.data.Data.PaymentMethod;
+      if (responseData?.PaymentMethod) {
+        const pm = responseData.PaymentMethod;
         return {
           success: true,
           paymentMethod: {
