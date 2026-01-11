@@ -20,4 +20,7 @@ router.post('/save-card', paymentHandler.saveCardForLaterCharge);
 router.post('/charge-saved-card', paymentHandler.chargeSavedCard);
 router.post('/refund', paymentHandler.refundPayment);
 
+// Get saved card by phone (for non-logged-in users)
+router.post('/saved-card-by-phone', paymentHandler.getSavedCardByPhone);
+
 export default router ;

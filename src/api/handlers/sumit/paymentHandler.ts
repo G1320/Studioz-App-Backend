@@ -549,5 +549,53 @@ export const paymentHandler = {
         error: 'Refund failed'
       });
     }
+  },
+
+  /**
+   * Get saved card by phone number (for non-logged-in users)
+   * POST /api/sumit/payments/saved-card-by-phone
+   * Body: { phone: string }
+   */
+  async getSavedCardByPhone(req: Request, res: Response) {
+    try {
+      const { phone } = req.body;
+
+      if (!phone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number is required'
+        });
+      }
+
+      const { paymentService } = await import('../../../services/paymentService.js');
+      const result = await paymentService.getSavedPaymentMethodsByPhone(phone);
+
+      if (!result.success) {
+        return res.status(404).json({
+          success: false,
+          error: result.error || 'No saved card found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          customerId: result.customerId,
+          card: {
+            id: result.paymentMethod?.id,
+            last4: result.paymentMethod?.lastFourDigits,
+            expirationMonth: result.paymentMethod?.expirationMonth,
+            expirationYear: result.paymentMethod?.expirationYear,
+            brand: 'visa' // Could detect from card mask
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error('Get saved card by phone error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to check for saved card'
+      });
+    }
   }
 };

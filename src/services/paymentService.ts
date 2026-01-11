@@ -281,6 +281,78 @@ export const paymentService = {
   },
 
   /**
+   * Get saved payment methods by phone number (for non-logged-in users)
+   * Uses /billing/paymentmethods/getforcustomer/ with SearchMode: 0 (Automatic)
+   * Sumit will find customer by phone number
+   */
+  async getSavedPaymentMethodsByPhone(phone: string): Promise<{
+    success: boolean;
+    customerId?: string;
+    paymentMethod?: {
+      id: number;
+      customerId: number;
+      lastFourDigits: string;
+      expirationMonth: number;
+      expirationYear: number;
+      cardMask: string;
+    };
+    error?: string;
+  }> {
+    try {
+      console.log('[Payment Debug] Getting saved card by phone:', phone);
+      
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/paymentmethods/getforcustomer/`,
+        {
+          Customer: {
+            Phone: phone,
+            SearchMode: 0 // Automatic - search by phone
+          },
+          IncludeInactive: false,
+          Credentials: {
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
+          }
+        }
+      );
+
+      const responseData = response.data?.Data || response.data;
+      
+      console.log('[Payment Debug] getSavedPaymentMethodsByPhone response:', {
+        hasPaymentMethod: !!responseData?.PaymentMethod,
+        customerId: responseData?.PaymentMethod?.CustomerID
+      });
+
+      if (responseData?.PaymentMethod) {
+        const pm = responseData.PaymentMethod;
+        return {
+          success: true,
+          customerId: pm.CustomerID?.toString(),
+          paymentMethod: {
+            id: pm.ID,
+            customerId: pm.CustomerID,
+            lastFourDigits: pm.CreditCard_LastDigits,
+            expirationMonth: pm.CreditCard_ExpirationMonth,
+            expirationYear: pm.CreditCard_ExpirationYear,
+            cardMask: pm.CreditCard_CardMask
+          }
+        };
+      }
+
+      return {
+        success: false,
+        error: 'No saved card found for this phone number'
+      };
+    } catch (error: any) {
+      console.error('Get payment by phone error:', error.response?.data || error);
+      return {
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to check for saved card'
+      };
+    }
+  },
+
+  /**
    * Handle payment for a new reservation
    * Saves card and optionally charges immediately (for instant book)
    * Also saves the card on the user for future use
