@@ -116,7 +116,10 @@ const studioSchema = new Schema({
       lng: { type: Number, required: false },
       sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
     }
-  ]
+  ],
+  
+  // Status
+  active: { type: Boolean, required: false, default: true }
 });
 
 studioSchema.index({ location: '2dsphere' });

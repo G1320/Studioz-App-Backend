@@ -82,7 +82,10 @@ const itemSchema: Schema = new Schema({
   softwareRequirements: [{ type: String, required: false }],
   
   // Quantity Management
-  maxQuantityPerBooking: { type: Number, required: false }
+  maxQuantityPerBooking: { type: Number, required: false },
+  
+  // Status
+  active: { type: Boolean, required: false, default: true }
 });
 
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);

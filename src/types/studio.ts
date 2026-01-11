@@ -94,4 +94,7 @@ export default interface Studio {
   studioAvailability?: StudioAvailability;
   portfolio?: PortfolioItem[];
   socialLinks?: SocialLinks;
+  
+  // Status
+  active?: boolean;
 }
