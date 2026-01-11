@@ -4,6 +4,10 @@ import { ItemModel } from '../models/itemModel.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 
+// Platform (marketplace) credentials
+const PLATFORM_COMPANY_ID = process.env.SUMIT_COMPANY_ID;
+const PLATFORM_API_KEY = process.env.SUMIT_API_KEY;
+
 interface CustomerInfo {
   name: string;
   email: string;
@@ -61,44 +65,75 @@ export const paymentService = {
 
   /**
    * Save a customer's card for later charging
-   * Used when booking a reservation that requires approval
+   * Uses multivendorcharge with Amount: 0 to validate and save card
+   * Platform credentials are used for the API call, vendor receives the future payment
    */
   async saveCardForLaterCharge(
     singleUseToken: string,
     customerInfo: CustomerInfo,
     credentials: VendorCredentials
   ): Promise<SaveCardResult> {
-    try { 
+    try {
+      console.log('[Payment Debug] Saving card via multivendorcharge:', {
+        token: singleUseToken ? `${singleUseToken.substring(0, 8)}...` : 'MISSING',
+        customerName: customerInfo.name,
+        vendorCompanyId: credentials.companyId,
+        platformCompanyId: PLATFORM_COMPANY_ID
+      });
+      
+      // Use multivendorcharge with $0 amount to validate and save card
+      // Platform credentials for the main call, vendor credentials per item
       const response = await axios.post(
-        `${SUMIT_API_URL}/billing/customers/create/`,
+        `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
         {
           SingleUseToken: singleUseToken,
           Customer: {
             Name: customerInfo.name || 'Customer',
             EmailAddress: customerInfo.email || '',
             Phone: customerInfo.phone || '',
-            SearchMode: 0,
-            SaveCreditCard: true
+            SearchMode: 0
           },
-          Credentials: {
+          Items: [{
+            Item: {
+              Name: 'Card Authorization',
+              Price: 0
+            },
+            Quantity: 1,
+            UnitPrice: 0,
+            Total: 0,
             CompanyID: credentials.companyId,
             APIKey: credentials.apiKey
+          }],
+          VATIncluded: true,
+          SaveCreditCard: true,
+          SendDocumentByEmail: false,
+          Credentials: {
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
           }
         }
       );
 
-      if (response.data?.Data?.Customer?.ID) {
+      console.log('[Payment Debug] Sumit multivendor response:', {
+        status: response.status,
+        hasCustomerId: !!response.data?.Data?.Payment?.CustomerID,
+        validPayment: response.data?.Data?.Payment?.ValidPayment,
+        statusDesc: response.data?.Data?.Payment?.StatusDescription
+      });
+
+      // The multivendorcharge endpoint returns CustomerID in the Payment object
+      if (response.data?.Data?.Payment?.CustomerID) {
         return {
           success: true,
-          customerId: response.data.Data.Customer.ID,
-          creditCardToken: response.data.Data.Customer.CreditCardToken,
-          lastFourDigits: response.data.Data.Customer.CreditCard_LastDigits
+          customerId: response.data.Data.Payment.CustomerID.toString(),
+          creditCardToken: response.data.Data.Payment.CreditCardToken,
+          lastFourDigits: response.data.Data.Payment.CreditCard_LastDigits
         };
       }
 
       return {
         success: false,
-        error: response.data?.UserErrorMessage || 'Failed to save card'
+        error: response.data?.UserErrorMessage || response.data?.Data?.Payment?.StatusDescription || 'Failed to save card'
       };
     } catch (error: any) {
       console.error('Save card error:', error.response?.data || error);
@@ -111,7 +146,8 @@ export const paymentService = {
 
   /**
    * Charge a previously saved card
-   * Used when approving a reservation or for instant book
+   * Uses multivendorcharge with saved customer ID
+   * Platform credentials for the main call, vendor receives the payment
    */
   async chargeSavedCard(
     sumitCustomerId: string,
@@ -120,31 +156,43 @@ export const paymentService = {
     credentials: VendorCredentials
   ): Promise<ChargeResult> {
     try {
+      console.log('[Payment Debug] Charging saved card via multivendorcharge:', {
+        customerId: sumitCustomerId,
+        amount,
+        vendorCompanyId: credentials.companyId
+      });
+
       const response = await axios.post(
-        `${SUMIT_API_URL}/billing/payments/charge/`,
+        `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
         {
           Customer: {
             ID: sumitCustomerId,
             SearchMode: 1
           },
-          Amount: amount,
-          Description: description,
           Items: [{
             Item: { 
               Name: description, 
               Price: amount 
             },
             Quantity: 1,
-            UnitPrice: amount
+            UnitPrice: amount,
+            Total: amount,
+            CompanyID: credentials.companyId,
+            APIKey: credentials.apiKey
           }],
           VATIncluded: true,
           SendDocumentByEmail: true,
           Credentials: {
-            CompanyID: credentials.companyId,
-            APIKey: credentials.apiKey
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
           }
         }
       );
+
+      console.log('[Payment Debug] Charge response:', {
+        validPayment: response.data?.Data?.Payment?.ValidPayment,
+        paymentId: response.data?.Data?.Payment?.ID
+      });
 
       if (response.data?.Data?.Payment?.ValidPayment) {
         return {
