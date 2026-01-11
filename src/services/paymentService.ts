@@ -64,49 +64,35 @@ export const paymentService = {
   },
 
   /**
-   * Save a customer's card for later charging
-   * Uses multivendorcharge with Amount: 0 to validate and save card
-   * Platform credentials are used for the API call, vendor receives the future payment
+   * Save a customer's card at PLATFORM level for future charging
+   * Uses /billing/paymentmethods/setforcustomer/ with PLATFORM credentials
+   * Card works across all vendors via multivendorcharge
+   * See: https://help.sumit.co.il/he/articles/5832819
    */
   async saveCardForLaterCharge(
     singleUseToken: string,
     customerInfo: CustomerInfo,
-    credentials: VendorCredentials
+    _credentials: VendorCredentials // Not used - we use platform credentials
   ): Promise<SaveCardResult> {
     try {
-      console.log('[Payment Debug] Saving card via multivendorcharge:', {
+      console.log('[Payment Debug] Saving card at platform level via setforcustomer:', {
         token: singleUseToken ? `${singleUseToken.substring(0, 8)}...` : 'MISSING',
         customerName: customerInfo.name,
-        vendorCompanyId: credentials.companyId,
         platformCompanyId: PLATFORM_COMPANY_ID
       });
       
-      // Use multivendorcharge with $0 amount to validate and save card
-      // Platform credentials for the main call, vendor credentials per item
+      // Use setforcustomer with PLATFORM credentials
+      // This saves the card at platform level - works across all vendors
       const response = await axios.post(
-        `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
+        `${SUMIT_API_URL}/billing/paymentmethods/setforcustomer/`,
         {
           SingleUseToken: singleUseToken,
           Customer: {
             Name: customerInfo.name || 'Customer',
             EmailAddress: customerInfo.email || '',
             Phone: customerInfo.phone || '',
-            SearchMode: 0
+            SearchMode: 0 // Automatic - creates new or finds existing by email
           },
-          Items: [{
-            Item: {
-              Name: 'Card Authorization',
-              Price: 0
-            },
-            Quantity: 1,
-            UnitPrice: 0,
-            Total: 0,
-            CompanyID: credentials.companyId,
-            APIKey: credentials.apiKey
-          }],
-          VATIncluded: true,
-          SaveCreditCard: true,
-          SendDocumentByEmail: false,
           Credentials: {
             CompanyID: PLATFORM_COMPANY_ID,
             APIKey: PLATFORM_API_KEY
@@ -114,26 +100,27 @@ export const paymentService = {
         }
       );
 
-      console.log('[Payment Debug] Sumit multivendor response:', {
+      console.log('[Payment Debug] Sumit setforcustomer response:', {
         status: response.status,
-        hasCustomerId: !!response.data?.Data?.Payment?.CustomerID,
-        validPayment: response.data?.Data?.Payment?.ValidPayment,
-        statusDesc: response.data?.Data?.Payment?.StatusDescription
+        hasCustomerId: !!response.data?.Data?.CustomerID,
+        hasPaymentMethod: !!response.data?.Data?.PaymentMethod,
+        error: response.data?.UserErrorMessage
       });
 
-      // The multivendorcharge endpoint returns CustomerID in the Payment object
-      if (response.data?.Data?.Payment?.CustomerID) {
+      // Response contains CustomerID and PaymentMethod with card details
+      if (response.data?.Data?.CustomerID) {
+        const paymentMethod = response.data.Data.PaymentMethod;
         return {
           success: true,
-          customerId: response.data.Data.Payment.CustomerID.toString(),
-          creditCardToken: response.data.Data.Payment.CreditCardToken,
-          lastFourDigits: response.data.Data.Payment.CreditCard_LastDigits
+          customerId: response.data.Data.CustomerID.toString(),
+          creditCardToken: paymentMethod?.CreditCard_Token,
+          lastFourDigits: paymentMethod?.CreditCard_LastDigits
         };
       }
 
       return {
         success: false,
-        error: response.data?.UserErrorMessage || response.data?.Data?.Payment?.StatusDescription || 'Failed to save card'
+        error: response.data?.UserErrorMessage || 'Failed to save card'
       };
     } catch (error: any) {
       console.error('Save card error:', error.response?.data || error);
@@ -166,22 +153,24 @@ export const paymentService = {
         `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
         {
           Customer: {
-            ID: sumitCustomerId,
-            SearchMode: 1
+            ID: parseInt(sumitCustomerId),
+            SearchMode: 1 // Search by ID
           },
           Items: [{
             Item: { 
-              Name: description, 
-              Price: amount 
+              Name: description
             },
             Quantity: 1,
             UnitPrice: amount,
             Total: amount,
+            Currency: 'ILS',
+            Description: description,
             CompanyID: credentials.companyId,
             APIKey: credentials.apiKey
           }],
           VATIncluded: true,
           SendDocumentByEmail: true,
+          DocumentLanguage: 'Hebrew',
           Credentials: {
             CompanyID: PLATFORM_COMPANY_ID,
             APIKey: PLATFORM_API_KEY
@@ -210,6 +199,74 @@ export const paymentService = {
       return {
         success: false,
         error: error.response?.data?.UserErrorMessage || 'Payment failed'
+      };
+    }
+  },
+
+  /**
+   * Get saved payment methods for a customer from Sumit
+   * Uses /billing/paymentmethods/getforcustomer/ endpoint
+   * Returns the active payment method(s) for the customer
+   */
+  async getSavedPaymentMethods(sumitCustomerId: string): Promise<{
+    success: boolean;
+    paymentMethod?: {
+      id: number;
+      customerId: number;
+      lastFourDigits: string;
+      expirationMonth: number;
+      expirationYear: number;
+      cardMask: string;
+      token: string;
+    };
+    error?: string;
+  }> {
+    try {
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/paymentmethods/getforcustomer/`,
+        {
+          Customer: {
+            ID: parseInt(sumitCustomerId),
+            SearchMode: 1 // Search by ID
+          },
+          IncludeInactive: false, // Only get active payment methods
+          Credentials: {
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
+          }
+        }
+      );
+
+      console.log('[Payment Debug] getSavedPaymentMethods response:', {
+        hasPaymentMethod: !!response.data?.Data?.PaymentMethod,
+        status: response.data?.Status
+      });
+
+      if (response.data?.Data?.PaymentMethod) {
+        const pm = response.data.Data.PaymentMethod;
+        return {
+          success: true,
+          paymentMethod: {
+            id: pm.ID,
+            customerId: pm.CustomerID,
+            lastFourDigits: pm.CreditCard_LastDigits,
+            expirationMonth: pm.CreditCard_ExpirationMonth,
+            expirationYear: pm.CreditCard_ExpirationYear,
+            cardMask: pm.CreditCard_CardMask,
+            token: pm.CreditCard_Token
+          }
+        };
+      }
+
+      return {
+        success: false,
+        error: response.data?.UserErrorMessage || 'No saved payment method found'
+      };
+    } catch (error: any) {
+      console.error('Get payment methods error:', error.response?.data || error);
+      return {
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to get payment methods'
       };
     }
   },
@@ -505,25 +562,62 @@ export const paymentService = {
 
   /**
    * Get user's saved card info
+   * First checks local database, then optionally verifies with Sumit
    * Returns null if user has no saved card
    */
-  async getUserSavedCard(userId: string): Promise<{
+  async getUserSavedCard(userId: string, verifyWithSumit: boolean = false): Promise<{
     id: string;
     last4: string;
     brand: string;
     sumitCustomerId: string;
+    expirationMonth?: number;
+    expirationYear?: number;
   } | null> {
     const user = await UserModel.findById(userId);
     
-    if (!user?.sumitCustomerId || !user?.savedCardLastFour) {
+    if (!user?.sumitCustomerId) {
       return null;
     }
 
+    // If we have local data and don't need to verify, return cached data
+    if (!verifyWithSumit && user.savedCardLastFour) {
+      return {
+        id: user.sumitCustomerId,
+        last4: user.savedCardLastFour,
+        brand: user.savedCardBrand || 'visa',
+        sumitCustomerId: user.sumitCustomerId
+      };
+    }
+
+    // Fetch fresh data from Sumit
+    const sumitResult = await this.getSavedPaymentMethods(user.sumitCustomerId);
+    
+    if (!sumitResult.success || !sumitResult.paymentMethod) {
+      // Card might have been removed from Sumit - clear local data
+      if (user.savedCardLastFour) {
+        await UserModel.findByIdAndUpdate(userId, {
+          $unset: { savedCardLastFour: 1, savedCardBrand: 1 }
+        });
+      }
+      return null;
+    }
+
+    const pm = sumitResult.paymentMethod;
+    
+    // Update local cache with fresh data
+    const brand = this.detectCardBrand(pm.lastFourDigits);
+    await UserModel.findByIdAndUpdate(userId, {
+      savedCardLastFour: pm.lastFourDigits,
+      savedCardBrand: brand
+    });
+
     return {
       id: user.sumitCustomerId,
-      last4: user.savedCardLastFour,
-      brand: user.savedCardBrand || 'visa',
-      sumitCustomerId: user.sumitCustomerId
+      last4: pm.lastFourDigits,
+      brand: brand,
+      sumitCustomerId: user.sumitCustomerId,
+      expirationMonth: pm.expirationMonth,
+      expirationYear: pm.expirationYear
     };
   },
 
