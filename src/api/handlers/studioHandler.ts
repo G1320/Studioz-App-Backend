@@ -84,7 +84,19 @@ const getStudioById = handleRequest(async (req: Request) => {
     .sort({ _id: 1 })
     .limit(1);
 
-  return { currStudio, prevStudio, nextStudio };
+  // Get vendor's Sumit public credentials for payment form
+  let vendorCredentials = null;
+  if (currStudio.paymentEnabled && currStudio.createdBy) {
+    const owner = await UserModel.findById(currStudio.createdBy);
+    if (owner?.sumitCompanyId && owner?.sumitApiPublicKey) {
+      vendorCredentials = {
+        companyId: owner.sumitCompanyId.toString(),
+        publicKey: owner.sumitApiPublicKey
+      };
+    }
+  }
+
+  return { currStudio, prevStudio, nextStudio, vendorCredentials };
 });
 
 const updateStudioItem = handleRequest(async (req: Request) => {

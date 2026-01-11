@@ -68,7 +68,7 @@ export const paymentService = {
     customerInfo: CustomerInfo,
     credentials: VendorCredentials
   ): Promise<SaveCardResult> {
-    try {
+    try { 
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/customers/create/`,
         {
