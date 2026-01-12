@@ -115,6 +115,7 @@ const studioSchema = new Schema({
       lat: { type: Number, required: false },
       lng: { type: Number, required: false },
       sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
+      active: { type: Boolean, required: false, default: true },
     }
   ],
   

@@ -191,7 +191,17 @@ const patchItem = handleRequest(async (req: Request) => {
     throw new ExpressError('No valid fields to update', 400);
   }
 
+  // Update the Item document
   const updatedItem = await ItemModel.findByIdAndUpdate(itemId, updateData, { new: true });
+
+  // Also update the embedded item in the studio's items array
+  if (existingStudio.items && existingStudio.items.length > 0) {
+    await StudioModel.updateOne(
+      { _id: studioId, 'items.itemId': itemId },
+      { $set: { 'items.$.active': req.body.active } }
+    );
+  }
+
   return updatedItem;
 });
 
