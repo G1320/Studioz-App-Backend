@@ -100,6 +100,7 @@ const studioSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   studioAvailability: { type: StudioAvailability, required: false },
+  is24Hours: { type: Boolean, required: false, default: false },
   portfolio: [{ type: portfolioItemSchema, required: false }],
   socialLinks: { type: socialLinksSchema, required: false },
   items: [
