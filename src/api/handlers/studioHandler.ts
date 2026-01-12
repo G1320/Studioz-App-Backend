@@ -144,9 +144,56 @@ const deleteStudioById = handleRequest(async (req: Request) => {
   return null;
 });
 
+const patchStudio = handleRequest(async (req: Request) => {
+  const { studioId } = req.params;
 
+  const existingStudio = await StudioModel.findById(studioId);
+  if (!existingStudio) throw new ExpressError('Studio not found', 404);
 
- 
+  // Only allow patching specific fields (like active status)
+  const allowedFields = ['active'];
+  const updateData: Record<string, unknown> = {};
+  
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new ExpressError('No valid fields to update', 400);
+  }
+
+  const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, updateData, { new: true });
+  return updatedStudio;
+});
+
+const patchItem = handleRequest(async (req: Request) => {
+  const { studioId, itemId } = req.params;
+
+  const existingStudio = await StudioModel.findById(studioId);
+  if (!existingStudio) throw new ExpressError('Studio not found', 404);
+
+  const existingItem = await ItemModel.findById(itemId);
+  if (!existingItem) throw new ExpressError('Item not found', 404);
+
+  // Only allow patching specific fields (like active status)
+  const allowedFields = ['active'];
+  const updateData: Record<string, unknown> = {};
+  
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new ExpressError('No valid fields to update', 400);
+  }
+
+  const updatedItem = await ItemModel.findByIdAndUpdate(itemId, updateData, { new: true });
+  return updatedItem;
+});
 
 export default {
   createStudio,
@@ -155,4 +202,6 @@ export default {
   updateStudioItem,
   updateStudioById,
   deleteStudioById,
+  patchStudio,
+  patchItem,
 };
