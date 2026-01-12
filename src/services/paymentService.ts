@@ -738,10 +738,83 @@ export const paymentService = {
   },
 
   /**
+   * Remove saved payment method from Sumit
+   * Uses /billing/paymentmethods/remove/ endpoint
+   * See: https://api.sumit.co.il/billing/paymentmethods/remove/
+   */
+  async removeSavedPaymentMethodFromSumit(sumitCustomerId: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      console.log('[Payment Debug] Removing payment method from Sumit for customer:', sumitCustomerId);
+      
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/paymentmethods/remove/`,
+        {
+          Credentials: {
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
+          },
+          Customer: {
+            ID: parseInt(sumitCustomerId),
+            SearchMode: 1 // Search by ID (exact match)
+          }
+        }
+      );
+
+      console.log('[Payment Debug] Sumit remove payment method response:', {
+        status: response.data?.Status,
+        success: response.data?.Status === 0 || response.data?.Data?.Status === 0
+      });
+
+      // Sumit returns Status: 0 for success
+      const isSuccess = response.data?.Status === 0 || response.data?.Data?.Status === 0;
+      
+      if (isSuccess) {
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        error: response.data?.UserErrorMessage || response.data?.Data?.UserErrorMessage || 'Failed to remove payment method from Sumit'
+      };
+    } catch (error: any) {
+      console.error('Remove payment method from Sumit error:', error.response?.data || error);
+      return {
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to remove payment method from Sumit'
+      };
+    }
+  },
+
+  /**
    * Remove user's saved card
+   * First removes from Sumit, then from local database
    */
   async removeUserSavedCard(userId: string): Promise<boolean> {
     try {
+      // Get user to find their Sumit customer ID
+      const user = await UserModel.findById(userId);
+      
+      if (!user) {
+        console.error('User not found for card removal:', userId);
+        return false;
+      }
+
+      // If user has a Sumit customer ID, try to remove from Sumit first
+      if (user.sumitCustomerId) {
+        const sumitResult = await this.removeSavedPaymentMethodFromSumit(user.sumitCustomerId);
+        
+        if (!sumitResult.success) {
+          // Log the error but continue with local removal
+          // The card might already be removed from Sumit or the customer might not exist
+          console.warn('[Payment Warning] Failed to remove card from Sumit:', sumitResult.error);
+        }
+      }
+
+      // Remove from local database regardless of Sumit result
+      // This ensures the user can always "remove" their card from our system
       await UserModel.findByIdAndUpdate(userId, {
         $unset: {
           sumitCustomerId: 1,
@@ -749,6 +822,7 @@ export const paymentService = {
           savedCardBrand: 1
         }
       });
+      
       return true;
     } catch (error) {
       console.error('Failed to remove saved card:', error);
