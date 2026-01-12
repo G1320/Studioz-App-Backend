@@ -57,7 +57,8 @@ const schema = Joi.object({
           start: Joi.string().required(),
           end: Joi.string().required()
         })
-        )
+        ),
+      is24Hours: Joi.boolean().optional()
       }).optional(),
   coverImage: Joi.string().required().label('Cover image'),
   galleryImages: Joi.array().required().items(Joi.string()).label('Gallery images'),
