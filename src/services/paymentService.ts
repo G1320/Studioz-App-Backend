@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { UserModel } from '../models/userModel.js';
 import { ItemModel } from '../models/itemModel.js';
+import { saveSumitInvoice } from '../utils/sumitUtils.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 
@@ -189,6 +190,11 @@ export const paymentService = {
       });
 
       if (response.data?.Data?.Payment?.ValidPayment) {
+        // Save invoice record
+        saveSumitInvoice(response.data.Data, {
+            description: description
+        });
+        
         return {
           success: true,
           paymentId: response.data.Data.Payment.ID

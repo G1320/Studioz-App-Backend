@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { UserModel } from '../../../models/userModel.js';
 import SubscriptionModel from '../../../models/sumitModels/subscriptionModel.js';
+import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -50,6 +51,13 @@ export const paymentHandler = {
         }
       );
       if (response.data.Data.Payment.ValidPayment){
+        // Save invoice record
+        saveSumitInvoice(response.data.Data, {
+            customerName: customerInfo.customerName,
+            customerEmail: customerInfo.customerEmail,
+            description: description
+        });
+
         return res.status(200).json({
             success: true,
             data: response.data.Data
@@ -153,6 +161,13 @@ export const paymentHandler = {
       );
             
       if (response?.data?.Data?.Payment?.ValidPayment) {
+        // Save invoice record
+        saveSumitInvoice(response.data.Data, {
+             customerName: customerInfo.customerName,
+             customerEmail: customerInfo.customerEmail,
+             description: planDetails.description || "Subscription"
+        });
+
         return res.status(200).json({
           success: true,
           data: response.data.Data
@@ -301,6 +316,13 @@ export const paymentHandler = {
           );
        
           if (response.data.Data.Payment.ValidPayment) {
+            // Save invoice record
+            saveSumitInvoice(response.data.Data, {
+                customerName: customerInfo.name,
+                customerEmail: customerInfo.email,
+                description: 'Multivendor Charge'
+            });
+
             return res.status(200).json({
               success: true,
               data: response.data.Data

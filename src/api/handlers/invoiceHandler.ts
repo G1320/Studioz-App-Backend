@@ -2,6 +2,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { formatAddress, getPaymentType } from '../../utils/invoiceFormatter.js';
 import { getSellerDetails } from '../../utils/payoutUtils.js';
+import { InvoiceModel } from '../../models/invoiceModel.js';
 
 const { GREEN_INVOICE_API_URL, GREEN_INVOICE_API_KEY, GREEN_INVOICE_API_SECRET, NODE_ENV } = process.env;
 
@@ -105,6 +106,44 @@ export const fetchToken = async (): Promise<string> => {
 export const createInvoice = async (data: CreateInvoiceData): Promise<InvoiceResponse> => {
   try {
     const response = await apiClient.post<InvoiceResponse>('/documents', data);
+    
+    // Extract related entity info from remarks or description
+    let relatedEntity = undefined;
+    const remarks = data.remarks || '';
+    const description = data.income?.[0]?.description || '';
+    
+    if (remarks.includes('Order ID:')) {
+      const match = remarks.match(/Order ID: ([a-zA-Z0-9]+)/);
+      if (match) relatedEntity = { type: 'ORDER', id: match[1] };
+    } else if (remarks.includes('Subscription ID:')) {
+      const match = remarks.match(/Subscription ID: ([a-zA-Z0-9]+)/);
+      if (match) relatedEntity = { type: 'SUBSCRIPTION', id: match[1] };
+    } else if (description.includes('תשלום עבור הזמנה')) {
+       const match = description.match(/תשלום עבור הזמנה ([a-zA-Z0-9]+)/);
+       if (match) relatedEntity = { type: 'PAYOUT', id: match[1] }; // Using Order ID as ID for payout relation logic
+    }
+
+    // Save invoice to DB
+    try {
+        await InvoiceModel.create({
+            externalId: response.data.id,
+            provider: 'GREEN_INVOICE',
+            documentType: String(data.type), // e.g. 300
+            amount: response.data.total,
+            currency: response.data.currency || data.currency,
+            issuedDate: response.data.issuedDate,
+            customerName: data.client.name,
+            customerEmail: data.client.email,
+            documentUrl: response.data.url?.he || response.data.url?.en,
+            relatedEntity: relatedEntity,
+            status: response.data.status,
+            rawData: response.data
+        });
+    } catch (dbError) {
+        console.error('Failed to save invoice to DB:', dbError);
+        // We don't throw here to avoid failing the invoice creation process itself
+    }
+
     return response.data;
   } catch (error: any) {
     console.error('Error creating invoice:', error.response?.data || error.message);
