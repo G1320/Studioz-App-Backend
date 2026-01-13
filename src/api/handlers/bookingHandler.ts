@@ -98,10 +98,20 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const item = await ItemModel.findOne({ _id: itemId });
     if (!item) throw new ExpressError('Item not found', 404);
 
+    // Check if item is active (not disabled)
+    if (item.active === false) {
+        throw new ExpressError('This service is currently unavailable', 400);
+    }
+
     // Get studio address and cover image for the reservation
     const studio = await StudioModel.findById(item.studioId);
     const studioAddress = studio?.address || '';
     const studioImgUrl = studio?.coverImage || '';
+
+    // Check if studio is active (not disabled)
+    if (studio && studio.active === false) {
+        throw new ExpressError('This studio is currently unavailable', 400);
+    }
 
     const user = await UserModel.findById(customerId);
     // Initialize availability

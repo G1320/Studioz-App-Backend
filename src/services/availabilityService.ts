@@ -61,6 +61,15 @@ export const reserveItemTimeSlots = async (
   const item = await ItemModel.findById(itemId);
   if (!item) return false;
 
+  // Check if item is disabled
+  if (item.active === false) return false;
+
+  // Check if studio is disabled
+  if (item.studioId) {
+    const studio = await StudioModel.findById(item.studioId);
+    if (studio && studio.active === false) return false;
+  }
+
   const hours = studioHours || await getStudioOperatingHours(item.studioId?.toString());
   
   item.availability = initializeAvailability(item.availability);
@@ -93,6 +102,15 @@ export const checkSlotsAvailable = async (
 ): Promise<boolean> => {
   const item = await ItemModel.findById(itemId);
   if (!item) return false;
+
+  // Check if item is disabled
+  if (item.active === false) return false;
+
+  // Check if studio is disabled
+  if (item.studioId) {
+    const studio = await StudioModel.findById(item.studioId);
+    if (studio && studio.active === false) return false;
+  }
 
   const hours = studioHours || await getStudioOperatingHours(item.studioId?.toString());
   
