@@ -5,6 +5,7 @@ import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { UserModel } from '../../models/userModel.js';
+import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -165,6 +166,15 @@ const patchStudio = handleRequest(async (req: Request) => {
   }
 
   const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, updateData, { new: true });
+
+  // Emit availability update for all items in the studio when active status changes
+  if (updateData.active !== undefined) {
+    const studioItems = await ItemModel.find({ studioId });
+    for (const item of studioItems) {
+      emitAvailabilityUpdate(item._id.toString());
+    }
+  }
+
   return updatedStudio;
 });
 
@@ -200,6 +210,11 @@ const patchItem = handleRequest(async (req: Request) => {
       { _id: studioId, 'items.itemId': itemId },
       { $set: { 'items.$.active': req.body.active } }
     );
+  }
+
+  // Emit availability update for the item when active status changes
+  if (updateData.active !== undefined) {
+    emitAvailabilityUpdate(itemId);
   }
 
   return updatedItem;
