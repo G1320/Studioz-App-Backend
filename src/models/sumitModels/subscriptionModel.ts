@@ -58,7 +58,7 @@ const subscriptionSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['PENDING', 'ACTIVE', 'CANCELLED', 'SUSPENDED', 'PAYMENT_FAILED'],
+    enum: ['PENDING', 'ACTIVE', 'CANCELLED', 'SUSPENDED', 'PAYMENT_FAILED', 'TRIAL', 'TRIAL_ENDED'],
     default: 'PENDING'
   },
   startDate: {
@@ -83,6 +83,24 @@ const subscriptionSchema = new Schema({
   },
   customerEmail: {
     type: String
+  },
+  // Trial fields
+  isTrial: {
+    type: Boolean,
+    default: false
+  },
+  trialEndDate: {
+    type: Date
+  },
+  trialDurationDays: {
+    type: Number
+  },
+  trialChargeAttempts: {
+    type: Number,
+    default: 0
+  },
+  trialChargeFailedAt: {
+    type: Date
   },
   // Sumit specific fields
   sumitPaymentId: String,

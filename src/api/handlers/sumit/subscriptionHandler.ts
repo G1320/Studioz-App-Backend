@@ -163,11 +163,17 @@ const handleSumitWebhook = handleRequest(async (req: Request) => {
   switch (EventType) {
     case 'payment.success':
       subscription.status = 'ACTIVE';
+      // If this was a trial subscription, mark trial as complete
+      if (subscription.isTrial) {
+        subscription.isTrial = false;
+      }
       await subscription.save();
 
       await processSubscriptionEmailAndInvoice(subscription, {
         type: 'payment',
-        remarks: 'Recurring Subscription Payment'
+        remarks: subscription.trialDurationDays 
+          ? `First Payment After ${subscription.trialDurationDays}-Day Trial`
+          : 'Recurring Subscription Payment'
       });
       break;
 
@@ -196,10 +202,96 @@ const handleSumitWebhook = handleRequest(async (req: Request) => {
   return { received: true };
 });
 
+/**
+ * Get trial status for a user
+ * Returns trial info including days remaining
+ */
+const getTrialStatus = handleRequest(async (req: Request) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  const subscription = await SubscriptionModel.findOne({
+    userId,
+    status: 'TRIAL'
+  });
+
+  if (!subscription) {
+    return {
+      hasTrial: false,
+      message: 'No active trial found'
+    };
+  }
+
+  const now = new Date();
+  const trialEnd = subscription.trialEndDate ? new Date(subscription.trialEndDate) : null;
+  const daysRemaining = trialEnd 
+    ? Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  return {
+    hasTrial: true,
+    subscription: {
+      _id: subscription._id,
+      planId: subscription.planId,
+      planName: subscription.planName,
+      status: subscription.status,
+      trialEndDate: subscription.trialEndDate,
+      daysRemaining,
+      hasCard: !!subscription.sumitCustomerId
+    }
+  };
+});
+
+/**
+ * Cancel a trial subscription
+ * Removes the subscription and saved card
+ */
+const cancelTrialSubscription = handleRequest(async (req: Request) => {
+  const { subscriptionId } = req.params;
+
+  if (!subscriptionId) {
+    throw new ExpressError('Subscription ID is required', 400);
+  }
+
+  const subscription = await SubscriptionModel.findById(subscriptionId);
+  if (!subscription) {
+    throw new ExpressError('Subscription not found', 404);
+  }
+
+  if (subscription.status !== 'TRIAL') {
+    throw new ExpressError('Can only cancel trial subscriptions through this endpoint', 400);
+  }
+
+  // Update subscription status
+  subscription.status = 'CANCELLED';
+  subscription.endDate = new Date();
+  subscription.updatedAt = new Date();
+  await subscription.save();
+
+  // Update user's subscription status
+  await UserModel.findByIdAndUpdate(subscription.userId, {
+    subscriptionStatus: 'INACTIVE',
+    subscriptionId: null
+  });
+
+  // Note: We don't remove the saved card - user may want to use it for other purposes
+
+  return {
+    success: true,
+    message: 'Trial subscription cancelled',
+    subscription
+  };
+});
+
 export default {
   createSubscription,
   activateSubscription,
   getSubscriptionDetails,
   cancelSubscription,
-  handleSumitWebhook
+  handleSumitWebhook,
+  getTrialStatus,
+  cancelTrialSubscription
 };

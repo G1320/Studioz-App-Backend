@@ -55,12 +55,18 @@ export interface Subscription {
   sumitCustomerId: string;
   sumitRecurringItemIds: string[];
   sumitPaymentDetails: SumitPaymentDetails;
-  status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'PAYMENT_FAILED';
+  status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'SUSPENDED' | 'PAYMENT_FAILED' | 'TRIAL' | 'TRIAL_ENDED';
   startDate?: Date;
   endDate?: Date;
   createdAt: Date;
   updatedAt: Date;
   paypalDetails?: any;
+  // Trial fields
+  isTrial?: boolean;
+  trialEndDate?: Date;
+  trialDurationDays?: number;
+  trialChargeAttempts?: number;
+  trialChargeFailedAt?: Date;
 }
 
 export interface SubscriptionDocument extends Document, Omit<Subscription, '_id'> {}

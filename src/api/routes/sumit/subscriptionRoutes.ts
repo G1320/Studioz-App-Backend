@@ -13,4 +13,8 @@ router.get('/:subscriptionId', subscriptionHandler.getSubscriptionDetails);
 
 router.post('/webhook', subscriptionHandler.handleSumitWebhook);
 
+// Trial subscription routes
+router.get('/trial-status/:userId', subscriptionHandler.getTrialStatus);
+router.post('/cancel-trial/:subscriptionId', subscriptionHandler.cancelTrialSubscription);
+
 export default router;

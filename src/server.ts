@@ -35,11 +35,13 @@ import { initializeSocket } from './webSockets/socket.js';
 import { createServer } from 'node:http';
 import bodyParser from 'body-parser';
 import { initializeReservationScheduler, stopReservationScheduler } from './workers/reservationScheduler.js';
+import { initializeTrialScheduler, stopTrialScheduler } from './workers/trialSubscriptionScheduler.js';
 
 
 try {
   await connectToDb();
   initializeReservationScheduler();
+  initializeTrialScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -52,6 +54,7 @@ const io = initializeSocket(httpServer);
 
 const gracefulShutdown = async () => {  
   stopReservationScheduler();
+  stopTrialScheduler();
   if (io) await io.close();
     await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());

@@ -199,3 +199,92 @@ export const sendPasswordReset = async (userEmail: string, resetToken: string) =
   });
 };
 
+// Trial subscription email interfaces
+interface TrialEndingDetails {
+  customerName: string;
+  planName: string;
+  planPrice: number;
+  trialEndDate: Date;
+  daysRemaining: number;
+}
+
+interface TrialChargeFailedDetails {
+  customerName: string;
+  planName: string;
+  subscriptionId: string;
+}
+
+interface TrialStartedDetails {
+  customerName: string;
+  planName: string;
+  trialEndDate: Date;
+  trialDays: number;
+}
+
+/**
+ * Send trial ending reminder email
+ * Template ID 11 - configure in Brevo with params: customerName, planName, planPrice, trialEndDate, daysRemaining
+ */
+export const sendTrialEndingEmail = async (
+  userEmail: string,
+  details: TrialEndingDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 11, // Trial ending reminder template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      planPrice: details.planPrice.toFixed(2),
+      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+      daysRemaining: details.daysRemaining
+    }
+  });
+};
+
+/**
+ * Send trial charge failed email
+ * Template ID 12 - configure in Brevo with params: customerName, planName, subscriptionId
+ */
+export const sendTrialChargeFailedEmail = async (
+  userEmail: string,
+  details: TrialChargeFailedDetails
+) => {
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 12, // Trial charge failed template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      subscriptionId: details.subscriptionId
+    }
+  });
+};
+
+/**
+ * Send trial started confirmation email
+ * Template ID 13 - configure in Brevo with params: customerName, planName, trialEndDate, trialDays
+ */
+export const sendTrialStartedEmail = async (
+  userEmail: string,
+  details: TrialStartedDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 13, // Trial started template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+      trialDays: details.trialDays
+    }
+  });
+};

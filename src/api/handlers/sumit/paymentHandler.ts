@@ -4,10 +4,17 @@ import axios from 'axios';
 import { UserModel } from '../../../models/userModel.js';
 import SubscriptionModel from '../../../models/sumitModels/subscriptionModel.js';
 import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
+import { paymentService } from '../../../services/paymentService.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
 const API_KEY = process.env.SUMIT_API_KEY;
+
+// Plan configuration with trial support
+const SUBSCRIPTION_PLANS = {
+  starter: { name: 'Starter Plan', price: 49, trialDays: 7 },
+  pro: { name: 'Professional Plan', price: 99, trialDays: 14 }
+} as const;
 
 interface CartItem {
     merchantId: string;
@@ -167,6 +174,27 @@ export const paymentHandler = {
              customerEmail: customerInfo.customerEmail,
              description: planDetails.description || "Subscription"
         });
+
+        // Save the card on the user for future upgrades/use
+        const paymentData = response.data.Data;
+        if (customerInfo.userId && paymentData.CustomerID) {
+          try {
+            const lastFourDigits = paymentData.Payment?.PaymentMethod?.CreditCard_LastDigits;
+            await UserModel.findByIdAndUpdate(customerInfo.userId, {
+              sumitCustomerId: paymentData.CustomerID.toString(),
+              savedCardLastFour: lastFourDigits,
+              savedCardBrand: 'visa' // Default, could detect from card mask
+            });
+            console.log('[Subscription] Saved card on user for future use:', {
+              userId: customerInfo.userId,
+              customerId: paymentData.CustomerID,
+              lastFour: lastFourDigits
+            });
+          } catch (cardSaveError) {
+            console.error('[Subscription] Failed to save card on user:', cardSaveError);
+            // Don't fail the subscription, just log the error
+          }
+        }
 
         return res.status(200).json({
           success: true,
@@ -569,6 +597,307 @@ export const paymentHandler = {
       return res.status(500).json({
         success: false,
         error: 'Refund failed'
+      });
+    }
+  },
+
+  /**
+   * Create a subscription with a free trial period
+   * Saves the card for later charging but doesn't charge immediately
+   * POST /api/sumit/payments/create-subscription-trial
+   */
+  async createSubscriptionWithTrial(req: Request, res: Response) {
+    try {
+      const { singleUseToken, customerInfo, planDetails, trialDays } = req.body;
+
+      if (!singleUseToken || !customerInfo || !planDetails) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: singleUseToken, customerInfo, planDetails'
+        });
+      }
+
+      const planConfig = SUBSCRIPTION_PLANS[planDetails.planId as keyof typeof SUBSCRIPTION_PLANS];
+      if (!planConfig) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plan ID'
+        });
+      }
+
+      // Use configured trial days or override from request
+      const effectiveTrialDays = trialDays || planConfig.trialDays || 7;
+
+      // Find any active subscription for this user
+      const existingSubscription = await SubscriptionModel.findOne({
+        userId: customerInfo.userId,
+        status: { $in: ['ACTIVE', 'TRIAL'] }
+      });
+
+      if (existingSubscription) {
+        return res.status(400).json({
+          success: false,
+          error: 'User already has an active subscription. Please cancel first.'
+        });
+      }
+
+      // Save the card without charging (using platform credentials)
+      // This creates a Sumit customer with the saved payment method
+      const saveResult = await paymentService.saveCardForLaterCharge(
+        singleUseToken,
+        {
+          name: customerInfo.customerName,
+          email: customerInfo.customerEmail,
+          phone: customerInfo.customerPhone || ''
+        },
+        { companyId: COMPANY_ID!, apiKey: API_KEY!, vendorId: '' }
+      );
+
+      if (!saveResult.success || !saveResult.customerId) {
+        return res.status(400).json({
+          success: false,
+          error: saveResult.error || 'Failed to save payment method'
+        });
+      }
+
+      // Calculate trial end date
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + effectiveTrialDays);
+
+      // Create the subscription in TRIAL status
+      const subscription = await SubscriptionModel.create({
+        userId: customerInfo.userId,
+        planId: planDetails.planId,
+        planName: planConfig.name,
+        customerName: customerInfo.customerName,
+        customerEmail: customerInfo.customerEmail,
+        status: 'TRIAL',
+        isTrial: true,
+        trialEndDate,
+        trialDurationDays: effectiveTrialDays,
+        startDate: new Date(),
+        sumitCustomerId: saveResult.customerId,
+        sumitPaymentDetails: {
+          Payment: {
+            CustomerID: saveResult.customerId,
+            PaymentMethod: {
+              CreditCard_LastDigits: saveResult.lastFourDigits,
+              CreditCard_Token: saveResult.creditCardToken
+            }
+          }
+        }
+      });
+
+      // Save card on user for future use
+      if (customerInfo.userId && saveResult.customerId) {
+        try {
+          await UserModel.findByIdAndUpdate(customerInfo.userId, {
+            sumitCustomerId: saveResult.customerId,
+            savedCardLastFour: saveResult.lastFourDigits,
+            savedCardBrand: 'visa',
+            subscriptionStatus: 'TRIAL',
+            subscriptionId: subscription._id
+          });
+        } catch (userUpdateError) {
+          console.error('[Trial Subscription] Failed to update user:', userUpdateError);
+        }
+      }
+
+      console.log('[Trial Subscription] Created trial subscription:', {
+        subscriptionId: subscription._id,
+        userId: customerInfo.userId,
+        planId: planDetails.planId,
+        trialEndDate,
+        customerId: saveResult.customerId
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          subscription,
+          trialEndDate,
+          trialDays: effectiveTrialDays,
+          savedCard: {
+            lastFour: saveResult.lastFourDigits
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error('Create trial subscription error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create trial subscription'
+      });
+    }
+  },
+
+  /**
+   * Charge a trial subscription after trial ends
+   * Called by cron job or webhook when trial period ends
+   * POST /api/sumit/payments/charge-trial-subscription
+   */
+  async chargeTrialSubscription(req: Request, res: Response) {
+    try {
+      const { subscriptionId } = req.body;
+
+      if (!subscriptionId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Subscription ID is required'
+        });
+      }
+
+      const subscription = await SubscriptionModel.findById(subscriptionId);
+      if (!subscription) {
+        return res.status(404).json({
+          success: false,
+          error: 'Subscription not found'
+        });
+      }
+
+      if (subscription.status !== 'TRIAL') {
+        return res.status(400).json({
+          success: false,
+          error: `Cannot charge subscription with status: ${subscription.status}`
+        });
+      }
+
+      if (!subscription.sumitCustomerId) {
+        return res.status(400).json({
+          success: false,
+          error: 'No saved payment method for this subscription'
+        });
+      }
+
+      const planConfig = SUBSCRIPTION_PLANS[subscription.planId as keyof typeof SUBSCRIPTION_PLANS];
+      if (!planConfig) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plan configuration'
+        });
+      }
+
+      // Increment charge attempts
+      subscription.trialChargeAttempts = (subscription.trialChargeAttempts || 0) + 1;
+
+      // Create the recurring subscription in Sumit using the saved customer
+      // This charges immediately and sets up recurring
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/recurring/charge/`,
+        {
+          Customer: {
+            ID: parseInt(subscription.sumitCustomerId),
+            SearchMode: 1 // Search by ID
+          },
+          Items: [{
+            Item: {
+              Name: planConfig.name,
+              Duration_Months: 1
+            },
+            Quantity: 1,
+            UnitPrice: planConfig.price,
+            Description: `${planConfig.name} - After ${subscription.trialDurationDays} day trial`,
+            Recurrence: 12
+          }],
+          VATIncluded: true,
+          OnlyDocument: false,
+          SendDocumentByEmail: true,
+          Credentials: {
+            CompanyID: COMPANY_ID,
+            APIKey: API_KEY
+          }
+        }
+      );
+
+      if (response?.data?.Data?.Payment?.ValidPayment) {
+        // Update subscription to ACTIVE
+        subscription.status = 'ACTIVE';
+        subscription.isTrial = false;
+        subscription.sumitPaymentId = response.data.Data.Payment.ID;
+        subscription.sumitPaymentDetails = response.data.Data;
+        subscription.sumitRecurringItemIds = response.data.Data.RecurringCustomerItemIDs || [];
+        await subscription.save();
+
+        // Update user's subscription status
+        await UserModel.findByIdAndUpdate(subscription.userId, {
+          subscriptionStatus: 'ACTIVE'
+        });
+
+        // Save invoice record
+        saveSumitInvoice(response.data.Data, {
+          customerName: subscription.customerName || '',
+          customerEmail: subscription.customerEmail || '',
+          description: `${planConfig.name} - First charge after trial`
+        });
+
+        console.log('[Trial Subscription] Successfully charged trial subscription:', {
+          subscriptionId: subscription._id,
+          paymentId: response.data.Data.Payment.ID
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            subscription,
+            payment: response.data.Data
+          }
+        });
+      } else {
+        // Payment failed
+        subscription.trialChargeFailedAt = new Date();
+        
+        // After 3 failed attempts, mark as TRIAL_ENDED
+        if (subscription.trialChargeAttempts >= 3) {
+          subscription.status = 'TRIAL_ENDED';
+          await UserModel.findByIdAndUpdate(subscription.userId, {
+            subscriptionStatus: 'TRIAL_ENDED'
+          });
+        }
+        
+        await subscription.save();
+
+        return res.status(400).json({
+          success: false,
+          error: response?.data?.Data?.Payment?.StatusDescription || 'Payment failed',
+          chargeAttempts: subscription.trialChargeAttempts
+        });
+      }
+    } catch (error: any) {
+      console.error('Charge trial subscription error:', error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to charge trial subscription'
+      });
+    }
+  },
+
+  /**
+   * Get subscriptions with trials ending soon (for cron job)
+   * GET /api/sumit/payments/trial-subscriptions-ending
+   * Query: { days: number } - subscriptions ending within X days
+   */
+  async getTrialSubscriptionsEnding(req: Request, res: Response) {
+    try {
+      const days = parseInt(req.query.days as string) || 1;
+      
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + days);
+
+      const subscriptions = await SubscriptionModel.find({
+        status: 'TRIAL',
+        trialEndDate: { $lte: endDate }
+      }).populate('userId', 'name email');
+
+      return res.status(200).json({
+        success: true,
+        data: subscriptions,
+        count: subscriptions.length
+      });
+    } catch (error: any) {
+      console.error('Get trial subscriptions error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get trial subscriptions'
       });
     }
   },

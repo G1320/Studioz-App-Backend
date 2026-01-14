@@ -23,4 +23,9 @@ router.post('/refund', paymentHandler.refundPayment);
 // Get saved card by phone (for non-logged-in users)
 router.post('/saved-card-by-phone', paymentHandler.getSavedCardByPhone);
 
+// Trial subscription routes
+router.post('/create-subscription-trial', paymentHandler.createSubscriptionWithTrial);
+router.post('/charge-trial-subscription', paymentHandler.chargeTrialSubscription);
+router.get('/trial-subscriptions-ending', paymentHandler.getTrialSubscriptionsEnding);
+
 export default router ;

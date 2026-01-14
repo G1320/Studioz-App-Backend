@@ -192,7 +192,7 @@ export const createPayoutInvoice = async (
     }],
     vatType: 'NONE',
     currency: currency,
-    remarks: `Seller ID: ${sellerId} - תשלום PayPal`, 
+    remarks: `Seller ID: ${sellerId} - תשלום עבור הזמנה ${orderData.id}`, 
     paymentType: 5 // PayPal payment
   });
 
