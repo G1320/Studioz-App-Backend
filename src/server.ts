@@ -1,3 +1,6 @@
+// IMPORTANT: Import instrument.js first to initialize Sentry before anything else
+import "./instrument.js";
+import * as Sentry from "@sentry/node";
 import { PORT, ALLOWED_ORIGINS, JWT_SECRET_KEY } from './config/index.js';
 import { handleErrorMw, handleDbErrorMw, logRequestsMw } from './middleware/index.js';
 import connectToDb from './db/mongoose.js';
@@ -111,6 +114,14 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
 app.use('/api/coupons', couponRoutes);
+
+// Debug route to test Sentry error tracking
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
+
+// Sentry error handler must be registered before any other error middleware
+Sentry.setupExpressErrorHandler(app);
 
 app.use(handleDbErrorMw);
 app.use(handleErrorMw);
