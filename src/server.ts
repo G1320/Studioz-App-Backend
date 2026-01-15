@@ -26,6 +26,7 @@ import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
 import vendorRoutes from './api/routes/sumit/vendorRoutes.js';
 import googleCalendarRoutes from './api/routes/googleCalendarRoutes.js';
 import couponRoutes from './api/routes/couponRoutes.js';
+import merchantRoutes from './api/routes/merchantRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -117,6 +118,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/merchant', merchantRoutes);
 
 // Debug route to test Sentry error tracking
 app.get("/debug-sentry", function mainHandler(req, res) {

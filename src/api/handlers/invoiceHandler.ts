@@ -123,20 +123,24 @@ export const createInvoice = async (data: CreateInvoiceData): Promise<InvoiceRes
        if (match) relatedEntity = { type: 'PAYOUT', id: match[1] }; // Using Order ID as ID for payout relation logic
     }
 
+    // Calculate amount from input data if not in response
+    const calculatedAmount = data.income.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const invoiceAmount = response.data.total || response.data.amount || response.data.payment?.amount || calculatedAmount;
+
     // Save invoice to DB
     try {
         await InvoiceModel.create({
             externalId: response.data.id,
             provider: 'GREEN_INVOICE',
             documentType: String(data.type), // e.g. 300
-            amount: response.data.total,
+            amount: invoiceAmount,
             currency: response.data.currency || data.currency,
-            issuedDate: response.data.issuedDate,
+            issuedDate: response.data.issuedDate || new Date().toISOString(),
             customerName: data.client.name,
             customerEmail: data.client.email,
             documentUrl: response.data.url?.he || response.data.url?.en,
             relatedEntity: relatedEntity,
-            status: response.data.status,
+            status: response.data.status || 'pending',
             rawData: response.data
         });
     } catch (dbError) {

@@ -62,4 +62,31 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.post('/void/:id', async (req, res) => {
+  try {
+    const externalId: string = req.params.id;
+
+    // Update the invoice status in the database
+    const updatedInvoice = await InvoiceModel.findOneAndUpdate(
+      { externalId },
+      { status: 'voided' },
+      { new: true }
+    );
+
+    if (!updatedInvoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // Note: If Green Invoice API supports voiding, we would call it here
+    // For now, we just update our local record
+
+    res.status(200).json({
+      message: 'Invoice voided successfully',
+      invoice: updatedInvoice
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

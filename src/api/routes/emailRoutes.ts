@@ -181,6 +181,43 @@ router.post('/send-password-reset', async (req, res) => {
   }
 });
 
+router.post('/send-document', async (req, res) => {
+  try {
+    const { email, documentUrl, documentNumber } = req.body;
+
+    if (!email || !documentUrl) {
+      return res.status(400).json({ error: 'Email and document URL are required' });
+    }
+
+    // Use Brevo's TransactionalEmailsApi for sending emails
+    const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } = await import('@getbrevo/brevo');
+    const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
+    const apiInstance = new TransactionalEmailsApi();
+    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
+
+    await apiInstance.sendTransacEmail({
+      to: [{ email }],
+      sender: { email: 'noreply@studioz.co.il', name: 'Studioz' },
+      subject: `מסמך ${documentNumber || ''} מ-Studioz`,
+      htmlContent: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>שלום,</h2>
+          <p>מצורף קישור למסמך שלך:</p>
+          <p><a href="${documentUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">צפה במסמך</a></p>
+          <p>או העתק את הקישור: <a href="${documentUrl}">${documentUrl}</a></p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #666; font-size: 12px;">נשלח מ-Studioz</p>
+        </div>
+      `
+    });
+
+    res.status(200).json({ message: 'Document email sent successfully' });
+  } catch (error) {
+    console.error('Error sending document email:', error);
+    res.status(500).json({ error: 'Failed to send document email' });
+  }
+});
+
 router.use(emailLimiter);
 
 export default router;
