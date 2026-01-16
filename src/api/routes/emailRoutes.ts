@@ -181,6 +181,78 @@ router.post('/send-password-reset', async (req, res) => {
   }
 });
 
+// Get all Brevo email templates (admin only)
+router.get('/templates', async (req, res) => {
+  try {
+    const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } = await import('@getbrevo/brevo');
+    const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
+    const apiInstance = new TransactionalEmailsApi();
+    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
+
+    // Fetch templates from Brevo - getSmtpTemplates(templateStatus?, limit?, offset?, sort?)
+    const response = await apiInstance.getSmtpTemplates(true, 100, 0);
+
+    // Map templates to a cleaner format
+    const templates = (response.body.templates || []).map((template: any) => ({
+      id: template.id,
+      name: template.name,
+      subject: template.subject,
+      isActive: template.isActive,
+      createdAt: template.createdAt,
+      modifiedAt: template.modifiedAt,
+      htmlContent: template.htmlContent,
+      sender: template.sender,
+      replyTo: template.replyTo,
+      toField: template.toField,
+      tag: template.tag
+    }));
+
+    res.status(200).json({
+      templates,
+      count: response.body.count || templates.length
+    });
+  } catch (error) {
+    console.error('Error fetching email templates:', error);
+    res.status(500).json({ error: 'Failed to fetch email templates' });
+  }
+});
+
+// Get a single Brevo template by ID
+router.get('/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const templateId = parseInt(id, 10);
+
+    if (isNaN(templateId)) {
+      return res.status(400).json({ error: 'Invalid template ID' });
+    }
+
+    const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } = await import('@getbrevo/brevo');
+    const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
+    const apiInstance = new TransactionalEmailsApi();
+    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
+
+    const response = await apiInstance.getSmtpTemplate(templateId);
+
+    res.status(200).json({
+      id: response.body.id,
+      name: response.body.name,
+      subject: response.body.subject,
+      isActive: response.body.isActive,
+      htmlContent: response.body.htmlContent,
+      createdAt: response.body.createdAt,
+      modifiedAt: response.body.modifiedAt,
+      sender: response.body.sender,
+      replyTo: response.body.replyTo,
+      toField: response.body.toField,
+      tag: response.body.tag
+    });
+  } catch (error) {
+    console.error('Error fetching template:', error);
+    res.status(500).json({ error: 'Failed to fetch template' });
+  }
+});
+
 router.post('/send-document', async (req, res) => {
   try {
     const { email, documentUrl, documentNumber } = req.body;
