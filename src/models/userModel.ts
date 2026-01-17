@@ -80,9 +80,23 @@ const userSchema = new Schema(
       calendarId: { type: String, default: 'primary' },
       lastSyncAt: { type: Date },
       syncToken: { type: String }
+    },
+    // Email notification preferences
+    emailPreferences: {
+      // Master toggle - if false, no emails are sent
+      enabled: { type: Boolean, default: true },
+      // Granular preferences (only checked if enabled is true)
+      bookingConfirmations: { type: Boolean, default: true },
+      bookingReminders: { type: Boolean, default: true },
+      bookingCancellations: { type: Boolean, default: true },
+      paymentReceipts: { type: Boolean, default: true },
+      payoutNotifications: { type: Boolean, default: true },
+      subscriptionUpdates: { type: Boolean, default: true },
+      promotionalEmails: { type: Boolean, default: true },
+      reviewRequests: { type: Boolean, default: true }
     }
   },
-  
+
   { timestamps: true }
 );
 

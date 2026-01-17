@@ -5,6 +5,7 @@ import { StudioModel } from '../../models/studioModel.js';
 import handleRequest from '../../utils/requestHandler.js';
 import ExpressError from '../../utils/expressError.js';
 import { paymentService } from '../../services/paymentService.js';
+import emailPreferencesService from '../../services/emailPreferencesService.js';
 
 const createUser = handleRequest(async (req: Request) => {
   const { username, name } = req.body;
@@ -86,11 +87,28 @@ const removeStudioFromUser = handleRequest(async (req: Request) => {
   return studio;
 });
 
-const getAllUsers = handleRequest(async () => {
-  const users = await UserModel.find({});
-  if (!users) throw new ExpressError('No users found', 404);
+const getAllUsers = handleRequest(async (req: Request) => {
+  // Pagination parameters with sensible defaults
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+  const skip = (page - 1) * limit;
 
-  return users;
+  const [users, total] = await Promise.all([
+    UserModel.find({}).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    UserModel.countDocuments({})
+  ]);
+
+  if (!users || users.length === 0) throw new ExpressError('No users found', 404);
+
+  return {
+    users,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 });
 
 const updateUser = handleRequest(async (req: Request) => {
@@ -130,12 +148,66 @@ const removeSavedCard = handleRequest(async (req: Request) => {
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
   const success = await paymentService.removeUserSavedCard(userId);
-  
+
   if (!success) {
     throw new ExpressError('Failed to remove saved card', 500);
   }
 
   return { success: true };
+});
+
+/**
+ * Get user's email preferences
+ * GET /api/users/:id/email-preferences
+ */
+const getEmailPreferences = handleRequest(async (req: Request) => {
+  const userId = req.params.id;
+  if (!userId) throw new ExpressError('User ID not provided', 400);
+
+  const preferences = await emailPreferencesService.getEmailPreferences(userId);
+  return preferences;
+});
+
+/**
+ * Update user's email preferences
+ * PUT /api/users/:id/email-preferences
+ */
+const updateEmailPreferences = handleRequest(async (req: Request) => {
+  const userId = req.params.id;
+  if (!userId) throw new ExpressError('User ID not provided', 400);
+
+  const { preferences } = req.body;
+  if (!preferences || typeof preferences !== 'object') {
+    throw new ExpressError('Preferences object is required', 400);
+  }
+
+  // Validate that only valid preference keys are being updated
+  const validKeys = [
+    'enabled',
+    'bookingConfirmations',
+    'bookingReminders',
+    'bookingCancellations',
+    'paymentReceipts',
+    'payoutNotifications',
+    'subscriptionUpdates',
+    'promotionalEmails',
+    'reviewRequests'
+  ];
+
+  const invalidKeys = Object.keys(preferences).filter(key => !validKeys.includes(key));
+  if (invalidKeys.length > 0) {
+    throw new ExpressError(`Invalid preference keys: ${invalidKeys.join(', ')}`, 400);
+  }
+
+  // Ensure all values are booleans
+  for (const [key, value] of Object.entries(preferences)) {
+    if (typeof value !== 'boolean') {
+      throw new ExpressError(`Preference '${key}' must be a boolean`, 400);
+    }
+  }
+
+  const updatedPreferences = await emailPreferencesService.updateEmailPreferences(userId, preferences);
+  return updatedPreferences;
 });
 
 export default {
@@ -149,5 +221,7 @@ export default {
   updateUser,
   deleteUser,
   getSavedCards,
-  removeSavedCard
+  removeSavedCard,
+  getEmailPreferences,
+  updateEmailPreferences
 };

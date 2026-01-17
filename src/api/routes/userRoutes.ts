@@ -19,4 +19,8 @@ router.post('/:id/remove-studio/:studioId',  userHandler.removeStudioFromUser);
 router.get('/:id/saved-cards', userHandler.getSavedCards);
 router.delete('/:id/saved-cards', userHandler.removeSavedCard);
 
+// Email preferences
+router.get('/:id/email-preferences', verifyTokenMw, userHandler.getEmailPreferences);
+router.put('/:id/email-preferences', verifyTokenMw, userHandler.updateEmailPreferences);
+
 export default router;

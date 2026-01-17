@@ -77,14 +77,20 @@ const addItemsToCart = handleRequest(async (req: Request) => {
     user.cart = { items: [] };
   }
 
-  items.forEach(async (itemData) => {
-    const { itemId, bookingDate, comment, customerName,customerPhone } = itemData;
+  // Fetch all items in parallel first (fixes async forEach anti-pattern)
+  const itemIds = items.map(itemData => itemData.itemId);
+  const fetchedItems = await ItemModel.find({ _id: { $in: itemIds } });
+  const itemsMap = new Map(fetchedItems.map(item => [item._id.toString(), item]));
+
+  // Process each item synchronously after fetching
+  for (const itemData of items) {
+    const { itemId, bookingDate, comment, customerName, customerPhone } = itemData;
 
     if (!itemId || !bookingDate) {
       throw new ExpressError('Item ID and booking date are required', 400);
     }
 
-    const item = await ItemModel.findById(itemId);
+    const item = itemsMap.get(itemId);
     if (!item) throw new ExpressError(`Item not found for ID ${itemId}`, 404);
 
     // Check if the item with the same itemId already exists in the cart
@@ -100,12 +106,12 @@ const addItemsToCart = handleRequest(async (req: Request) => {
       // If it's a new item, add it to the cart with an initial quantity of 1
       user.cart?.items?.push({
         name: {
-          en: item.name?.en || '', 
-          he: item.name?.he || undefined, 
+          en: item.name?.en || '',
+          he: item.name?.he || undefined,
         },
         studioName: {
-          en: item.studioName.en || '', 
-          he: item.studioName.he || undefined, 
+          en: item.studioName.en || '',
+          he: item.studioName.he || undefined,
         },
         price: item.price,
         total: item.price,
@@ -115,10 +121,10 @@ const addItemsToCart = handleRequest(async (req: Request) => {
         studioId: item.studioId,
         customerName: customerName || '',
         customerPhone: customerPhone || '',
-        comment: comment ||''
+        comment: comment || ''
       });
     }
-  });
+  }
 
   await user.save();
   return user.cart;

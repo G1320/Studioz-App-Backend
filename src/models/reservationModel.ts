@@ -46,12 +46,16 @@ const ReservationSchema = new mongoose.Schema({
     studioImgUrl: { type: String, required: false },
     quantity: { type: Number, required: false, default: 1 },
     // Payment fields (optional - only populated when vendor accepts payments)
-    paymentStatus: { 
-      type: String, 
+    paymentStatus: {
+      type: String,
       enum: ['pending', 'card_saved', 'charged', 'failed', 'refunded'],
-      required: false 
+      required: false
     },
     paymentDetails: { type: paymentDetailsSchema, required: false },
+    // Coupon fields (optional - only populated when a studio coupon is applied)
+    couponCode: { type: String, required: false },
+    couponDiscount: { type: Number, required: false, default: 0 },
+    priceBeforeDiscount: { type: Number, required: false },
   }, { timestamps: true });
 
   // Database indexes for query performance

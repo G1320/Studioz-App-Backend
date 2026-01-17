@@ -51,4 +51,8 @@ quantity?: number;
 // Payment fields (optional - only populated when vendor accepts payments)
 paymentStatus?: PaymentStatus;
 paymentDetails?: PaymentDetails;
+// Coupon fields (optional - only populated when a studio coupon is applied)
+couponCode?: string;
+couponDiscount?: number;
+priceBeforeDiscount?: number;
 }

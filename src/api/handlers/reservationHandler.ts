@@ -75,17 +75,35 @@ const createReservation = handleRequest(async (req: Request) => {
 
 
 const getReservations = handleRequest(async (req: Request) => {
-  const { studioId, userId } = req.query;
+  const { studioId, userId, page: pageStr, limit: limitStr } = req.query;
 
   // Update expired reservations before fetching
   await updateExpiredReservations();
 
-  let query = ReservationModel.find();
-  if (studioId) query = query.where('studioId', studioId);
-  if (userId) query = query.where('userId', userId);
+  // Pagination parameters with sensible defaults
+  const page = Math.max(1, parseInt(pageStr as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 50));
+  const skip = (page - 1) * limit;
 
-  const reservations = await query.exec();
-  return reservations;
+  // Build filter conditions
+  const filter: Record<string, unknown> = {};
+  if (studioId) filter.studioId = studioId;
+  if (userId) filter.userId = userId;
+
+  const [reservations, total] = await Promise.all([
+    ReservationModel.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    ReservationModel.countDocuments(filter)
+  ]);
+
+  return {
+    reservations,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 });
 
 const getReservationsByStudioId = handleRequest(async (req: Request) => {

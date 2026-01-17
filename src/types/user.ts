@@ -55,5 +55,18 @@ export default interface User {
     lastSyncAt?: Date;
     syncToken?: string;
   };
+  emailPreferences?: EmailPreferences;
   __v?: number;
+}
+
+export interface EmailPreferences {
+  enabled: boolean;
+  bookingConfirmations: boolean;
+  bookingReminders: boolean;
+  bookingCancellations: boolean;
+  paymentReceipts: boolean;
+  payoutNotifications: boolean;
+  subscriptionUpdates: boolean;
+  promotionalEmails: boolean;
+  reviewRequests: boolean;
 }
