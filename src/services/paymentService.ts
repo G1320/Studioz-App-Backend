@@ -387,19 +387,22 @@ export const paymentService = {
       vendorId: string;
     };
   } | null> {
-    // Get vendor credentials
+    // Get vendor credentials (only needed for instant charging, not for saving cards)
     const credentials = await this.getVendorCredentials(params.vendorId);
     
-    if (!credentials) {
-      // Vendor doesn't accept payments - return null (no payment attached)
-      return null;
-    }
+    console.log('[Payment Debug] handleReservationPayment called:', {
+      vendorId: params.vendorId,
+      userId: params.userId,
+      hasVendorCredentials: !!credentials,
+      instantCharge: params.instantCharge
+    });
 
-    // Save the card
+    // Save the card using PLATFORM credentials (works regardless of vendor setup)
+    // The credentials param is ignored by saveCardForLaterCharge - it uses platform credentials
     const saveResult = await this.saveCardForLaterCharge(
       params.singleUseToken,
       params.customerInfo,
-      credentials
+      credentials || { companyId: '', apiKey: '', vendorId: params.vendorId } // Placeholder - not used
     );
 
     if (!saveResult.success || !saveResult.customerId) {
@@ -441,8 +444,8 @@ export const paymentService = {
       vendorId: params.vendorId
     };
 
-    // If instant charge, charge now
-    if (params.instantCharge) {
+    // If instant charge AND vendor has credentials, charge now
+    if (params.instantCharge && credentials) {
       const chargeResult = await this.chargeSavedCard(
         saveResult.customerId,
         params.amount,
@@ -468,6 +471,9 @@ export const paymentService = {
           }
         };
       }
+    } else if (params.instantCharge && !credentials) {
+      // Vendor doesn't have credentials - card is saved but can't charge
+      console.log('[Payment Debug] Instant charge requested but vendor has no credentials. Card saved only.');
     }
 
     // Card saved, waiting for approval
