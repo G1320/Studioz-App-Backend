@@ -425,3 +425,345 @@ function getEmptyStats(): MerchantStatsResponse {
     }
   };
 }
+
+// ============================================================
+// ADDITIONAL ANALYTICS ENDPOINTS
+// ============================================================
+
+interface TimeSlotAnalytics {
+  slot: string;
+  bookings: number;
+  revenue: number;
+  percentage: number;
+}
+
+interface DayAnalytics {
+  day: string;
+  dayIndex: number;
+  bookings: number;
+  revenue: number;
+  percentage: number;
+}
+
+interface CancellationStats {
+  totalCancelled: number;
+  cancellationRate: number;
+  cancelledRevenue: number;
+  topCancellationReasons: { reason: string; count: number }[];
+  cancellationsByDay: number[];
+  trend: string;
+  isPositive: boolean;
+}
+
+interface RepeatCustomerStats {
+  totalCustomers: number;
+  repeatCustomers: number;
+  repeatRate: number;
+  avgBookingsPerRepeat: number;
+  repeatCustomerRevenue: number;
+  revenuePercentage: number;
+  topRepeatCustomers: {
+    id: string;
+    name: string;
+    bookings: number;
+    totalSpent: number;
+    lastVisit: string;
+  }[];
+}
+
+/**
+ * Get popular time slots analysis
+ * Shows which time slots are most frequently booked
+ */
+export const getPopularTimeSlots = handleRequest(async (req: Request) => {
+  const userId = req.query.userId as string;
+  const startDateParam = req.query.startDate as string | undefined;
+  const endDateParam = req.query.endDate as string | undefined;
+
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  const userStudios = await StudioModel.find({ createdBy: userId });
+  if (userStudios.length === 0) {
+    return { timeSlots: [], byDay: [] };
+  }
+
+  const studioIds = userStudios.map(s => s._id);
+  const itemIds = userStudios.flatMap(s => s.items?.map(i => i.itemId) || []);
+
+  const now = new Date();
+  const currentPeriodStart = startDateParam
+    ? startOfDay(new Date(startDateParam))
+    : startOfMonth(now);
+  const currentPeriodEnd = endDateParam
+    ? endOfDay(new Date(endDateParam))
+    : endOfDay(now);
+
+  const reservations = await ReservationModel.find({
+    $or: [
+      { studioId: { $in: studioIds } },
+      { itemId: { $in: itemIds } }
+    ],
+    status: 'confirmed',
+    createdAt: { $gte: currentPeriodStart, $lte: currentPeriodEnd }
+  });
+
+  // Analyze time slots
+  const slotCounts = new Map<string, { bookings: number; revenue: number }>();
+  const dayCounts = new Map<number, { bookings: number; revenue: number }>();
+
+  for (const res of reservations) {
+    const bookingDate = parseBookingDate(res.bookingDate);
+    const dayOfWeek = bookingDate.getDay();
+
+    // Count by day of week
+    const dayData = dayCounts.get(dayOfWeek) || { bookings: 0, revenue: 0 };
+    dayData.bookings += 1;
+    dayData.revenue += res.totalPrice || 0;
+    dayCounts.set(dayOfWeek, dayData);
+
+    // Count by time slot
+    for (const slot of res.timeSlots || []) {
+      const slotData = slotCounts.get(slot) || { bookings: 0, revenue: 0 };
+      slotData.bookings += 1;
+      slotData.revenue += (res.totalPrice || 0) / (res.timeSlots?.length || 1);
+      slotCounts.set(slot, slotData);
+    }
+  }
+
+  const totalBookings = reservations.length;
+
+  // Convert to sorted arrays
+  const timeSlots: TimeSlotAnalytics[] = Array.from(slotCounts.entries())
+    .map(([slot, data]) => ({
+      slot,
+      bookings: data.bookings,
+      revenue: Math.round(data.revenue),
+      percentage: totalBookings > 0 ? Math.round((data.bookings / totalBookings) * 100) : 0
+    }))
+    .sort((a, b) => b.bookings - a.bookings);
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const byDay: DayAnalytics[] = Array.from(dayCounts.entries())
+    .map(([dayIndex, data]) => ({
+      day: dayNames[dayIndex],
+      dayIndex,
+      bookings: data.bookings,
+      revenue: Math.round(data.revenue),
+      percentage: totalBookings > 0 ? Math.round((data.bookings / totalBookings) * 100) : 0
+    }))
+    .sort((a, b) => b.bookings - a.bookings);
+
+  return { timeSlots, byDay };
+});
+
+/**
+ * Get cancellation statistics
+ * Shows cancellation rate and trends
+ */
+export const getCancellationStats = handleRequest(async (req: Request): Promise<CancellationStats> => {
+  const userId = req.query.userId as string;
+  const startDateParam = req.query.startDate as string | undefined;
+  const endDateParam = req.query.endDate as string | undefined;
+
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  const userStudios = await StudioModel.find({ createdBy: userId });
+  if (userStudios.length === 0) {
+    return {
+      totalCancelled: 0,
+      cancellationRate: 0,
+      cancelledRevenue: 0,
+      topCancellationReasons: [],
+      cancellationsByDay: Array(7).fill(0),
+      trend: '0%',
+      isPositive: true
+    };
+  }
+
+  const studioIds = userStudios.map(s => s._id);
+  const itemIds = userStudios.flatMap(s => s.items?.map(i => i.itemId) || []);
+
+  const now = new Date();
+  const currentPeriodStart = startDateParam
+    ? startOfDay(new Date(startDateParam))
+    : startOfMonth(now);
+  const currentPeriodEnd = endDateParam
+    ? endOfDay(new Date(endDateParam))
+    : endOfDay(now);
+
+  // Previous period for trend comparison
+  const periodDuration = currentPeriodEnd.getTime() - currentPeriodStart.getTime();
+  const prevPeriodEnd = new Date(currentPeriodStart.getTime() - 1);
+  const prevPeriodStart = new Date(prevPeriodEnd.getTime() - periodDuration);
+
+  const allReservations = await ReservationModel.find({
+    $or: [
+      { studioId: { $in: studioIds } },
+      { itemId: { $in: itemIds } }
+    ],
+    createdAt: { $gte: prevPeriodStart, $lte: currentPeriodEnd }
+  });
+
+  const currentReservations = allReservations.filter(r => {
+    const ts = new Date(r.createdAt as Date);
+    return ts >= currentPeriodStart && ts <= currentPeriodEnd;
+  });
+
+  const prevReservations = allReservations.filter(r => {
+    const ts = new Date(r.createdAt as Date);
+    return ts >= prevPeriodStart && ts <= prevPeriodEnd;
+  });
+
+  const currentCancelled = currentReservations.filter(r => r.status === 'cancelled');
+  const prevCancelled = prevReservations.filter(r => r.status === 'cancelled');
+
+  const currentRate = currentReservations.length > 0
+    ? (currentCancelled.length / currentReservations.length) * 100
+    : 0;
+  const prevRate = prevReservations.length > 0
+    ? (prevCancelled.length / prevReservations.length) * 100
+    : 0;
+
+  // Cancellations by day of week
+  const cancellationsByDay = Array(7).fill(0);
+  for (const res of currentCancelled) {
+    const bookingDate = parseBookingDate(res.bookingDate);
+    cancellationsByDay[bookingDate.getDay()]++;
+  }
+
+  // Calculate trend
+  const trendDiff = currentRate - prevRate;
+  const trend = `${trendDiff > 0 ? '+' : ''}${Math.round(trendDiff * 10) / 10}%`;
+
+  return {
+    totalCancelled: currentCancelled.length,
+    cancellationRate: Math.round(currentRate * 10) / 10,
+    cancelledRevenue: currentCancelled.reduce((sum, r) => sum + (r.totalPrice || 0), 0),
+    topCancellationReasons: [], // Could be extended with cancellation reason tracking
+    cancellationsByDay,
+    trend,
+    isPositive: trendDiff <= 0 // Lower cancellation rate is positive
+  };
+});
+
+/**
+ * Get repeat customer statistics
+ * Shows customer loyalty metrics
+ */
+export const getRepeatCustomerStats = handleRequest(async (req: Request): Promise<RepeatCustomerStats> => {
+  const userId = req.query.userId as string;
+  const startDateParam = req.query.startDate as string | undefined;
+  const endDateParam = req.query.endDate as string | undefined;
+
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  const userStudios = await StudioModel.find({ createdBy: userId });
+  if (userStudios.length === 0) {
+    return {
+      totalCustomers: 0,
+      repeatCustomers: 0,
+      repeatRate: 0,
+      avgBookingsPerRepeat: 0,
+      repeatCustomerRevenue: 0,
+      revenuePercentage: 0,
+      topRepeatCustomers: []
+    };
+  }
+
+  const studioIds = userStudios.map(s => s._id);
+  const itemIds = userStudios.flatMap(s => s.items?.map(i => i.itemId) || []);
+
+  const now = new Date();
+  const currentPeriodStart = startDateParam
+    ? startOfDay(new Date(startDateParam))
+    : subtractMonths(now, 12); // Default to last 12 months for repeat analysis
+  const currentPeriodEnd = endDateParam
+    ? endOfDay(new Date(endDateParam))
+    : endOfDay(now);
+
+  const reservations = await ReservationModel.find({
+    $or: [
+      { studioId: { $in: studioIds } },
+      { itemId: { $in: itemIds } }
+    ],
+    status: 'confirmed',
+    createdAt: { $gte: currentPeriodStart, $lte: currentPeriodEnd }
+  });
+
+  // Group by customer
+  const customerMap = new Map<string, {
+    bookings: number;
+    revenue: number;
+    name: string;
+    lastVisit: Date;
+  }>();
+
+  for (const res of reservations) {
+    const customerId = (res.customerId || res.userId)?.toString();
+    if (!customerId) continue;
+
+    const existing = customerMap.get(customerId) || {
+      bookings: 0,
+      revenue: 0,
+      name: res.customerName || 'Unknown',
+      lastVisit: new Date(0)
+    };
+
+    existing.bookings += 1;
+    existing.revenue += res.totalPrice || 0;
+
+    const resDate = new Date(res.createdAt as Date);
+    if (resDate > existing.lastVisit) {
+      existing.lastVisit = resDate;
+      if (res.customerName) existing.name = res.customerName;
+    }
+
+    customerMap.set(customerId, existing);
+  }
+
+  const totalCustomers = customerMap.size;
+  const repeatCustomersList = Array.from(customerMap.entries())
+    .filter(([, data]) => data.bookings > 1);
+
+  const repeatCustomers = repeatCustomersList.length;
+  const repeatRate = totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 100) : 0;
+
+  const totalRepeatBookings = repeatCustomersList.reduce((sum, [, data]) => sum + data.bookings, 0);
+  const avgBookingsPerRepeat = repeatCustomers > 0
+    ? Math.round((totalRepeatBookings / repeatCustomers) * 10) / 10
+    : 0;
+
+  const repeatCustomerRevenue = repeatCustomersList.reduce((sum, [, data]) => sum + data.revenue, 0);
+  const totalRevenue = reservations.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+  const revenuePercentage = totalRevenue > 0
+    ? Math.round((repeatCustomerRevenue / totalRevenue) * 100)
+    : 0;
+
+  // Top repeat customers
+  const topRepeatCustomers = repeatCustomersList
+    .sort((a, b) => b[1].bookings - a[1].bookings)
+    .slice(0, 5)
+    .map(([id, data]) => ({
+      id,
+      name: data.name,
+      bookings: data.bookings,
+      totalSpent: data.revenue,
+      lastVisit: formatLastVisit(data.lastVisit)
+    }));
+
+  return {
+    totalCustomers,
+    repeatCustomers,
+    repeatRate,
+    avgBookingsPerRepeat,
+    repeatCustomerRevenue,
+    revenuePercentage,
+    topRepeatCustomers
+  };
+});

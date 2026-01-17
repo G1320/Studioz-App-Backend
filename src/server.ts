@@ -38,12 +38,14 @@ import { createServer } from 'node:http';
 import bodyParser from 'body-parser';
 import { initializeReservationScheduler, stopReservationScheduler } from './workers/reservationScheduler.js';
 import { initializeTrialScheduler, stopTrialScheduler } from './workers/trialSubscriptionScheduler.js';
+import { initializeBookingReminderScheduler, stopBookingReminderScheduler } from './workers/bookingReminderScheduler.js';
 
 
 try {
   await connectToDb();
   initializeReservationScheduler();
   initializeTrialScheduler();
+  initializeBookingReminderScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -54,9 +56,10 @@ const httpServer = createServer(app);
 
 const io = initializeSocket(httpServer);
 
-const gracefulShutdown = async () => {  
+const gracefulShutdown = async () => {
   stopReservationScheduler();
   stopTrialScheduler();
+  stopBookingReminderScheduler();
   if (io) await io.close();
     await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());

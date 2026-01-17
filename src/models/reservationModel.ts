@@ -56,6 +56,8 @@ const ReservationSchema = new mongoose.Schema({
     couponCode: { type: String, required: false },
     couponDiscount: { type: Number, required: false, default: 0 },
     priceBeforeDiscount: { type: Number, required: false },
+    // Reminder tracking
+    reminderSent: { type: Boolean, required: false, default: false },
   }, { timestamps: true });
 
   // Database indexes for query performance

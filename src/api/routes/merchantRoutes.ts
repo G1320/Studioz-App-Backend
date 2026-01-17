@@ -1,5 +1,10 @@
 import express from 'express';
-import { getMerchantStats } from '../handlers/merchantStatsHandler.js';
+import {
+  getMerchantStats,
+  getPopularTimeSlots,
+  getCancellationStats,
+  getRepeatCustomerStats
+} from '../handlers/merchantStatsHandler.js';
 import { getMerchantDocuments, getMerchantDocument } from '../handlers/merchantDocumentsHandler.js';
 
 const router = express.Router();
@@ -11,6 +16,36 @@ const router = express.Router();
  * @access  Private
  */
 router.get('/stats', getMerchantStats);
+
+/**
+ * @route   GET /api/merchant/analytics/time-slots
+ * @desc    Get popular time slots analysis
+ * @query   userId - Required user ID
+ * @query   startDate - Optional start date filter
+ * @query   endDate - Optional end date filter
+ * @access  Private
+ */
+router.get('/analytics/time-slots', getPopularTimeSlots);
+
+/**
+ * @route   GET /api/merchant/analytics/cancellations
+ * @desc    Get cancellation statistics
+ * @query   userId - Required user ID
+ * @query   startDate - Optional start date filter
+ * @query   endDate - Optional end date filter
+ * @access  Private
+ */
+router.get('/analytics/cancellations', getCancellationStats);
+
+/**
+ * @route   GET /api/merchant/analytics/repeat-customers
+ * @desc    Get repeat customer statistics
+ * @query   userId - Required user ID
+ * @query   startDate - Optional start date filter
+ * @query   endDate - Optional end date filter
+ * @access  Private
+ */
+router.get('/analytics/repeat-customers', getRepeatCustomerStats);
 
 /**
  * @route   GET /api/merchant/documents

@@ -1,5 +1,6 @@
 import express from "express";
 import reservationHandler from '../handlers/reservationHandler.js';
+import rescheduleHandler from '../handlers/rescheduleHandler.js';
 
 const router = express.Router();
 
@@ -16,5 +17,10 @@ router.delete("/:reservationId", reservationHandler.cancelReservationById); // b
 
 // Approve reservation (vendor action - charges saved card if present)
 router.patch("/:reservationId/approve", reservationHandler.approveReservation);
+
+// Reschedule reservation endpoints
+router.get("/:reservationId/reschedule/available", rescheduleHandler.getAvailableSlots);
+router.post("/:reservationId/reschedule/check", rescheduleHandler.checkAvailability);
+router.post("/:reservationId/reschedule", rescheduleHandler.reschedule);
 
 export default router;
