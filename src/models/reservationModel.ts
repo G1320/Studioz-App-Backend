@@ -54,6 +54,16 @@ const ReservationSchema = new mongoose.Schema({
     paymentDetails: { type: paymentDetailsSchema, required: false },
   }, { timestamps: true });
 
+  // Database indexes for query performance
+  ReservationSchema.index({ status: 1 });
+  ReservationSchema.index({ itemId: 1, bookingDate: 1 });
+  ReservationSchema.index({ studioId: 1 });
+  ReservationSchema.index({ customerId: 1 });
+  ReservationSchema.index({ userId: 1 });
+  ReservationSchema.index({ orderId: 1 });
+  ReservationSchema.index({ expiration: 1 });
+  ReservationSchema.index({ createdAt: -1 });
+
   // Pre-save hook to ensure totalPrice is calculated
   // Note: This won't run for findOneAndUpdate/findByIdAndUpdate operations
   // Handlers using those methods should mark price-affecting fields as modified, then call .save()

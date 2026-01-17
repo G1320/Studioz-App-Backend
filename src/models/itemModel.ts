@@ -88,6 +88,14 @@ const itemSchema: Schema = new Schema({
   active: { type: Boolean, required: false, default: true }
 });
 
+// Database indexes for query performance
+itemSchema.index({ studioId: 1 });
+itemSchema.index({ sellerId: 1 });
+itemSchema.index({ createdBy: 1 });
+itemSchema.index({ active: 1 });
+itemSchema.index({ categories: 1 });
+itemSchema.index({ city: 1 });
+
 const ItemModel: Model<Item & Document> = mongoose.models.Item || mongoose.model<Item & Document>('Item', itemSchema);
 
 export { ItemModel };

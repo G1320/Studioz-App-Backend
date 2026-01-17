@@ -408,25 +408,27 @@ export const blockTimeSlotsFromCalendarEvent = async (
 
     const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
-    // Block time slots for all items
+    // Block time slots for all items - prepare updates first
     for (const item of items) {
       item.availability = initializeAvailability(item.availability);
       const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
-      
+
       // Remove time slots that overlap with the calendar event
       dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
-      
+
       item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
       );
-      
-      await item.save();
+
       affectedItemIds.push(item._id.toString());
-      
-      // Only emit if not in batch mode
-      if (!skipEmit) {
-        emitAvailabilityUpdate(item._id.toString());
-      }
+    }
+
+    // Save all items in parallel (fixes N+1 query pattern)
+    await Promise.all(items.map(item => item.save()));
+
+    // Emit updates after all saves complete
+    if (!skipEmit) {
+      affectedItemIds.forEach(itemId => emitAvailabilityUpdate(itemId));
     }
 
     console.log(`Blocked time slots for ${items.length} items from calendar event:`, event.id);
@@ -475,25 +477,27 @@ export const unblockTimeSlotsFromCalendarEvent = async (
     const defaultHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
     const { addTimeSlots } = await import('../utils/timeSlotUtils.js');
 
-    // Unblock time slots for all items
+    // Unblock time slots for all items - prepare updates first
     for (const item of items) {
       item.availability = initializeAvailability(item.availability);
       const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
-      
+
       // Add time slots back
       dateAvailability.times = addTimeSlots(dateAvailability.times, timeSlots);
-      
+
       item.availability = item.availability.map(avail =>
         avail.date === bookingDate ? dateAvailability : avail
       );
-      
-      await item.save();
+
       affectedItemIds.push(item._id.toString());
-      
-      // Only emit if not in batch mode
-      if (!skipEmit) {
-        emitAvailabilityUpdate(item._id.toString());
-      }
+    }
+
+    // Save all items in parallel (fixes N+1 query pattern)
+    await Promise.all(items.map(item => item.save()));
+
+    // Emit updates after all saves complete
+    if (!skipEmit) {
+      affectedItemIds.forEach(itemId => emitAvailabilityUpdate(itemId));
     }
 
     console.log(`Unblocked time slots for ${items.length} items from deleted calendar event`);

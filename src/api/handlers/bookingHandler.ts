@@ -58,29 +58,33 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 
     const updatedItems = [];
 
+    // Process all items and prepare updates
     for (const item of studioItems) {
         // Initialize availability
         item.availability = initializeAvailability(item.availability);
-            
+
         // Find or create availability entry for the booking date
         const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
 
         // Generate array of consecutive time slots needed
-        const timeSlots = generateTimeSlots(startTime, hours);       
-        
+        const timeSlots = generateTimeSlots(startTime, hours);
+
         // Remove all selected time slots
         dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
-        
+
         // Update item.availability with the modified dateAvailability
         item.availability = item.availability.map(avail =>
             avail.date === bookingDate ? dateAvailability : avail
         );
-            
-        await item.save();
-        
+
         updatedItems.push(item);
-        emitAvailabilityUpdate(item._id);
     }
+
+    // Save all items in parallel (fixes N+1 query pattern)
+    await Promise.all(updatedItems.map(item => item.save()));
+
+    // Emit updates after all saves complete
+    updatedItems.forEach(item => emitAvailabilityUpdate(item._id));
 
     return {
         message: `Successfully blocked time slots for ${updatedItems.length} items`,
@@ -175,6 +179,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     // Update time slots for all other items in the studio (studio will be busy during this session)
     if (item.studioId) {
         const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        // Prepare all updates first
         for (const studioItem of studioItems) {
             studioItem.availability = initializeAvailability(studioItem.availability);
             const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
@@ -182,9 +187,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
             studioItem.availability = studioItem.availability.map(avail =>
                 avail.date === bookingDate ? studioItemDateAvailability : avail
             );
-            await studioItem.save();
-            emitAvailabilityUpdate(studioItem._id);
         }
+        // Save all in parallel (fixes N+1 query pattern)
+        await Promise.all(studioItems.map(si => si.save()));
+        studioItems.forEach(si => emitAvailabilityUpdate(si._id));
     }
     emitReservationUpdate(
       [reservation._id.toString()],
@@ -392,6 +398,7 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
     // Update time slots for all other items in the studio (studio will be busy during this session)
     if (item.studioId) {
         const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        // Prepare all updates first
         for (const studioItem of studioItems) {
             studioItem.availability = initializeAvailability(studioItem.availability);
             const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
@@ -399,9 +406,10 @@ export const reserveNextItemTimeSlot = handleRequest(async (req: Request) => {
             studioItem.availability = studioItem.availability.map(avail =>
                 avail.date === bookingDate ? studioItemDateAvailability : avail
             );
-            await studioItem.save();
-            emitAvailabilityUpdate(studioItem._id);
         }
+        // Save all in parallel (fixes N+1 query pattern)
+        await Promise.all(studioItems.map(si => si.save()));
+        studioItems.forEach(si => emitAvailabilityUpdate(si._id));
     }
 
     return item;
@@ -463,6 +471,7 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
     // Release time slots for all other items in the studio (studio is no longer busy during this slot)
     if (item.studioId) {
         const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        // Prepare all updates first
         for (const studioItem of studioItems) {
             studioItem.availability = initializeAvailability(studioItem.availability);
             const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
@@ -471,9 +480,10 @@ export const releaseLastItemTimeSlot = handleRequest(async (req: Request) => {
             studioItem.availability = studioItem.availability.map(avail =>
                 avail.date === bookingDate ? studioItemDateAvailability : avail
             );
-            await studioItem.save();
-            emitAvailabilityUpdate(studioItem._id);
         }
+        // Save all in parallel (fixes N+1 query pattern)
+        await Promise.all(studioItems.map(si => si.save()));
+        studioItems.forEach(si => emitAvailabilityUpdate(si._id));
     }
 
     return item;
@@ -544,6 +554,7 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     // Release time slots for all other items in the studio (studio is no longer busy during these slots)
     if (item.studioId && slotsToRelease.length > 0) {
         const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
+        // Prepare all updates first
         for (const studioItem of studioItems) {
             studioItem.availability = initializeAvailability(studioItem.availability);
             const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
@@ -553,9 +564,10 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
             studioItem.availability = studioItem.availability.map(avail =>
                 avail.date === bookingDate ? studioItemDateAvailability : avail
             );
-            await studioItem.save();
-            emitAvailabilityUpdate(studioItem._id);
         }
+        // Save all in parallel (fixes N+1 query pattern)
+        await Promise.all(studioItems.map(si => si.save()));
+        studioItems.forEach(si => emitAvailabilityUpdate(si._id));
     }
 
     return item;
@@ -596,28 +608,31 @@ const confirmBooking = handleRequest(async (req: Request) => {
         );
     });
 
-    // Notify customers that their reservations are confirmed
-    for (const reservation of confirmedReservations) {
-      if (reservation.customerId) {
-        await notifyCustomerReservationConfirmed(
+    // Notify customers that their reservations are confirmed (in parallel)
+    const notificationPromises = confirmedReservations
+      .filter(reservation => reservation.customerId)
+      .map(reservation =>
+        notifyCustomerReservationConfirmed(
           reservation._id.toString(),
-          reservation.customerId.toString()
-        );
-      }
-    }
+          reservation.customerId!.toString()
+        )
+      );
+    await Promise.all(notificationPromises);
 
-    // Increment totalBookings for each unique studio
+    // Increment totalBookings for each unique studio (in parallel)
     // Group by studioId to avoid multiple increments for the same studio
     const studioIds = [...new Set(confirmedReservations.map(r => r.studioId?.toString()).filter(Boolean))];
-    for (const studioId of studioIds) {
+    const studioUpdatePromises = studioIds.map(studioId => {
       const count = confirmedReservations.filter(r => r.studioId?.toString() === studioId).length;
       if (count > 0) {
-        await StudioModel.findByIdAndUpdate(
+        return StudioModel.findByIdAndUpdate(
           studioId,
           { $inc: { totalBookings: count } }
         );
       }
-    }
+      return Promise.resolve();
+    });
+    await Promise.all(studioUpdatePromises);
   
     return {
         message: 'Reservations confirmed successfully',

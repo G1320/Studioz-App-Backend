@@ -52,6 +52,9 @@ const emailLimiter = rateLimit({
 
 const router = express.Router();
 
+// Apply rate limiter BEFORE routes so it actually protects them
+router.use(emailLimiter);
+
 router.post('/send-welcome',  async (req, res) => {
   try {
     const { email, name } = req.body;
@@ -719,7 +722,5 @@ router.post('/send-document', async (req, res) => {
     res.status(500).json({ error: 'Failed to send document email' });
   }
 });
-
-router.use(emailLimiter);
 
 export default router;
