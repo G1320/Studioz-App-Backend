@@ -29,7 +29,10 @@ import {
   sendSubscriptionUpgraded,
   sendSubscriptionDowngraded,
   // Documents
-  sendDocumentEmail
+  sendDocumentEmail,
+  // Test email
+  sendTemplateEmail,
+  BREVO_TEMPLATE_IDS
 } from '../handlers/emailHandler.js';
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
@@ -523,6 +526,104 @@ router.post('/send-subscription-downgraded', async (req, res) => {
     res.status(500).json({ error: 'Failed to send subscription downgraded email' });
   }
 });
+
+// ===========================================
+// Send Test Email (Admin only)
+// ===========================================
+router.post('/send-test', async (req, res) => {
+  try {
+    const { email, templateType } = req.body;
+
+    if (!email || !templateType) {
+      return res.status(400).json({ error: 'Email and template type are required' });
+    }
+
+    // Get the template ID from the type
+    const templateId = BREVO_TEMPLATE_IDS[templateType as keyof typeof BREVO_TEMPLATE_IDS];
+
+    if (!templateId) {
+      return res.status(400).json({ error: `Invalid template type: ${templateType}` });
+    }
+
+    // Generate sample data based on template type
+    const sampleParams = generateSampleParams(templateType);
+
+    await sendTemplateEmail({
+      to: [{ email, name: 'Admin Test' }],
+      templateId,
+      params: sampleParams
+    });
+
+    res.status(200).json({
+      message: `Test email sent successfully to ${email}`,
+      templateType,
+      templateId
+    });
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    res.status(500).json({ error: 'Failed to send test email' });
+  }
+});
+
+// Helper function to generate sample params for test emails
+function generateSampleParams(templateType: string): Record<string, any> {
+  const baseParams = {
+    customerName: 'לקוח לדוגמה',
+    ownerName: 'בעל סטודיו לדוגמה',
+    studioName: 'סטודיו הקלטות מדהים',
+    experienceName: 'הקלטת שיר',
+    serviceName: 'הקלטת שיר',
+    planName: 'מקצוען',
+    price: '199',
+    totalPaid: '₪199',
+    dateTime: '15 בינואר 2025, 14:00',
+    duration: '2 שעות',
+    location: 'תל אביב, רחוב דיזנגוף 50',
+    reservationId: 'RES-TEST-123',
+    bookingId: 'BOOK-TEST-123',
+    orderId: 'ORD-TEST-123',
+    orderNumber: 'ORD-TEST-123',
+    subscriptionId: 'SUB-TEST-123',
+    invoiceUrl: 'https://studioz.co.il/invoice/test',
+    documentUrl: 'https://studioz.co.il/document/test',
+    documentName: 'חשבונית מס',
+    documentNumber: '1234',
+    actionUrl: 'https://studioz.co.il',
+    bookingUrl: 'https://studioz.co.il/reservations/test',
+    orderUrl: 'https://studioz.co.il/orders/test',
+    payoutUrl: 'https://studioz.co.il/dashboard/payouts',
+    refundUrl: 'https://studioz.co.il/orders/test',
+    reviewUrl: 'https://studioz.co.il/studio/test/review',
+    resetLink: 'https://studioz.co.il/reset-password?token=test',
+    verificationLink: 'https://studioz.co.il/verify-email?token=test',
+    verificationCode: 'ABC123',
+    notes: 'הערות לדוגמה',
+    guestEmail: 'guest@example.com',
+    guestPhone: '050-1234567',
+    startDate: '1 בינואר 2025',
+    nextBillingDate: '1 בפברואר 2025',
+    trialEndDate: '14 בינואר 2025',
+    trialDays: 14,
+    daysRemaining: 3,
+    payoutAmount: '₪150',
+    payoutDate: '15 בינואר 2025',
+    refundAmount: '₪199',
+    refundDate: '15 בינואר 2025',
+    cancellationDate: '15 בינואר 2025',
+    deactivationDate: '15 בינואר 2025',
+    accessEndDate: '31 בינואר 2025',
+    effectiveDate: '1 בפברואר 2025',
+    oldPlanName: 'בסיסי',
+    newPlanName: 'מקצוען',
+    failureReason: 'פרטי כרטיס לא מעודכנים',
+    reason: 'לפי בקשת הלקוח',
+    changes: 'שעת ההזמנה שונתה מ-14:00 ל-16:00',
+    cancelledBy: 'הלקוח',
+    hoursUntil: 24
+  };
+
+  return baseParams;
+}
 
 // Get all Brevo email templates (admin only)
 router.get('/templates', async (req, res) => {
