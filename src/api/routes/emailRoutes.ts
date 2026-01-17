@@ -1,5 +1,36 @@
 import express from 'express';
-import { sendWelcomeEmail, sendOrderConfirmation, sendPasswordReset, sendPayoutNotification, sendSubscriptionConfirmation } from '../handlers/emailHandler.js';
+import {
+  // Auth & Account
+  sendWelcomeEmail,
+  sendEmailVerification,
+  sendPasswordReset,
+  sendAccountDeactivation,
+  // Transactions
+  sendOrderConfirmation,
+  sendPayoutNotification,
+  sendRefundConfirmation,
+  sendOrderCancelled,
+  // Bookings
+  sendNewBookingVendor,
+  sendBookingConfirmedCustomer,
+  sendBookingReminder,
+  sendBookingCancelledCustomer,
+  sendBookingCancelledVendor,
+  sendBookingModified,
+  // Reviews
+  sendReviewRequest,
+  // Subscriptions
+  sendSubscriptionConfirmation,
+  sendTrialStartedEmail,
+  sendTrialEndingEmail,
+  sendTrialChargeFailedEmail,
+  sendSubscriptionPaymentFailed,
+  sendSubscriptionExpiring,
+  sendSubscriptionUpgraded,
+  sendSubscriptionDowngraded,
+  // Documents
+  sendDocumentEmail
+} from '../handlers/emailHandler.js';
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
 import { formatOrderDetails } from '../../utils/orderFormatter.js';
@@ -181,6 +212,318 @@ router.post('/send-password-reset', async (req, res) => {
   }
 });
 
+// ===========================================
+// Email Verification
+// ===========================================
+router.post('/send-email-verification', async (req, res) => {
+  try {
+    const { email, name, verificationToken } = req.body;
+
+    if (!email || !name || !verificationToken) {
+      return res.status(400).json({ error: 'Email, name, and verification token are required' });
+    }
+
+    await sendEmailVerification(email, name, verificationToken);
+    res.status(200).json({ message: 'Verification email sent successfully' });
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    res.status(500).json({ error: 'Failed to send verification email' });
+  }
+});
+
+// ===========================================
+// Account Deactivation
+// ===========================================
+router.post('/send-account-deactivation', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name are required' });
+    }
+
+    await sendAccountDeactivation(email, name);
+    res.status(200).json({ message: 'Account deactivation email sent successfully' });
+  } catch (error) {
+    console.error('Error sending account deactivation email:', error);
+    res.status(500).json({ error: 'Failed to send account deactivation email' });
+  }
+});
+
+// ===========================================
+// Refund Confirmation
+// ===========================================
+router.post('/send-refund-confirmation', async (req, res) => {
+  try {
+    const { email, customerName, refundAmount, orderId, reason } = req.body;
+
+    if (!email || !customerName || !refundAmount || !orderId) {
+      return res.status(400).json({ error: 'Email, customer name, refund amount, and order ID are required' });
+    }
+
+    await sendRefundConfirmation(email, customerName, refundAmount, orderId, reason);
+    res.status(200).json({ message: 'Refund confirmation email sent successfully' });
+  } catch (error) {
+    console.error('Error sending refund confirmation:', error);
+    res.status(500).json({ error: 'Failed to send refund confirmation email' });
+  }
+});
+
+// ===========================================
+// Order Cancelled
+// ===========================================
+router.post('/send-order-cancelled', async (req, res) => {
+  try {
+    const { email, customerName, orderId, studioName, refundAmount } = req.body;
+
+    if (!email || !customerName || !orderId || !studioName) {
+      return res.status(400).json({ error: 'Email, customer name, order ID, and studio name are required' });
+    }
+
+    await sendOrderCancelled(email, customerName, orderId, studioName, refundAmount);
+    res.status(200).json({ message: 'Order cancelled email sent successfully' });
+  } catch (error) {
+    console.error('Error sending order cancelled email:', error);
+    res.status(500).json({ error: 'Failed to send order cancelled email' });
+  }
+});
+
+// ===========================================
+// Booking Emails
+// ===========================================
+router.post('/send-new-booking-vendor', async (req, res) => {
+  try {
+    const { ownerEmail, ownerName, booking } = req.body;
+
+    if (!ownerEmail || !ownerName || !booking) {
+      return res.status(400).json({ error: 'Owner email, owner name, and booking details are required' });
+    }
+
+    await sendNewBookingVendor(ownerEmail, ownerName, booking);
+    res.status(200).json({ message: 'New booking notification sent to vendor successfully' });
+  } catch (error) {
+    console.error('Error sending new booking vendor email:', error);
+    res.status(500).json({ error: 'Failed to send new booking notification to vendor' });
+  }
+});
+
+router.post('/send-booking-confirmed-customer', async (req, res) => {
+  try {
+    const { customerEmail, booking } = req.body;
+
+    if (!customerEmail || !booking) {
+      return res.status(400).json({ error: 'Customer email and booking details are required' });
+    }
+
+    await sendBookingConfirmedCustomer(customerEmail, booking);
+    res.status(200).json({ message: 'Booking confirmation sent to customer successfully' });
+  } catch (error) {
+    console.error('Error sending booking confirmation:', error);
+    res.status(500).json({ error: 'Failed to send booking confirmation to customer' });
+  }
+});
+
+router.post('/send-booking-reminder', async (req, res) => {
+  try {
+    const { customerEmail, booking, hoursUntil } = req.body;
+
+    if (!customerEmail || !booking) {
+      return res.status(400).json({ error: 'Customer email and booking details are required' });
+    }
+
+    await sendBookingReminder(customerEmail, booking, hoursUntil || 24);
+    res.status(200).json({ message: 'Booking reminder sent successfully' });
+  } catch (error) {
+    console.error('Error sending booking reminder:', error);
+    res.status(500).json({ error: 'Failed to send booking reminder' });
+  }
+});
+
+router.post('/send-booking-cancelled-customer', async (req, res) => {
+  try {
+    const { customerEmail, customerName, booking, refundAmount, reason } = req.body;
+
+    if (!customerEmail || !customerName || !booking) {
+      return res.status(400).json({ error: 'Customer email, customer name, and booking details are required' });
+    }
+
+    await sendBookingCancelledCustomer(customerEmail, customerName, booking, refundAmount, reason);
+    res.status(200).json({ message: 'Booking cancellation sent to customer successfully' });
+  } catch (error) {
+    console.error('Error sending booking cancellation to customer:', error);
+    res.status(500).json({ error: 'Failed to send booking cancellation to customer' });
+  }
+});
+
+router.post('/send-booking-cancelled-vendor', async (req, res) => {
+  try {
+    const { ownerEmail, ownerName, booking, cancelledBy } = req.body;
+
+    if (!ownerEmail || !ownerName || !booking) {
+      return res.status(400).json({ error: 'Owner email, owner name, and booking details are required' });
+    }
+
+    await sendBookingCancelledVendor(ownerEmail, ownerName, booking, cancelledBy || 'customer');
+    res.status(200).json({ message: 'Booking cancellation sent to vendor successfully' });
+  } catch (error) {
+    console.error('Error sending booking cancellation to vendor:', error);
+    res.status(500).json({ error: 'Failed to send booking cancellation to vendor' });
+  }
+});
+
+router.post('/send-booking-modified', async (req, res) => {
+  try {
+    const { customerEmail, customerName, booking, changes } = req.body;
+
+    if (!customerEmail || !customerName || !booking || !changes) {
+      return res.status(400).json({ error: 'Customer email, customer name, booking details, and changes description are required' });
+    }
+
+    await sendBookingModified(customerEmail, customerName, booking, changes);
+    res.status(200).json({ message: 'Booking modification notification sent successfully' });
+  } catch (error) {
+    console.error('Error sending booking modification:', error);
+    res.status(500).json({ error: 'Failed to send booking modification notification' });
+  }
+});
+
+// ===========================================
+// Review Request
+// ===========================================
+router.post('/send-review-request', async (req, res) => {
+  try {
+    const { customerEmail, customerName, studioName, studioId, bookingId } = req.body;
+
+    if (!customerEmail || !customerName || !studioName || !studioId || !bookingId) {
+      return res.status(400).json({ error: 'Customer email, customer name, studio name, studio ID, and booking ID are required' });
+    }
+
+    await sendReviewRequest(customerEmail, customerName, studioName, studioId, bookingId);
+    res.status(200).json({ message: 'Review request sent successfully' });
+  } catch (error) {
+    console.error('Error sending review request:', error);
+    res.status(500).json({ error: 'Failed to send review request' });
+  }
+});
+
+// ===========================================
+// Trial Emails
+// ===========================================
+router.post('/send-trial-started', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and trial details are required' });
+    }
+
+    await sendTrialStartedEmail(email, details);
+    res.status(200).json({ message: 'Trial started email sent successfully' });
+  } catch (error) {
+    console.error('Error sending trial started email:', error);
+    res.status(500).json({ error: 'Failed to send trial started email' });
+  }
+});
+
+router.post('/send-trial-ending', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and trial details are required' });
+    }
+
+    await sendTrialEndingEmail(email, details);
+    res.status(200).json({ message: 'Trial ending reminder sent successfully' });
+  } catch (error) {
+    console.error('Error sending trial ending email:', error);
+    res.status(500).json({ error: 'Failed to send trial ending reminder' });
+  }
+});
+
+router.post('/send-trial-charge-failed', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and details are required' });
+    }
+
+    await sendTrialChargeFailedEmail(email, details);
+    res.status(200).json({ message: 'Trial charge failed email sent successfully' });
+  } catch (error) {
+    console.error('Error sending trial charge failed email:', error);
+    res.status(500).json({ error: 'Failed to send trial charge failed email' });
+  }
+});
+
+// ===========================================
+// Subscription Status Emails
+// ===========================================
+router.post('/send-subscription-payment-failed', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and details are required' });
+    }
+
+    await sendSubscriptionPaymentFailed(email, details);
+    res.status(200).json({ message: 'Subscription payment failed email sent successfully' });
+  } catch (error) {
+    console.error('Error sending subscription payment failed email:', error);
+    res.status(500).json({ error: 'Failed to send subscription payment failed email' });
+  }
+});
+
+router.post('/send-subscription-expiring', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and details are required' });
+    }
+
+    await sendSubscriptionExpiring(email, details);
+    res.status(200).json({ message: 'Subscription expiring reminder sent successfully' });
+  } catch (error) {
+    console.error('Error sending subscription expiring email:', error);
+    res.status(500).json({ error: 'Failed to send subscription expiring reminder' });
+  }
+});
+
+router.post('/send-subscription-upgraded', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and details are required' });
+    }
+
+    await sendSubscriptionUpgraded(email, details);
+    res.status(200).json({ message: 'Subscription upgraded email sent successfully' });
+  } catch (error) {
+    console.error('Error sending subscription upgraded email:', error);
+    res.status(500).json({ error: 'Failed to send subscription upgraded email' });
+  }
+});
+
+router.post('/send-subscription-downgraded', async (req, res) => {
+  try {
+    const { email, details } = req.body;
+
+    if (!email || !details) {
+      return res.status(400).json({ error: 'Email and details are required' });
+    }
+
+    await sendSubscriptionDowngraded(email, details);
+    res.status(200).json({ message: 'Subscription downgraded email sent successfully' });
+  } catch (error) {
+    console.error('Error sending subscription downgraded email:', error);
+    res.status(500).json({ error: 'Failed to send subscription downgraded email' });
+  }
+});
+
 // Get all Brevo email templates (admin only)
 router.get('/templates', async (req, res) => {
   try {
@@ -255,33 +598,19 @@ router.get('/templates/:id', async (req, res) => {
 
 router.post('/send-document', async (req, res) => {
   try {
-    const { email, documentUrl, documentNumber } = req.body;
+    const { email, customerName, documentName, documentUrl, documentNumber } = req.body;
 
     if (!email || !documentUrl) {
       return res.status(400).json({ error: 'Email and document URL are required' });
     }
 
-    // Use Brevo's TransactionalEmailsApi for sending emails
-    const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } = await import('@getbrevo/brevo');
-    const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
-    const apiInstance = new TransactionalEmailsApi();
-    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
-
-    await apiInstance.sendTransacEmail({
-      to: [{ email }],
-      sender: { email: 'noreply@studioz.co.il', name: 'Studioz' },
-      subject: `מסמך ${documentNumber || ''} מ-Studioz`,
-      htmlContent: `
-        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>שלום,</h2>
-          <p>מצורף קישור למסמך שלך:</p>
-          <p><a href="${documentUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">צפה במסמך</a></p>
-          <p>או העתק את הקישור: <a href="${documentUrl}">${documentUrl}</a></p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="color: #666; font-size: 12px;">נשלח מ-Studioz</p>
-        </div>
-      `
-    });
+    await sendDocumentEmail(
+      email,
+      customerName || 'לקוח יקר',
+      documentName || 'מסמך',
+      documentUrl,
+      documentNumber
+    );
 
     res.status(200).json({ message: 'Document email sent successfully' });
   } catch (error) {
