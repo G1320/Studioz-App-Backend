@@ -11,6 +11,9 @@ router.post('/cancel-subscription/:subscriptionId',paymentHandler.cancelSubscrip
 
 router.post('/multivendor-charge', paymentHandler.multivendorCharge);
 
+// Quick charge for studio owners (סליקה מהירה)
+router.post('/quick-charge', paymentHandler.quickCharge);
+
 router.post('/validate-token',paymentHandler.validateToken);
 
 router.post('/webhook', paymentHandler.handleWebhook);

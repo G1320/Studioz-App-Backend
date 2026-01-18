@@ -19,6 +19,9 @@ export const saveSumitInvoice = async (
      const exists = await InvoiceModel.findOne({ externalId: payment.ID });
      if (exists) return;
 
+     // DocumentDownloadURL is at the Data level per Sumit API docs
+     const documentUrl = sumitData.DocumentDownloadURL || payment.DocumentURL || undefined;
+
      await InvoiceModel.create({
         externalId: payment.ID,
         provider: 'SUMIT',
@@ -28,13 +31,14 @@ export const saveSumitInvoice = async (
         issuedDate: new Date(),
         customerName: context?.customerName || payment.Customer?.Name,
         customerEmail: context?.customerEmail || payment.Customer?.EmailAddress,
-        documentUrl: payment.DocumentURL || undefined,
+        documentUrl,
+        documentNumber: sumitData.DocumentNumber || undefined,
         relatedEntity: context?.relatedEntity,
         status: 'SENT',
         rawData: sumitData
      });
      
-     console.log(`Saved Sumit invoice: ${payment.ID}`);
+     console.log(`Saved Sumit invoice: ${payment.ID}, Document: ${sumitData.DocumentNumber || 'N/A'}`);
   } catch (error) {
     console.error('Failed to save Sumit invoice:', error);
   }

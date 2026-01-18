@@ -177,6 +177,7 @@ export const paymentService = {
           VATIncluded: true,
           SendDocumentByEmail: true,
           DocumentLanguage: 'Hebrew',
+          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
           Credentials: {
             CompanyID: PLATFORM_COMPANY_ID,
             APIKey: PLATFORM_API_KEY

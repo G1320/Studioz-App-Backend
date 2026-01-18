@@ -146,14 +146,14 @@ export const sendBookingReminders = async (hoursAhead: number = 24): Promise<num
         await sendBookingReminder(
           customerEmail,
           {
-            bookingId: reservation._id.toString(),
+            id: reservation._id.toString(),
             customerName,
             studioName,
             serviceName: itemName,
             dateTime: `${reservation.bookingDate} ${formatTimeSlots(reservation.timeSlots)}`,
             duration: `${reservation.timeSlots.length} שעות`,
             location: reservation.address || studio?.address || '',
-            totalPaid: `₪${reservation.totalPrice || 0}`
+            totalPaid: reservation.totalPrice || 0
           },
           hoursUntil
         );

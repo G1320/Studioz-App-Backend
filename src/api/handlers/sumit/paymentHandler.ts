@@ -336,6 +336,8 @@ export const paymentHandler = {
               })),
               VATIncluded: true,
               SendDocumentByEmail: true,
+              DocumentLanguage: 'Hebrew',
+              DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
               Credentials: {
                 CompanyID: COMPANY_ID,
                 APIKey: API_KEY
@@ -343,23 +345,49 @@ export const paymentHandler = {
             }
           );
        
-          if (response.data.Data.Payment.ValidPayment) {
-            // Save invoice record
-            saveSumitInvoice(response.data.Data, {
-                customerName: customerInfo.name,
-                customerEmail: customerInfo.email,
-                description: 'Multivendor Charge'
-            });
+          // Multivendor response structure: Data.Vendors[].Items contains Payment, DocumentID, etc.
+          const vendors = response.data.Data?.Vendors;
+          
+          if (vendors && vendors.length > 0) {
+            // Check if all vendor payments succeeded
+            const allValid = vendors.every((v: any) => v.Items?.Payment?.ValidPayment);
+            
+            if (allValid) {
+              // Save invoice record for each vendor
+              for (const vendorData of vendors) {
+                const items = vendorData.Items;
+                if (items?.Payment?.ValidPayment) {
+                  await saveSumitInvoice({
+                    Payment: items.Payment,
+                    DocumentID: items.DocumentID,
+                    DocumentNumber: items.DocumentNumber,
+                    DocumentDownloadURL: items.DocumentDownloadURL,
+                    CustomerID: items.CustomerID
+                  }, {
+                    customerName: customerInfo.name,
+                    customerEmail: customerInfo.email,
+                    description: 'Multivendor Charge'
+                  });
+                }
+              }
 
-            return res.status(200).json({
-              success: true,
-              data: response.data.Data
+              return res.status(200).json({
+                success: true,
+                data: response.data.Data
+              });
+            }
+            
+            // Find first failed payment for error message
+            const failedVendor = vendors.find((v: any) => !v.Items?.Payment?.ValidPayment);
+            return res.status(400).json({
+              success: false, 
+              error: failedVendor?.Items?.Payment?.StatusDescription || 'Payment failed'
             });
           }
        
           return res.status(400).json({
             success: false, 
-            error: response.data.Data.Payment.StatusDescription
+            error: 'No vendor data in response'
           });
        
         } catch (error: any) {
@@ -369,6 +397,153 @@ export const paymentHandler = {
           });
         }
        },
+
+  /**
+   * Quick Charge (סליקה מהירה) - Manual one-time charge by studio owner
+   * Uses vendor's Sumit credentials and creates Green Invoice receipt
+   */
+  async quickCharge(req: Request, res: Response) {
+    try {
+      const { 
+        singleUseToken, 
+        customerInfo, 
+        items,
+        description,
+        remarks,
+        vendorId 
+      } = req.body;
+
+      // Validate required fields
+      if (!singleUseToken || !customerInfo?.name || !customerInfo?.email) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: singleUseToken, customerInfo.name, customerInfo.email'
+        });
+      }
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one item is required'
+        });
+      }
+
+      // Get vendor's Sumit credentials
+      const vendor = await UserModel.findById(vendorId);
+      if (!vendor?.sumitApiKey || !vendor?.sumitCompanyId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Vendor not set up for payments. Please configure Sumit credentials in settings.'
+        });
+      }
+
+      // Calculate total
+      const total = items.reduce((sum: number, item: { price: number; quantity: number }) => 
+        sum + (item.price * item.quantity), 0);
+
+      // Process payment using vendor's credentials
+      // Sumit issues the invoice directly from vendor's account
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/payments/charge/`,
+        {
+          SingleUseToken: singleUseToken,
+          Customer: {
+            Name: customerInfo.name,
+            EmailAddress: customerInfo.email,
+            Phone: customerInfo.phone || undefined,
+            SearchMode: 0
+          },
+          Items: items.map((item: { description: string; price: number; quantity: number }) => ({
+            Item: {
+              Name: item.description,
+              Price: item.price
+            },
+            Quantity: item.quantity,
+            UnitPrice: item.price,
+            Total: item.quantity * item.price,
+            Description: item.description
+          })),
+          VATIncluded: true,
+          SendDocumentByEmail: true,
+          DocumentLanguage: 'Hebrew',
+          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
+          Credentials: {
+            CompanyID: vendor.sumitCompanyId,
+            APIKey: vendor.sumitApiKey
+          }
+        }
+      );
+
+      if (!response.data?.Data?.Payment?.ValidPayment) {
+        return res.status(400).json({
+          success: false,
+          error: response.data?.Data?.Payment?.StatusDescription || 'Payment failed'
+        });
+      }
+
+      // Save Sumit invoice record to our DB
+      await saveSumitInvoice(response.data.Data, {
+        customerName: customerInfo.name,
+        customerEmail: customerInfo.email,
+        description: description || 'Quick Charge',
+        relatedEntity: undefined // Manual charge, no related entity
+      });
+
+      // NOTE: Green Invoice creation disabled - Sumit already issues חשבונית מס קבלה from vendor
+      // Keeping code for potential future use if we want to switch back to Green Invoice
+      /*
+      let greenInvoiceUrl;
+      try {
+        const { createInvoice } = await import('../../handlers/invoiceHandler.js');
+        
+        const invoiceData = {
+          type: 320, // Receipt (קבלה) - since payment already processed via Sumit
+          lang: 'he' as const,
+          client: {
+            name: customerInfo.name,
+            email: customerInfo.email,
+            phone: customerInfo.phone || undefined
+          },
+          income: items.map((item: { description: string; price: number; quantity: number }) => ({
+            description: item.description,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          vatType: 'INCLUDED' as const,
+          currency: 'ILS' as const,
+          remarks: remarks || `Quick Charge - ${description || 'Manual payment'}`,
+          payment: [{
+            type: 3, // Credit card
+            price: total,
+            date: new Date().toISOString().split('T')[0]
+          }]
+        };
+
+        const invoiceResponse = await createInvoice(invoiceData);
+        greenInvoiceUrl = invoiceResponse.url?.he;
+      } catch (invoiceError) {
+        console.error('Failed to create Green Invoice (payment succeeded):', invoiceError);
+      }
+      */
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          paymentId: response.data.Data.Payment.ID,
+          amount: total,
+          documentUrl: response.data.Data.Payment.DocumentURL
+          // greenInvoiceUrl - disabled, using Sumit document instead
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Quick charge error:', error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to process payment'
+      });
+    }
+  },
 
   async validateToken(req: Request, res: Response) {
     try {

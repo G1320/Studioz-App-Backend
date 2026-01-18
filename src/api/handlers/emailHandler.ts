@@ -6,148 +6,53 @@ const apiInstance = new TransactionalEmailsApi();
 apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
 // ===========================================
-// Brevo Template IDs - Update these in Brevo
+// Brevo Template IDs - Configure in Brevo Dashboard
 // ===========================================
 export const BREVO_TEMPLATE_IDS = {
-  // Authentication & Account (1-5)
-  SIGNUP_CONFIRMATION_LEGACY: 1,
-  PASSWORD_RESET: 14,
-  WELCOME_SIGNUP: 13,
-  EMAIL_VERIFICATION: 15,
-  ACCOUNT_DEACTIVATION: 16,
-  // Transactions (6-9)
-  PURCHASE_CONFIRMATION: 17,
-  PAYOUT_CONFIRMATION: 18,
-  REFUND_CONFIRMATION: 19,
-  ORDER_CANCELLED: 20,
-  // Bookings (10-15)
-  NEW_BOOKING_VENDOR: 21,
-  BOOKING_CONFIRMED_CUSTOMER: 22,
-  BOOKING_REMINDER: 23,
-  BOOKING_CANCELLED_CUSTOMER: 24,
-  BOOKING_CANCELLED_VENDOR: 25,
-  BOOKING_MODIFIED: 26,
-  // Reviews (16)
-  REQUEST_REVIEW: 27,
-  // Subscriptions (17-27)
-  SUBSCRIPTION_ACTIVATED: 28,
-  SUBSCRIPTION_PAYMENT_CONFIRMATION: 29,
-  SUBSCRIPTION_CANCELLATION: 30,
-  TRIAL_STARTED: 31,  
-  TRIAL_ENDING_REMINDER: 32,
-  TRIAL_CHARGE_FAILED: 33,
-  SUBSCRIPTION_PAYMENT_FAILED: 34,
-  SUBSCRIPTION_EXPIRING: 35,
-  SUBSCRIPTION_UPGRADED: 36,
-  SUBSCRIPTION_DOWNGRADED: 38,
-  // Documents (27)
-  INVOICE_DOCUMENT_SENT: 37
+  // Auth & Account
+  WELCOME: 6,
+  PASSWORD_RESET: 4,
+  EMAIL_VERIFICATION: 14,
+  ACCOUNT_DEACTIVATION: 15,
+  
+  // Transactions
+  ORDER_CONFIRMATION: 5,
+  PAYOUT_NOTIFICATION: 7,
+  REFUND_CONFIRMATION: 16,
+  ORDER_CANCELLED: 17,
+  
+  // Bookings
+  NEW_BOOKING_VENDOR: 18,
+  BOOKING_CONFIRMED_CUSTOMER: 19,
+  BOOKING_REMINDER: 20,
+  BOOKING_CANCELLED_CUSTOMER: 21,
+  BOOKING_CANCELLED_VENDOR: 22,
+  BOOKING_MODIFIED: 23,
+  
+  // Reviews
+  REVIEW_REQUEST: 24,
+  
+  // Subscriptions
+  SUBSCRIPTION_CONFIRMATION: 10,
+  SUBSCRIPTION_PAYMENT: 8,
+  SUBSCRIPTION_CANCELLATION: 9,
+  TRIAL_ENDING: 11,
+  TRIAL_CHARGE_FAILED: 12,
+  TRIAL_STARTED: 13,
+  SUBSCRIPTION_PAYMENT_FAILED: 25,
+  SUBSCRIPTION_EXPIRING: 26,
+  SUBSCRIPTION_UPGRADED: 27,
+  SUBSCRIPTION_DOWNGRADED: 28,
+  
+  // Documents
+  DOCUMENT_EMAIL: 29
 } as const;
 
-// ===========================================
-// Base Email Interface & Sender
-// ===========================================
 interface EmailParams {
   to: { email: string; name?: string }[];
   templateId: number;
   params?: Record<string, any>;
 }
-
-export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
-  try {
-    const response = await apiInstance.sendTransacEmail({
-      to,
-      templateId,
-      params
-    });
-
-    return response;
-  } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
-  }
-};
-
-// ===========================================
-// Helper Functions
-// ===========================================
-const formatDate = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('he-IL');
-};
-
-const formatPrice = (price: number): string => {
-  return `₪${price.toFixed(2)}`;
-};
-
-// ===========================================
-// Authentication & Account Emails
-// ===========================================
-
-/**
- * Send welcome email to new users
- */
-export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: BREVO_TEMPLATE_IDS.WELCOME_SIGNUP,
-    params: {
-      customerName: userName,
-    }
-  });
-};
-
-/**
- * Send email verification link
- */
-export const sendEmailVerification = async (
-  userEmail: string,
-  userName: string,
-  verificationToken: string
-) => {
-  const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: BREVO_TEMPLATE_IDS.EMAIL_VERIFICATION,
-    params: {
-      customerName: userName,
-      verificationLink,
-      verificationCode: verificationToken.slice(0, 6).toUpperCase() // Short code for display
-    }
-  });
-};
-
-/**
- * Send password reset email
- */
-export const sendPasswordReset = async (userEmail: string, resetToken: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail }],
-    templateId: BREVO_TEMPLATE_IDS.PASSWORD_RESET,
-    params: {
-      resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
-    }
-  });
-};
-
-/**
- * Send account deactivation confirmation
- */
-export const sendAccountDeactivation = async (userEmail: string, userName: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: BREVO_TEMPLATE_IDS.ACCOUNT_DEACTIVATION,
-    params: {
-      customerName: userName,
-      deactivationDate: formatDate(new Date())
-    }
-  });
-};
-
-// ===========================================
-// Transaction Emails
-// ===========================================
 
 interface OrderDetails {
   id: string;
@@ -160,54 +65,165 @@ interface OrderDetails {
     price: number;
   }>;
   total: number;
-  invoiceUrl?: string;
+  invoiceUrl?: string;  
 }
 
-/**
- * Send order/purchase confirmation to customer
- */
-export const sendOrderConfirmation = async (userEmail: string, orderDetails: OrderDetails) => {
+interface PayoutNotificationParams {
+  amount: number;
+  orderId: string;
+  invoiceUrl: string;
+}
+
+interface SubscriptionDetails {
+  planName: string;
+  planPrice: number;
+  subscriptionId: string;
+  startDate: Date;
+  customerName: string;
+  invoiceUrl: string;
+}
+
+type EmailType = 'activation' | 'payment' | 'cancellation';
+
+interface SubscriptionEmailConfig {
+  templateId: number;
+  includeNextBilling: boolean;
+  includeInvoice: boolean;
+}
+
+export const sendSubscriptionConfirmation = async (
+  userEmail: string, 
+  details: SubscriptionDetails,
+  type: EmailType
+) => {
+  // Get template configuration based on type
+  const emailConfig: Record<EmailType, SubscriptionEmailConfig> = {
+    activation: {
+      templateId: 10,
+      includeNextBilling: true,
+      includeInvoice: true
+    },
+    payment: {
+      templateId: 8,
+      includeNextBilling: true,
+      includeInvoice: true
+    },
+    cancellation: {
+      templateId: 9,
+      includeNextBilling: false,
+      includeInvoice: false
+    }
+  };
+
+  const config = emailConfig[type];
+
+  // Convert startDate to Date object if it's a string
+  const startDate = typeof details.startDate === 'string' 
+    ? new Date(details.startDate)
+    : details.startDate;
+
+  // Base params that are common to all types
+  const baseParams = {
+    customerName: details.customerName,
+    planName: details.planName,
+    amount: details.planPrice.toFixed(2),
+    subscriptionId: details.subscriptionId,
+    startDate: startDate.toLocaleDateString('he-IL')
+  };
+
+  // Add optional params based on type
+  const additionalParams = {
+    ...(config.includeNextBilling ? {
+      nextBillingDate: new Date(
+        startDate.getTime() + (type === 'activation' ? 14 : 30) * 24 * 60 * 60 * 1000
+      ).toLocaleDateString('he-IL')
+    } : {}),
+    ...(config.includeInvoice && details.invoiceUrl ? {
+      invoiceUrl: details.invoiceUrl
+    } : {}),
+    ...(type === 'cancellation' ? {
+      cancellationDate: new Date().toLocaleDateString('he-IL')
+    } : {})
+  };
+
   return sendTemplateEmail({
-    to: [{ email: userEmail, name: orderDetails.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.PURCHASE_CONFIRMATION,
+    to: [{ 
+      email: userEmail,
+      name: details.customerName 
+    }],
+    templateId: config.templateId,
     params: {
-      customerName: orderDetails.customerName,
-      orderNumber: orderDetails.id,
-      orderDate: orderDetails.orderDate,
-      paymentStatus: orderDetails.paymentStatus,
-      items: orderDetails.items,
-      totalPaid: formatPrice(orderDetails.total),
-      invoiceUrl: orderDetails.invoiceUrl,
-      orderUrl: `${process.env.FRONTEND_URL}/orders/${orderDetails.id}`
+      ...baseParams,
+      ...additionalParams
     }
   });
 };
 
-/**
- * Send payout notification to vendor/seller
- */
+export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
+  try {
+    const response = await apiInstance.sendTransacEmail({
+      to,
+      templateId,
+      params
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
+  
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: userName }],
+    templateId: 6, 
+    params: {
+      name: userName,
+    }
+  });
+};
+
+
+export const sendOrderConfirmation = async (userEmail: string, orderDetails: OrderDetails) => {
+  
+  return sendTemplateEmail({
+    to: [{ email: userEmail }],
+    templateId: 5,
+    params: {
+      customerName: orderDetails.customerName,
+      id: orderDetails.id,            
+      orderDate: orderDetails.orderDate,
+      paymentStatus: orderDetails.paymentStatus,
+      items: orderDetails.items,       
+      total: orderDetails.total   ,
+      invoiceUrl: orderDetails.invoiceUrl      
+    }
+  });
+};
+
 export const sendPayoutNotification = async (
   sellerId: string,
   amount: number,
-  orderId: string,
+  orderId:string,
   invoiceUrl: string
 ) => {
   try {
     const seller = await getSellerDetails(sellerId);
 
     return sendTemplateEmail({
-      to: [{
+      to: [{ 
         email: seller.email || 'admin@studioz.online',
         name: seller.name
       }],
-      templateId: BREVO_TEMPLATE_IDS.PAYOUT_CONFIRMATION,
+      templateId: 7, 
       params: {
-        ownerName: seller.name,
-        payoutAmount: formatPrice(amount),
+        sellerName: seller.name,
+        amount: amount.toFixed(2),
         orderId: orderId,
         invoiceUrl: invoiceUrl,
-        payoutDate: formatDate(new Date()),
-        payoutUrl: `${process.env.FRONTEND_URL}/dashboard/payouts`
+        date: new Date().toISOString(),
       }
     });
   } catch (error) {
@@ -216,49 +232,161 @@ export const sendPayoutNotification = async (
   }
 };
 
-/**
- * Send refund confirmation to customer
- */
-export const sendRefundConfirmation = async (
-  userEmail: string,
-  customerName: string,
-  refundAmount: number,
-  orderId: string,
-  reason?: string
-) => {
+export const sendPasswordReset = async (userEmail: string, resetToken: string) => {
   return sendTemplateEmail({
-    to: [{ email: userEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.REFUND_CONFIRMATION,
+    to: [{ email: userEmail }],
+    templateId: 4,
     params: {
-      customerName,
-      refundAmount: formatPrice(refundAmount),
-      orderId,
-      refundDate: formatDate(new Date()),
-      reason: reason || 'לפי בקשת הלקוח',
-      refundUrl: `${process.env.FRONTEND_URL}/orders/${orderId}`
+      resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
+    }
+  });
+};
+
+// Trial subscription email interfaces
+interface TrialEndingDetails {
+  customerName: string;
+  planName: string;
+  planPrice: number;
+  trialEndDate: Date;
+  daysRemaining: number;
+}
+
+interface TrialChargeFailedDetails {
+  customerName: string;
+  planName: string;
+  subscriptionId: string;
+}
+
+interface TrialStartedDetails {
+  customerName: string;
+  planName: string;
+  trialEndDate: Date;
+  trialDays: number;
+}
+
+/**
+ * Send trial ending reminder email
+ * Template ID 11 - configure in Brevo with params: customerName, planName, planPrice, trialEndDate, daysRemaining
+ */
+export const sendTrialEndingEmail = async (
+  userEmail: string,
+  details: TrialEndingDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 11, // Trial ending reminder template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      planPrice: details.planPrice.toFixed(2),
+      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+      daysRemaining: details.daysRemaining
     }
   });
 };
 
 /**
- * Send order cancellation confirmation
+ * Send trial charge failed email
+ * Template ID 12 - configure in Brevo with params: customerName, planName, subscriptionId
  */
-export const sendOrderCancelled = async (
+export const sendTrialChargeFailedEmail = async (
   userEmail: string,
-  customerName: string,
-  orderId: string,
-  studioName: string,
-  refundAmount?: number
+  details: TrialChargeFailedDetails
 ) => {
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 12, // Trial charge failed template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      subscriptionId: details.subscriptionId
+    }
+  });
+};
+
+/**
+ * Send trial started confirmation email
+ * Template ID 13 - configure in Brevo with params: customerName, planName, trialEndDate, trialDays
+ */
+export const sendTrialStartedEmail = async (
+  userEmail: string,
+  details: TrialStartedDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    templateId: 13, // Trial started template - create in Brevo
+    params: {
+      customerName: details.customerName,
+      planName: details.planName,
+      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+      trialDays: details.trialDays
+    }
+  });
+};
+
+// ===========================================
+// Auth & Account Emails
+// ===========================================
+
+export const sendEmailVerification = async (userEmail: string, userName: string, verificationToken: string) => {
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: userName }],
+    templateId: BREVO_TEMPLATE_IDS.EMAIL_VERIFICATION,
+    params: {
+      customerName: userName,
+      verificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
+      verificationCode: verificationToken.substring(0, 6).toUpperCase()
+    }
+  });
+};
+
+export const sendAccountDeactivation = async (userEmail: string, userName: string) => {
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: userName }],
+    templateId: BREVO_TEMPLATE_IDS.ACCOUNT_DEACTIVATION,
+    params: {
+      customerName: userName,
+      deactivationDate: new Date().toLocaleDateString('he-IL')
+    }
+  });
+};
+
+// ===========================================
+// Transaction Emails
+// ===========================================
+
+export const sendRefundConfirmation = async (userEmail: string, customerName: string, refundAmount: number, orderId: string, reason?: string) => {
+  return sendTemplateEmail({
+    to: [{ email: userEmail, name: customerName }],
+    templateId: BREVO_TEMPLATE_IDS.REFUND_CONFIRMATION,
+    params: {
+      customerName,
+      refundAmount: `₪${refundAmount.toFixed(2)}`,
+      orderId,
+      reason: reason || 'לפי בקשת הלקוח',
+      refundDate: new Date().toLocaleDateString('he-IL')
+    }
+  });
+};
+
+export const sendOrderCancelled = async (userEmail: string, customerName: string, orderId: string, studioName: string, refundAmount?: number) => {
   return sendTemplateEmail({
     to: [{ email: userEmail, name: customerName }],
     templateId: BREVO_TEMPLATE_IDS.ORDER_CANCELLED,
     params: {
       customerName,
-      reservationId: orderId,
+      orderId,
       studioName,
-      cancellationDate: formatDate(new Date()),
-      refundAmount: refundAmount ? formatPrice(refundAmount) : undefined
+      refundAmount: refundAmount ? `₪${refundAmount.toFixed(2)}` : undefined,
+      cancellationDate: new Date().toLocaleDateString('he-IL')
     }
   });
 };
@@ -268,108 +396,69 @@ export const sendOrderCancelled = async (
 // ===========================================
 
 interface BookingDetails {
-  bookingId: string;
-  customerName: string;
-  customerEmail?: string;
-  customerPhone?: string;
+  id: string;
   studioName: string;
   serviceName: string;
   dateTime: string;
   duration: string;
-  location: string;
-  totalPaid: string;
+  location?: string;
+  totalPaid?: number;
   notes?: string;
 }
 
-/**
- * Send new booking notification to vendor/owner
- */
-export const sendNewBookingVendor = async (
-  ownerEmail: string,
-  ownerName: string,
-  booking: BookingDetails
-) => {
+export const sendNewBookingVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails) => {
   return sendTemplateEmail({
     to: [{ email: ownerEmail, name: ownerName }],
     templateId: BREVO_TEMPLATE_IDS.NEW_BOOKING_VENDOR,
     params: {
       ownerName,
-      customerName: booking.customerName,
-      guestEmail: booking.customerEmail,
-      guestPhone: booking.customerPhone,
       studioName: booking.studioName,
       serviceName: booking.serviceName,
       dateTime: booking.dateTime,
       duration: booking.duration,
-      location: booking.location,
-      totalPaid: booking.totalPaid,
-      reservationId: booking.bookingId,
-      notes: booking.notes || 'אין',
-      bookingUrl: `${process.env.FRONTEND_URL}/dashboard/bookings/${booking.bookingId}`
+      bookingId: booking.id,
+      totalPaid: booking.totalPaid ? `₪${booking.totalPaid.toFixed(2)}` : undefined,
+      notes: booking.notes
     }
   });
 };
 
-/**
- * Send booking confirmation to customer
- */
-export const sendBookingConfirmedCustomer = async (
-  customerEmail: string,
-  booking: BookingDetails
-) => {
+export const sendBookingConfirmedCustomer = async (customerEmail: string, booking: BookingDetails & { customerName?: string }) => {
   return sendTemplateEmail({
     to: [{ email: customerEmail, name: booking.customerName }],
     templateId: BREVO_TEMPLATE_IDS.BOOKING_CONFIRMED_CUSTOMER,
     params: {
-      customerName: booking.customerName,
+      customerName: booking.customerName || 'לקוח יקר',
       studioName: booking.studioName,
       serviceName: booking.serviceName,
-      experienceName: booking.serviceName,
       dateTime: booking.dateTime,
       duration: booking.duration,
       location: booking.location,
-      totalPaid: booking.totalPaid,
-      reservationId: booking.bookingId,
-      notes: booking.notes || 'אין',
-      bookingUrl: `${process.env.FRONTEND_URL}/reservations/${booking.bookingId}`
+      bookingId: booking.id,
+      totalPaid: booking.totalPaid ? `₪${booking.totalPaid.toFixed(2)}` : undefined,
+      notes: booking.notes
     }
   });
 };
 
-/**
- * Send booking reminder to customer
- */
-export const sendBookingReminder = async (
-  customerEmail: string,
-  booking: BookingDetails,
-  hoursUntil: number = 24
-) => {
+export const sendBookingReminder = async (customerEmail: string, booking: BookingDetails & { customerName?: string }, hoursUntil: number = 24) => {
   return sendTemplateEmail({
     to: [{ email: customerEmail, name: booking.customerName }],
     templateId: BREVO_TEMPLATE_IDS.BOOKING_REMINDER,
     params: {
-      customerName: booking.customerName,
+      customerName: booking.customerName || 'לקוח יקר',
       studioName: booking.studioName,
       serviceName: booking.serviceName,
       dateTime: booking.dateTime,
       duration: booking.duration,
       location: booking.location,
-      hoursUntil,
-      bookingUrl: `${process.env.FRONTEND_URL}/reservations/${booking.bookingId}`
+      bookingId: booking.id,
+      hoursUntil
     }
   });
 };
 
-/**
- * Send booking cancellation to customer
- */
-export const sendBookingCancelledCustomer = async (
-  customerEmail: string,
-  customerName: string,
-  booking: Partial<BookingDetails>,
-  refundAmount?: number,
-  reason?: string
-) => {
+export const sendBookingCancelledCustomer = async (customerEmail: string, customerName: string, booking: BookingDetails, refundAmount?: number, reason?: string) => {
   return sendTemplateEmail({
     to: [{ email: customerEmail, name: customerName }],
     templateId: BREVO_TEMPLATE_IDS.BOOKING_CANCELLED_CUSTOMER,
@@ -378,48 +467,31 @@ export const sendBookingCancelledCustomer = async (
       studioName: booking.studioName,
       serviceName: booking.serviceName,
       dateTime: booking.dateTime,
-      reservationId: booking.bookingId,
-      cancellationDate: formatDate(new Date()),
-      refundAmount: refundAmount ? formatPrice(refundAmount) : undefined,
-      reason
+      bookingId: booking.id,
+      refundAmount: refundAmount ? `₪${refundAmount.toFixed(2)}` : undefined,
+      reason: reason || 'ביטול הזמנה',
+      cancellationDate: new Date().toLocaleDateString('he-IL')
     }
   });
 };
 
-/**
- * Send booking cancellation to vendor
- */
-export const sendBookingCancelledVendor = async (
-  ownerEmail: string,
-  ownerName: string,
-  booking: Partial<BookingDetails>,
-  cancelledBy: 'customer' | 'system' = 'customer'
-) => {
+export const sendBookingCancelledVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails, cancelledBy: string = 'customer') => {
   return sendTemplateEmail({
     to: [{ email: ownerEmail, name: ownerName }],
     templateId: BREVO_TEMPLATE_IDS.BOOKING_CANCELLED_VENDOR,
     params: {
       ownerName,
-      customerName: booking.customerName,
       studioName: booking.studioName,
       serviceName: booking.serviceName,
       dateTime: booking.dateTime,
-      reservationId: booking.bookingId,
-      cancellationDate: formatDate(new Date()),
-      cancelledBy: cancelledBy === 'customer' ? 'הלקוח' : 'המערכת'
+      bookingId: booking.id,
+      cancelledBy: cancelledBy === 'customer' ? 'הלקוח' : 'בעל הסטודיו',
+      cancellationDate: new Date().toLocaleDateString('he-IL')
     }
   });
 };
 
-/**
- * Send booking modification notification
- */
-export const sendBookingModified = async (
-  customerEmail: string,
-  customerName: string,
-  booking: Partial<BookingDetails>,
-  changes: string
-) => {
+export const sendBookingModified = async (customerEmail: string, customerName: string, booking: BookingDetails, changes: string) => {
   return sendTemplateEmail({
     to: [{ email: customerEmail, name: customerName }],
     templateId: BREVO_TEMPLATE_IDS.BOOKING_MODIFIED,
@@ -428,9 +500,8 @@ export const sendBookingModified = async (
       studioName: booking.studioName,
       serviceName: booking.serviceName,
       dateTime: booking.dateTime,
-      reservationId: booking.bookingId,
-      changes,
-      bookingUrl: `${process.env.FRONTEND_URL}/reservations/${booking.bookingId}`
+      bookingId: booking.id,
+      changes
     }
   });
 };
@@ -439,19 +510,10 @@ export const sendBookingModified = async (
 // Review Emails
 // ===========================================
 
-/**
- * Request a review from customer after their booking
- */
-export const sendReviewRequest = async (
-  customerEmail: string,
-  customerName: string,
-  studioName: string,
-  studioId: string,
-  bookingId: string
-) => {
+export const sendReviewRequest = async (customerEmail: string, customerName: string, studioName: string, studioId: string, bookingId: string) => {
   return sendTemplateEmail({
     to: [{ email: customerEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.REQUEST_REVIEW,
+    templateId: BREVO_TEMPLATE_IDS.REVIEW_REQUEST,
     params: {
       customerName,
       studioName,
@@ -461,267 +523,76 @@ export const sendReviewRequest = async (
 };
 
 // ===========================================
-// Subscription Emails
+// Subscription Status Emails
 // ===========================================
 
-interface SubscriptionDetails {
-  planName: string;
-  planPrice: number;
-  subscriptionId: string;
-  startDate: Date | string;
+interface SubscriptionStatusDetails {
   customerName: string;
-  invoiceUrl?: string;
+  planName: string;
+  subscriptionId?: string;
+  failureReason?: string;
+  nextBillingDate?: Date;
+  oldPlanName?: string;
+  newPlanName?: string;
+  effectiveDate?: Date;
 }
 
-type SubscriptionEmailType = 'activation' | 'payment' | 'cancellation';
-
-/**
- * Send subscription confirmation (activation, payment, or cancellation)
- */
-export const sendSubscriptionConfirmation = async (
-  userEmail: string,
-  details: SubscriptionDetails,
-  type: SubscriptionEmailType
-) => {
-  const templateMap: Record<SubscriptionEmailType, number> = {
-    activation: BREVO_TEMPLATE_IDS.SUBSCRIPTION_ACTIVATED,
-    payment: BREVO_TEMPLATE_IDS.SUBSCRIPTION_PAYMENT_CONFIRMATION,
-    cancellation: BREVO_TEMPLATE_IDS.SUBSCRIPTION_CANCELLATION
-  };
-
-  const startDate = typeof details.startDate === 'string'
-    ? new Date(details.startDate)
-    : details.startDate;
-
-  const baseParams = {
-    customerName: details.customerName,
-    planName: details.planName,
-    price: formatPrice(details.planPrice),
-    subscriptionId: details.subscriptionId,
-    startDate: formatDate(startDate)
-  };
-
-  const additionalParams: Record<string, any> = {};
-
-  if (type !== 'cancellation') {
-    additionalParams.nextBillingDate = formatDate(
-      new Date(startDate.getTime() + (type === 'activation' ? 14 : 30) * 24 * 60 * 60 * 1000)
-    );
-  }
-
-  if (details.invoiceUrl && type !== 'cancellation') {
-    additionalParams.invoiceUrl = details.invoiceUrl;
-  }
-
-  if (type === 'cancellation') {
-    additionalParams.cancellationDate = formatDate(new Date());
-    additionalParams.accessEndDate = formatDate(
-      new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-    );
-  }
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: templateMap[type],
-    params: { ...baseParams, ...additionalParams }
-  });
-};
-
-/**
- * Send trial started confirmation
- */
-export const sendTrialStartedEmail = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    planName: string;
-    trialEndDate: Date | string;
-    trialDays: number;
-    planPrice: number;
-  }
-) => {
-  const trialEndDate = typeof details.trialEndDate === 'string'
-    ? new Date(details.trialEndDate)
-    : details.trialEndDate;
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.TRIAL_STARTED,
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      trialEndDate: formatDate(trialEndDate),
-      trialDays: details.trialDays,
-      price: formatPrice(details.planPrice),
-      actionUrl: `${process.env.FRONTEND_URL}/dashboard`
-    }
-  });
-};
-
-/**
- * Send trial ending reminder
- */
-export const sendTrialEndingEmail = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    planName: string;
-    planPrice: number;
-    trialEndDate: Date | string;
-    daysRemaining: number;
-  }
-) => {
-  const trialEndDate = typeof details.trialEndDate === 'string'
-    ? new Date(details.trialEndDate)
-    : details.trialEndDate;
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.TRIAL_ENDING_REMINDER,
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      price: formatPrice(details.planPrice),
-      trialEndDate: formatDate(trialEndDate),
-      daysRemaining: details.daysRemaining,
-      actionUrl: `${process.env.FRONTEND_URL}/profile/subscription`
-    }
-  });
-};
-
-/**
- * Send trial charge failed email
- */
-export const sendTrialChargeFailedEmail = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    planName: string;
-    planPrice: number;
-    subscriptionId: string;
-    failureReason?: string;
-  }
-) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.TRIAL_CHARGE_FAILED,
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      price: formatPrice(details.planPrice),
-      subscriptionId: details.subscriptionId,
-      failureReason: details.failureReason || 'פרטי כרטיס לא מעודכנים או חוסר במסגרת אשראי',
-      actionUrl: `${process.env.FRONTEND_URL}/profile/billing`
-    }
-  });
-};
-
-/**
- * Send subscription payment failed email
- */
-export const sendSubscriptionPaymentFailed = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    planName: string;
-    planPrice: number;
-    failureReason?: string;
-  }
-) => {
+export const sendSubscriptionPaymentFailed = async (userEmail: string, details: SubscriptionStatusDetails) => {
   return sendTemplateEmail({
     to: [{ email: userEmail, name: details.customerName }],
     templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_PAYMENT_FAILED,
     params: {
       customerName: details.customerName,
       planName: details.planName,
-      price: formatPrice(details.planPrice),
-      failureReason: details.failureReason || 'פרטי כרטיס לא מעודכנים או חוסר במסגרת אשראי',
-      actionUrl: `${process.env.FRONTEND_URL}/profile/billing`
+      subscriptionId: details.subscriptionId,
+      failureReason: details.failureReason || 'בעיה בעיבוד התשלום'
     }
   });
 };
 
-/**
- * Send subscription expiring reminder
- */
-export const sendSubscriptionExpiring = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    planName: string;
-    expirationDate: Date | string;
-    daysRemaining: number;
-  }
-) => {
-  const expirationDate = typeof details.expirationDate === 'string'
-    ? new Date(details.expirationDate)
-    : details.expirationDate;
-
+export const sendSubscriptionExpiring = async (userEmail: string, details: SubscriptionStatusDetails) => {
+  const expirationDate = details.nextBillingDate 
+    ? (typeof details.nextBillingDate === 'string' ? new Date(details.nextBillingDate) : details.nextBillingDate).toLocaleDateString('he-IL')
+    : undefined;
   return sendTemplateEmail({
     to: [{ email: userEmail, name: details.customerName }],
     templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_EXPIRING,
     params: {
       customerName: details.customerName,
       planName: details.planName,
-      nextBillingDate: formatDate(expirationDate),
-      daysRemaining: details.daysRemaining,
-      actionUrl: `${process.env.FRONTEND_URL}/profile/subscription`
+      expirationDate
     }
   });
 };
 
-/**
- * Send subscription upgraded confirmation
- */
-export const sendSubscriptionUpgraded = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    oldPlanName: string;
-    newPlanName: string;
-    newPrice: number;
-  }
-) => {
+export const sendSubscriptionUpgraded = async (userEmail: string, details: SubscriptionStatusDetails) => {
+  const effectiveDate = details.effectiveDate 
+    ? (typeof details.effectiveDate === 'string' ? new Date(details.effectiveDate) : details.effectiveDate).toLocaleDateString('he-IL')
+    : new Date().toLocaleDateString('he-IL');
   return sendTemplateEmail({
     to: [{ email: userEmail, name: details.customerName }],
     templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_UPGRADED,
     params: {
       customerName: details.customerName,
       oldPlanName: details.oldPlanName,
-      planName: details.newPlanName,
-      price: formatPrice(details.newPrice),
-      actionUrl: `${process.env.FRONTEND_URL}/profile`
+      newPlanName: details.newPlanName || details.planName,
+      effectiveDate
     }
   });
 };
 
-/**
- * Send subscription downgraded confirmation
- */
-export const sendSubscriptionDowngraded = async (
-  userEmail: string,
-  details: {
-    customerName: string;
-    oldPlanName: string;
-    newPlanName: string;
-    newPrice: number;
-    effectiveDate: Date | string;
-  }
-) => {
-  const effectiveDate = typeof details.effectiveDate === 'string'
-    ? new Date(details.effectiveDate)
-    : details.effectiveDate;
-
+export const sendSubscriptionDowngraded = async (userEmail: string, details: SubscriptionStatusDetails) => {
+  const effectiveDate = details.effectiveDate 
+    ? (typeof details.effectiveDate === 'string' ? new Date(details.effectiveDate) : details.effectiveDate).toLocaleDateString('he-IL')
+    : new Date().toLocaleDateString('he-IL');
   return sendTemplateEmail({
     to: [{ email: userEmail, name: details.customerName }],
     templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_DOWNGRADED,
     params: {
       customerName: details.customerName,
       oldPlanName: details.oldPlanName,
-      planName: details.newPlanName,
-      price: formatPrice(details.newPrice),
-      effectiveDate: formatDate(effectiveDate),
-      actionUrl: `${process.env.FRONTEND_URL}/profile`
+      newPlanName: details.newPlanName || details.planName,
+      effectiveDate
     }
   });
 };
@@ -730,24 +601,15 @@ export const sendSubscriptionDowngraded = async (
 // Document Emails
 // ===========================================
 
-/**
- * Send document/invoice email
- */
-export const sendDocumentEmail = async (
-  userEmail: string,
-  customerName: string,
-  documentName: string,
-  documentUrl: string,
-  documentNumber?: string
-) => {
+export const sendDocumentEmail = async (userEmail: string, customerName: string, documentName: string, documentUrl: string, documentNumber?: string) => {
   return sendTemplateEmail({
     to: [{ email: userEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.INVOICE_DOCUMENT_SENT,
+    templateId: BREVO_TEMPLATE_IDS.DOCUMENT_EMAIL,
     params: {
       customerName,
       documentName,
-      documentNumber: documentNumber || '',
-      documentUrl
+      documentUrl,
+      documentNumber
     }
   });
 };
