@@ -31,4 +31,7 @@ router.post('/create-subscription-trial', paymentHandler.createSubscriptionWithT
 router.post('/charge-trial-subscription', paymentHandler.chargeTrialSubscription);
 router.get('/trial-subscriptions-ending', paymentHandler.getTrialSubscriptionsEnding);
 
+// Create invoice/document (חשבונית חדשה)
+router.post('/create-invoice', paymentHandler.createDocument);
+
 export default router ;

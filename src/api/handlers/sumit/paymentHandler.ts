@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { UserModel } from '../../../models/userModel.js';
 import SubscriptionModel from '../../../models/sumitModels/subscriptionModel.js';
+import { InvoiceModel } from '../../../models/invoiceModel.js';
 import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
 import { paymentService } from '../../../services/paymentService.js';
 
@@ -1121,6 +1122,161 @@ export const paymentHandler = {
       return res.status(500).json({
         success: false,
         error: 'Failed to check for saved card'
+      });
+    }
+  },
+
+  /**
+   * Create a document (invoice/receipt) via Sumit without payment
+   * POST /api/sumit/payments/create-invoice
+   * Uses vendor's Sumit credentials to issue the document
+   * 
+   * Document Types:
+   *   1 = חשבונית מס (Tax Invoice)
+   *   2 = חשבונית מס קבלה (Tax Invoice + Receipt) 
+   *   3 = קבלה (Receipt)
+   *   4 = הצעת מחיר (Quote)
+   *   5 = הזמנה (Order)
+   */
+  async createDocument(req: Request, res: Response) {
+    try {
+      const { 
+        vendorId,
+        customerInfo,
+        items,
+        vatIncluded = true,
+        remarks
+      } = req.body;
+
+      // Validate required fields
+      if (!vendorId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required field: vendorId'
+        });
+      }
+
+      if (!customerInfo?.name || !customerInfo?.email) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required customer info: name, email'
+        });
+      }
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one item is required'
+        });
+      }
+
+      // Get vendor's Sumit credentials
+      const vendor = await UserModel.findById(vendorId);
+      if (!vendor?.sumitApiKey || !vendor?.sumitCompanyId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Vendor not set up for invoicing. Please configure Sumit credentials in settings.'
+        });
+      }
+
+      // Calculate total
+      const total = items.reduce((sum: number, item: { price: number; quantity: number }) => 
+        sum + (item.price * item.quantity), 0);
+
+      // Build Sumit API request body
+      const sumitRequest = {
+        Details: {
+          Type: 1, // חשבונית מס (Tax Invoice)
+          Customer: {
+            Name: customerInfo.name,
+            EmailAddress: customerInfo.email,
+            Phone: customerInfo.phone || null,
+            SearchMode: 0
+          },
+          SendByEmail: {
+            EmailAddress: customerInfo.email,
+            Original: true,
+            SendAsPaymentRequest: false
+          },
+          Language: 'he', // Hebrew
+          Description: remarks || null
+        },
+        Items: items.map((item: { description: string; price: number; quantity: number }) => ({
+          Item: {
+            Name: item.description,
+            SearchMode: 0
+          },
+          Quantity: item.quantity,
+          UnitPrice: item.price,
+          TotalPrice: item.quantity * item.price
+        })),
+        VATIncluded: vatIncluded,
+        Credentials: {
+          CompanyID: vendor.sumitCompanyId,
+          APIKey: vendor.sumitApiKey
+        }
+      };
+
+      // Create document via Sumit API
+      const response = await axios.post(
+        `${SUMIT_API_URL}/accounting/documents/create/`,
+        sumitRequest
+      );
+
+      // Check response status - Sumit uses Status field
+      const sumitData = response.data?.Data;
+      const sumitStatus = response.data?.Status;
+      
+      // Status 0 = success, DocumentID present = success
+      if (sumitStatus === 0 || sumitData?.DocumentID) {
+        // Save document record to our DB
+        try {
+          await InvoiceModel.create({
+            externalId: sumitData.DocumentID.toString(),
+            provider: 'SUMIT',
+            documentType: 'invoice', // חשבונית מס
+            amount: total,
+            currency: 'ILS',
+            issuedDate: new Date(),
+            customerName: customerInfo.name,
+            customerEmail: customerInfo.email,
+            documentUrl: sumitData.DocumentDownloadURL || null,
+            status: 'SENT',
+            rawData: {
+              DocumentID: sumitData.DocumentID,
+              DocumentNumber: sumitData.DocumentNumber,
+              CustomerID: sumitData.CustomerID,
+              DocumentDownloadURL: sumitData.DocumentDownloadURL,
+              DocumentPaymentURL: sumitData.DocumentPaymentURL
+            }
+          });
+        } catch (dbError) {
+          console.error('Failed to save invoice to DB (document was created):', dbError);
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            documentId: sumitData.DocumentID,
+            documentNumber: sumitData.DocumentNumber,
+            customerId: sumitData.CustomerID,
+            documentUrl: sumitData.DocumentDownloadURL,
+            paymentUrl: sumitData.DocumentPaymentURL
+          }
+        });
+      }
+
+      // Handle error response
+      return res.status(400).json({
+        success: false,
+        error: response.data?.UserErrorMessage || response.data?.TechnicalErrorDetails || 'Failed to create document'
+      });
+
+    } catch (error: any) {
+      console.error('Create document error:', error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to create document'
       });
     }
   }
