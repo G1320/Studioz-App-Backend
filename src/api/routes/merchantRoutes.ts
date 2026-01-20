@@ -6,6 +6,7 @@ import {
   getRepeatCustomerStats
 } from '../handlers/merchantStatsHandler.js';
 import { getMerchantDocuments, getMerchantDocument } from '../handlers/merchantDocumentsHandler.js';
+import { verifyTokenMw, requireFeature } from '../../middleware/index.js';
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const router = express.Router();
  * @query   userId - Required user ID
  * @access  Private
  */
-router.get('/stats', getMerchantStats);
+router.get('/stats', verifyTokenMw, getMerchantStats);
 
 /**
  * @route   GET /api/merchant/analytics/time-slots
@@ -23,9 +24,13 @@ router.get('/stats', getMerchantStats);
  * @query   userId - Required user ID
  * @query   startDate - Optional start date filter
  * @query   endDate - Optional end date filter
- * @access  Private
+ * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/time-slots', getPopularTimeSlots);
+router.get('/analytics/time-slots', 
+  verifyTokenMw, 
+  requireFeature('analytics'), 
+  getPopularTimeSlots
+);
 
 /**
  * @route   GET /api/merchant/analytics/cancellations
@@ -33,9 +38,13 @@ router.get('/analytics/time-slots', getPopularTimeSlots);
  * @query   userId - Required user ID
  * @query   startDate - Optional start date filter
  * @query   endDate - Optional end date filter
- * @access  Private
+ * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/cancellations', getCancellationStats);
+router.get('/analytics/cancellations', 
+  verifyTokenMw, 
+  requireFeature('analytics'), 
+  getCancellationStats
+);
 
 /**
  * @route   GET /api/merchant/analytics/repeat-customers
@@ -43,9 +52,13 @@ router.get('/analytics/cancellations', getCancellationStats);
  * @query   userId - Required user ID
  * @query   startDate - Optional start date filter
  * @query   endDate - Optional end date filter
- * @access  Private
+ * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/repeat-customers', getRepeatCustomerStats);
+router.get('/analytics/repeat-customers', 
+  verifyTokenMw, 
+  requireFeature('analytics'), 
+  getRepeatCustomerStats
+);
 
 /**
  * @route   GET /api/merchant/documents
