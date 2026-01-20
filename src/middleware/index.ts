@@ -8,6 +8,15 @@ import handleErrorMw from './errorHandling/handleErrorMw.js';
 import verifyTokenMw from './auth/verifyTokenMw.js';
 import verifyAdminMw from './auth/verifyAdminMw.js';
 
+// Subscription middleware
+export {
+  requireSubscription,
+  requireTier,
+  requireFeature,
+  checkPaymentLimit,
+  checkListingLimit
+} from './subscription/index.js';
+
 export {
   validateUser,
   validateStudio,

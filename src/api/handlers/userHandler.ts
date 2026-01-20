@@ -6,6 +6,7 @@ import handleRequest from '../../utils/requestHandler.js';
 import ExpressError from '../../utils/expressError.js';
 import { paymentService } from '../../services/paymentService.js';
 import emailPreferencesService from '../../services/emailPreferencesService.js';
+import { usageService } from '../../services/usageService.js';
 
 const createUser = handleRequest(async (req: Request) => {
   const { username, name } = req.body;
@@ -210,6 +211,21 @@ const updateEmailPreferences = handleRequest(async (req: Request) => {
   return updatedPreferences;
 });
 
+/**
+ * Get usage stats for subscription enforcement
+ * Returns payment counts, listing counts, and limits based on tier
+ */
+const getUsageStats = handleRequest(async (req: Request) => {
+  const { userId } = req.params;
+  
+  if (!userId) {
+    throw new ExpressError('User ID is required', 400);
+  }
+
+  const stats = await usageService.getUsageStats(userId);
+  return stats;
+});
+
 export default {
   createUser,
   getUserBySub,
@@ -223,5 +239,6 @@ export default {
   getSavedCards,
   removeSavedCard,
   getEmailPreferences,
-  updateEmailPreferences
+  updateEmailPreferences,
+  getUsageStats
 };

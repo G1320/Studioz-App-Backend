@@ -6,6 +6,7 @@ import SubscriptionModel from '../../../models/sumitModels/subscriptionModel.js'
 import { InvoiceModel } from '../../../models/invoiceModel.js';
 import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
 import { paymentService } from '../../../services/paymentService.js';
+import { usageService } from '../../../services/usageService.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -18,11 +19,11 @@ const SUBSCRIPTION_PLANS = {
 } as const;
 
 interface CartItem {
-    merchantId: string;
-    name: string;
-    price: number;
-    quantity: number;
-   }
+  merchantId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
 
 export const paymentHandler = {
   async processPayment(req: Request, res: Response) {
@@ -58,24 +59,24 @@ export const paymentHandler = {
           }
         }
       );
-      if (response.data.Data.Payment.ValidPayment){
+      if (response.data.Data.Payment.ValidPayment) {
         // Save invoice record
         saveSumitInvoice(response.data.Data, {
-            customerName: customerInfo.customerName,
-            customerEmail: customerInfo.customerEmail,
-            description: description
+          customerName: customerInfo.customerName,
+          customerEmail: customerInfo.customerEmail,
+          description: description
         });
 
         return res.status(200).json({
-            success: true,
-            data: response.data.Data
+          success: true,
+          data: response.data.Data
         });
-    }else {
+      } else {
         return res.status(500).json({
-            success: false,
-            error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
+          success: false,
+          error: response.data.Data.Payment.StatusDescription || 'Failed to create subscription'
         });
-    }
+      }
     } catch (error) {
 
       return res.status(500).json({
@@ -84,17 +85,17 @@ export const paymentHandler = {
       });
     }
   },
-  
+
   async createSubscription(req: Request, res: Response) {
     try {
       const { singleUseToken, planDetails, customerInfo } = req.body;
-  
+
       // Find any active subscription for this user
       const existingSubscription = await SubscriptionModel.findOne({
         customerEmail: customerInfo.customerEmail,
         status: 'ACTIVE'
       });
-  
+
       // If there's an active subscription, cancel it first
       if (existingSubscription) {
         try {
@@ -117,13 +118,13 @@ export const paymentHandler = {
               }
             );
           }
-  
+
           // Update the existing subscription status
           existingSubscription.status = 'CANCELLED';
           existingSubscription.endDate = new Date();
           existingSubscription.updatedAt = new Date();
           await existingSubscription.save();
-  
+
           // Update user's subscription status
           await UserModel.findByIdAndUpdate(existingSubscription.userId, {
             subscriptionStatus: 'INACTIVE',
@@ -137,7 +138,7 @@ export const paymentHandler = {
           });
         }
       }
-  
+
       // Create new subscription
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/recurring/charge/`,
@@ -156,7 +157,7 @@ export const paymentHandler = {
             Quantity: 1,
             UnitPrice: planDetails.amount,
             Description: planDetails.description,
-            Recurrence: planDetails.recurrence || 12 
+            Recurrence: planDetails.recurrence || 12
           }],
           VATIncluded: true,
           OnlyDocument: false,
@@ -167,13 +168,13 @@ export const paymentHandler = {
           }
         }
       );
-            
+
       if (response?.data?.Data?.Payment?.ValidPayment) {
         // Save invoice record
         saveSumitInvoice(response.data.Data, {
-             customerName: customerInfo.customerName,
-             customerEmail: customerInfo.customerEmail,
-             description: planDetails.description || "Subscription"
+          customerName: customerInfo.customerName,
+          customerEmail: customerInfo.customerEmail,
+          description: planDetails.description || "Subscription"
         });
 
         // Save the card on the user for future upgrades/use
@@ -216,188 +217,188 @@ export const paymentHandler = {
     }
   },
 
-    async cancelSubscription(req: Request, res: Response) {
-        try {
-          const { subscriptionId } = req.params;
-      
-          if (!subscriptionId) {
-            return res.status(400).json({
-              success: false,
-              error: 'Subscription ID is required'
-            });
+  async cancelSubscription(req: Request, res: Response) {
+    try {
+      const { subscriptionId } = req.params;
+
+      if (!subscriptionId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Subscription ID is required'
+        });
+      }
+
+      const subscription = await SubscriptionModel.findById(subscriptionId);
+      if (!subscription) {
+        return res.status(404).json({
+          success: false,
+          error: 'Subscription not found'
+        });
+      }
+
+      // If subscription is already cancelled, just return it
+      if (subscription.status === 'CANCELLED') {
+        return res.status(200).json({
+          success: true,
+          data: subscription
+        });
+      }
+
+      // Cancel recurring payment in Sumit
+      if (subscription.sumitPaymentDetails?.RecurringCustomerItemIDs?.[0]) {
+        await axios.post(
+          `${SUMIT_API_URL}/billing/recurring/cancel/`,
+          {
+            Credentials: {
+              CompanyID: COMPANY_ID,
+              APIKey: API_KEY
+            },
+            Customer: {
+              ID: subscription.sumitCustomerId,
+              Name: subscription.customerName,
+              EmailAddress: subscription.customerEmail,
+              SearchMode: 0
+            },
+            RecurringCustomerItemID: subscription.sumitPaymentDetails.RecurringCustomerItemIDs[0]
           }
-      
-          const subscription = await SubscriptionModel.findById(subscriptionId);
-          if (!subscription) {
-            return res.status(404).json({
-              success: false,
-              error: 'Subscription not found'
-            });
+        );
+      }
+
+      subscription.status = 'CANCELLED';
+      subscription.endDate = new Date();
+      subscription.updatedAt = new Date();
+      await subscription.save();
+
+      // Update user's subscription status
+      await UserModel.findByIdAndUpdate(subscription.userId, {
+        subscriptionStatus: 'INACTIVE',
+        subscriptionId: null
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: subscription
+      });
+    } catch (error: any) {
+      console.error('Subscription cancellation error:', error.response?.data || error);
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to cancel subscription'
+      });
+    }
+  },
+
+  async multivendorCharge(req: Request, res: Response) {
+    try {
+      const { items, singleUseToken, customerInfo, vendorId } = req.body;
+
+
+      // Type check for items array
+      if (!Array.isArray(items) || !items.every(item =>
+        typeof item.name === 'string' &&
+        typeof item.price === 'number' &&
+        typeof item.quantity === 'number'
+      )) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid items format'
+        });
+      }
+
+      const typedItems: CartItem[] = items;
+      // Get merchant user for API key
+      const vendor = await UserModel.findById(vendorId);
+      if (!vendor?.sumitApiKey) {
+        return res.status(404).json({
+          success: false,
+          error: 'Vendor not found or missing API credentials'
+        });
+      }
+
+      const response = await axios.post(
+        `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
+        {
+          SingleUseToken: singleUseToken,
+          Customer: {
+            Name: customerInfo.name,
+            EmailAddress: customerInfo.email,
+            Phone: customerInfo.phone,
+            SearchMode: 0
+          },
+          Items: typedItems.map(item => ({
+            Item: {
+              Name: item.name,
+              Price: item.price
+            },
+            Quantity: item.quantity,
+            UnitPrice: item.price,
+            Total: item.quantity * item.price,
+            CompanyID: vendor.sumitCompanyId,
+            APIKey: vendor.sumitApiKey
+          })),
+          VATIncluded: true,
+          SendDocumentByEmail: true,
+          DocumentLanguage: 'Hebrew',
+          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
+          Credentials: {
+            CompanyID: COMPANY_ID,
+            APIKey: API_KEY
           }
-      
-          // If subscription is already cancelled, just return it
-          if (subscription.status === 'CANCELLED') {
-            return res.status(200).json({
-              success: true,
-              data: subscription
-            });
-          }
-      
-          // Cancel recurring payment in Sumit
-          if (subscription.sumitPaymentDetails?.RecurringCustomerItemIDs?.[0]) {
-            await axios.post(
-              `${SUMIT_API_URL}/billing/recurring/cancel/`,
-              {
-                Credentials: {
-                  CompanyID: COMPANY_ID,
-                  APIKey: API_KEY
-                },
-                Customer: {
-                  ID: subscription.sumitCustomerId,
-                  Name: subscription.customerName,
-                  EmailAddress: subscription.customerEmail,
-                  SearchMode: 0
-                },
-                RecurringCustomerItemID: subscription.sumitPaymentDetails.RecurringCustomerItemIDs[0]
-              }
-            );
-          }
-      
-          subscription.status = 'CANCELLED';
-          subscription.endDate = new Date();
-          subscription.updatedAt = new Date();
-          await subscription.save();
-      
-          // Update user's subscription status
-          await UserModel.findByIdAndUpdate(subscription.userId, {
-            subscriptionStatus: 'INACTIVE',
-            subscriptionId: null
-          });
-      
-          return res.status(200).json({
-            success: true,
-            data: subscription
-          });
-        } catch (error: any) {
-          console.error('Subscription cancellation error:', error.response?.data || error);
-          return res.status(500).json({
-            success: false,
-            error: error.response?.data?.UserErrorMessage || 'Failed to cancel subscription'
-          });
         }
-      },
+      );
 
-      async multivendorCharge(req: Request, res: Response) {
-        try {
-          const { items, singleUseToken, customerInfo, vendorId } = req.body;
-       
+      // Multivendor response structure: Data.Vendors[].Items contains Payment, DocumentID, etc.
+      const vendors = response.data.Data?.Vendors;
 
-           // Type check for items array
-          if (!Array.isArray(items) || !items.every(item => 
-           typeof item.name === 'string' &&
-           typeof item.price === 'number' &&
-           typeof item.quantity === 'number'
-         )) {
-           return res.status(400).json({
-             success: false,
-             error: 'Invalid items format'
-           });
-         }
+      if (vendors && vendors.length > 0) {
+        // Check if all vendor payments succeeded
+        const allValid = vendors.every((v: any) => v.Items?.Payment?.ValidPayment);
 
-        const typedItems: CartItem[] = items;
-          // Get merchant user for API key
-          const vendor = await UserModel.findById(vendorId);
-          if (!vendor?.sumitApiKey) {
-            return res.status(404).json({
-              success: false,
-              error: 'Vendor not found or missing API credentials'
-            });
-          }
-       
-          const response = await axios.post(
-            `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
-            {
-              SingleUseToken: singleUseToken,
-              Customer: {
-                Name: customerInfo.name,
-                EmailAddress: customerInfo.email,
-                Phone: customerInfo.phone,
-                SearchMode: 0
-              },
-              Items: typedItems.map(item => ({
-                Item: {
-                  Name: item.name,
-                  Price: item.price
-                },
-                Quantity: item.quantity,
-                UnitPrice: item.price,
-                Total: item.quantity * item.price,
-                CompanyID: vendor.sumitCompanyId,
-                APIKey: vendor.sumitApiKey
-              })),
-              VATIncluded: true,
-              SendDocumentByEmail: true,
-              DocumentLanguage: 'Hebrew',
-              DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
-              Credentials: {
-                CompanyID: COMPANY_ID,
-                APIKey: API_KEY
-              }
-            }
-          );
-       
-          // Multivendor response structure: Data.Vendors[].Items contains Payment, DocumentID, etc.
-          const vendors = response.data.Data?.Vendors;
-          
-          if (vendors && vendors.length > 0) {
-            // Check if all vendor payments succeeded
-            const allValid = vendors.every((v: any) => v.Items?.Payment?.ValidPayment);
-            
-            if (allValid) {
-              // Save invoice record for each vendor
-              for (const vendorData of vendors) {
-                const items = vendorData.Items;
-                if (items?.Payment?.ValidPayment) {
-                  await saveSumitInvoice({
-                    Payment: items.Payment,
-                    DocumentID: items.DocumentID,
-                    DocumentNumber: items.DocumentNumber,
-                    DocumentDownloadURL: items.DocumentDownloadURL,
-                    CustomerID: items.CustomerID
-                  }, {
-                    customerName: customerInfo.name,
-                    customerEmail: customerInfo.email,
-                    description: 'Multivendor Charge'
-                  });
-                }
-              }
-
-              return res.status(200).json({
-                success: true,
-                data: response.data.Data
+        if (allValid) {
+          // Save invoice record for each vendor
+          for (const vendorData of vendors) {
+            const items = vendorData.Items;
+            if (items?.Payment?.ValidPayment) {
+              await saveSumitInvoice({
+                Payment: items.Payment,
+                DocumentID: items.DocumentID,
+                DocumentNumber: items.DocumentNumber,
+                DocumentDownloadURL: items.DocumentDownloadURL,
+                CustomerID: items.CustomerID
+              }, {
+                customerName: customerInfo.name,
+                customerEmail: customerInfo.email,
+                description: 'Multivendor Charge'
               });
             }
-            
-            // Find first failed payment for error message
-            const failedVendor = vendors.find((v: any) => !v.Items?.Payment?.ValidPayment);
-            return res.status(400).json({
-              success: false, 
-              error: failedVendor?.Items?.Payment?.StatusDescription || 'Payment failed'
-            });
           }
-       
-          return res.status(400).json({
-            success: false, 
-            error: 'No vendor data in response'
-          });
-       
-        } catch (error: any) {
-          return res.status(500).json({
-            success: false,
-            error: error.response?.data?.UserErrorMessage || 'Failed to process payment'
+
+          return res.status(200).json({
+            success: true,
+            data: response.data.Data
           });
         }
-       },
+
+        // Find first failed payment for error message
+        const failedVendor = vendors.find((v: any) => !v.Items?.Payment?.ValidPayment);
+        return res.status(400).json({
+          success: false,
+          error: failedVendor?.Items?.Payment?.StatusDescription || 'Payment failed'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: 'No vendor data in response'
+      });
+
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error.response?.data?.UserErrorMessage || 'Failed to process payment'
+      });
+    }
+  },
 
   /**
    * Quick Charge (סליקה מהירה) - Manual one-time charge by studio owner
@@ -405,13 +406,13 @@ export const paymentHandler = {
    */
   async quickCharge(req: Request, res: Response) {
     try {
-      const { 
-        singleUseToken, 
-        customerInfo, 
+      const {
+        singleUseToken,
+        customerInfo,
         items,
         description,
         remarks,
-        vendorId 
+        vendorId
       } = req.body;
 
       // Validate required fields
@@ -439,7 +440,7 @@ export const paymentHandler = {
       }
 
       // Calculate total
-      const total = items.reduce((sum: number, item: { price: number; quantity: number }) => 
+      const total = items.reduce((sum: number, item: { price: number; quantity: number }) =>
         sum + (item.price * item.quantity), 0);
 
       // Process payment using vendor's credentials
@@ -489,6 +490,14 @@ export const paymentHandler = {
         description: description || 'Quick Charge',
         relatedEntity: undefined // Manual charge, no related entity
       });
+
+      // Track payment for subscription limits
+      try {
+        await usageService.incrementPaymentCount(vendorId, total);
+      } catch (trackingError) {
+        console.error('Failed to track payment usage:', trackingError);
+        // Don't fail the payment, just log the error
+      }
 
       // NOTE: Green Invoice creation disabled - Sumit already issues חשבונית מס קבלה from vendor
       // Keeping code for potential future use if we want to switch back to Green Invoice
@@ -580,7 +589,7 @@ export const paymentHandler = {
       const webhookData = req.body;
 
       // Log webhook data
-    //   logger.info('Received Sumit webhook', { webhookData });
+      //   logger.info('Received Sumit webhook', { webhookData });
 
       // Validate webhook authenticity
       // TODO: Implement webhook signature validation
@@ -607,7 +616,7 @@ export const paymentHandler = {
 
       return res.json({ received: true });
     } catch (error) {
-    //   logger.error('Failed to handle webhook', { error });
+      //   logger.error('Failed to handle webhook', { error });
       return res.status(500).json({ error: 'Failed to process webhook' });
     }
   },
@@ -630,7 +639,7 @@ export const paymentHandler = {
 
       // Use the payment service for consistency
       const { paymentService } = await import('../../../services/paymentService.js');
-      
+
       const credentials = await paymentService.getVendorCredentials(vendorId);
       if (!credentials) {
         return res.status(404).json({
@@ -686,7 +695,7 @@ export const paymentHandler = {
 
       // Use the payment service for consistency
       const { paymentService } = await import('../../../services/paymentService.js');
-      
+
       const credentials = await paymentService.getVendorCredentials(vendorId);
       if (!credentials) {
         return res.status(404).json({
@@ -740,7 +749,7 @@ export const paymentHandler = {
 
       // Use the payment service for consistency
       const { paymentService } = await import('../../../services/paymentService.js');
-      
+
       const credentials = await paymentService.getVendorCredentials(vendorId);
       if (!credentials) {
         return res.status(404).json({
@@ -1021,7 +1030,7 @@ export const paymentHandler = {
       } else {
         // Payment failed
         subscription.trialChargeFailedAt = new Date();
-        
+
         // After 3 failed attempts, mark as TRIAL_ENDED
         if (subscription.trialChargeAttempts >= 3) {
           subscription.status = 'TRIAL_ENDED';
@@ -1029,7 +1038,7 @@ export const paymentHandler = {
             subscriptionStatus: 'TRIAL_ENDED'
           });
         }
-        
+
         await subscription.save();
 
         return res.status(400).json({
@@ -1055,7 +1064,7 @@ export const paymentHandler = {
   async getTrialSubscriptionsEnding(req: Request, res: Response) {
     try {
       const days = parseInt(req.query.days as string) || 1;
-      
+
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + days);
 
@@ -1140,7 +1149,7 @@ export const paymentHandler = {
    */
   async createDocument(req: Request, res: Response) {
     try {
-      const { 
+      const {
         vendorId,
         customerInfo,
         items,
@@ -1180,7 +1189,7 @@ export const paymentHandler = {
       }
 
       // Calculate total
-      const total = items.reduce((sum: number, item: { price: number; quantity: number }) => 
+      const total = items.reduce((sum: number, item: { price: number; quantity: number }) =>
         sum + (item.price * item.quantity), 0);
 
       // Build Sumit API request body
@@ -1226,7 +1235,7 @@ export const paymentHandler = {
       // Check response status - Sumit uses Status field
       const sumitData = response.data?.Data;
       const sumitStatus = response.data?.Status;
-      
+
       // Status 0 = success, DocumentID present = success
       if (sumitStatus === 0 || sumitData?.DocumentID) {
         // Save document record to our DB

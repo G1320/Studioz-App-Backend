@@ -23,4 +23,7 @@ router.delete('/:id/saved-cards', userHandler.removeSavedCard);
 router.get('/:id/email-preferences', verifyTokenMw, userHandler.getEmailPreferences);
 router.put('/:id/email-preferences', verifyTokenMw, userHandler.updateEmailPreferences);
 
+// Usage stats for subscription enforcement
+router.get('/:userId/usage', verifyTokenMw, userHandler.getUsageStats);
+
 export default router;

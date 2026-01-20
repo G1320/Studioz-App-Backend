@@ -2,6 +2,7 @@ import axios from 'axios';
 import { UserModel } from '../models/userModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { saveSumitInvoice } from '../utils/sumitUtils.js';
+import { usageService } from './usageService.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 
@@ -455,6 +456,14 @@ export const paymentService = {
       );
 
       if (chargeResult.success) {
+        // Track payment for subscription limits
+        try {
+          await usageService.incrementPaymentCount(params.vendorId, params.amount);
+        } catch (trackingError) {
+          console.error('Failed to track payment usage:', trackingError);
+          // Don't fail the payment, just log the error
+        }
+        
         return {
           paymentStatus: 'charged',
           paymentDetails: {
@@ -531,6 +540,14 @@ export const paymentService = {
     );
 
     if (chargeResult.success) {
+      // Track payment for subscription limits
+      try {
+        await usageService.incrementPaymentCount(paymentDetails.vendorId, amount);
+      } catch (trackingError) {
+        console.error('Failed to track payment usage:', trackingError);
+        // Don't fail the payment, just log the error
+      }
+      
       return {
         paymentStatus: 'charged',
         sumitPaymentId: chargeResult.paymentId,
