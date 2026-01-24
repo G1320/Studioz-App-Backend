@@ -4,6 +4,7 @@ import { SubscriptionTier } from '../../config/subscriptionTiers.js';
 
 interface AuthRequest extends Request {
   user?: { id: string };
+  decodedJwt?: { _id?: string; userId?: string; sub?: string };
   subscriptionTier?: SubscriptionTier;
   paymentCheck?: {
     allowed: boolean;
@@ -17,21 +18,22 @@ interface AuthRequest extends Request {
 /**
  * Middleware to check if user has reached their monthly payment limit
  * Should be used after requireFeature('payments') to ensure user has payment access
- * 
+ *
  * @example
- * router.post('/charge', 
- *   requireFeature('payments'), 
- *   checkPaymentLimit, 
+ * router.post('/charge',
+ *   requireFeature('payments'),
+ *   checkPaymentLimit,
  *   handler
  * );
  */
 export const checkPaymentLimit = async (
-  req: AuthRequest, 
-  res: Response, 
+  req: AuthRequest,
+  res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    // Support both req.user (passport) and req.decodedJwt (verifyTokenMw)
+    const userId = req.user?.id || req.decodedJwt?._id || req.decodedJwt?.userId;
     
     if (!userId) {
       res.status(401).json({

@@ -39,6 +39,7 @@ import bodyParser from 'body-parser';
 import { initializeReservationScheduler, stopReservationScheduler } from './workers/reservationScheduler.js';
 import { initializeTrialScheduler, stopTrialScheduler } from './workers/trialSubscriptionScheduler.js';
 import { initializeBookingReminderScheduler, stopBookingReminderScheduler } from './workers/bookingReminderScheduler.js';
+import { initializeGoogleCalendarScheduler, stopGoogleCalendarScheduler } from './workers/googleCalendarScheduler.js';
 
 
 try {
@@ -46,6 +47,7 @@ try {
   initializeReservationScheduler();
   initializeTrialScheduler();
   initializeBookingReminderScheduler();
+  initializeGoogleCalendarScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -60,6 +62,7 @@ const gracefulShutdown = async () => {
   stopReservationScheduler();
   stopTrialScheduler();
   stopBookingReminderScheduler();
+  stopGoogleCalendarScheduler();
   if (io) await io.close();
     await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());

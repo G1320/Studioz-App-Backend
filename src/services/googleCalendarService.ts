@@ -3,7 +3,7 @@ import { UserModel } from '../models/userModel.js';
 import { StudioModel } from '../models/studioModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
-import { getValidAccessToken, getAuthenticatedClient, isTokenExpired, refreshAccessToken } from '../utils/googleOAuthUtils.js';
+import { getValidAccessToken, getAuthenticatedClient, isTokenExpired, refreshAccessToken, GoogleTokenError } from '../utils/googleOAuthUtils.js';
 import { formatReservationToCalendarEvent, parseCalendarEventToTimeSlots, shouldBlockTimeSlotsForEvent } from '../utils/googleCalendarUtils.js';
 import { initializeAvailability, findOrCreateDateAvailability, removeTimeSlots, generateTimeSlots } from '../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate, emitBulkAvailabilityUpdate } from '../webSockets/socket.js';
@@ -13,20 +13,43 @@ import Reservation from '../types/reservation.js';
 /**
  * Helper function to get and refresh access token if needed
  * Updates user in database if token was refreshed
+ * 
+ * @throws GoogleTokenError if token refresh fails (caller should handle appropriately)
+ * @throws ExpressError if no tokens are available
  */
 const getAndRefreshToken = async (userId: string, user: any): Promise<string> => {
+  // Check for missing access token
+  if (!user.googleCalendar?.accessToken) {
+    throw new ExpressError('Google Calendar access token not found', 400);
+  }
+  
   let accessToken = user.googleCalendar.accessToken;
   
   // Check if token needs refresh
-  if (isTokenExpired(user.googleCalendar.tokenExpiry) && user.googleCalendar.refreshToken) {
-    const { accessToken: newToken, expiryDate } = await refreshAccessToken(
-      user.googleCalendar.refreshToken
-    );
-    await UserModel.findByIdAndUpdate(userId, {
-      'googleCalendar.accessToken': newToken,
-      'googleCalendar.tokenExpiry': expiryDate
-    });
-    accessToken = newToken;
+  if (isTokenExpired(user.googleCalendar.tokenExpiry)) {
+    if (!user.googleCalendar.refreshToken) {
+      // No refresh token - connection is invalid, clear it
+      console.log('[GoogleCalendar] Token expired and no refresh token, clearing connection:', userId);
+      await clearGoogleCalendarConnection(userId);
+      throw new ExpressError('Google Calendar session expired. Please reconnect your calendar.', 400);
+    }
+    
+    try {
+      const { accessToken: newToken, expiryDate } = await refreshAccessToken(
+        user.googleCalendar.refreshToken
+      );
+      await UserModel.findByIdAndUpdate(userId, {
+        'googleCalendar.accessToken': newToken,
+        'googleCalendar.tokenExpiry': expiryDate
+      });
+      accessToken = newToken;
+      console.log('[GoogleCalendar] Token refreshed successfully for user:', userId);
+    } catch (error) {
+      // Token refresh failed - clear connection and throw user-friendly error
+      console.log('[GoogleCalendar] Token refresh failed during operation:', userId, error);
+      await clearGoogleCalendarConnection(userId);
+      throw new ExpressError('Google Calendar connection expired. Please reconnect your calendar.', 400);
+    }
   }
   
   return accessToken;
@@ -109,19 +132,91 @@ export const disconnectCalendar = async (userId: string): Promise<void> => {
 };
 
 /**
- * Get user's Google Calendar connection status
+ * Clear Google Calendar connection for a user
+ * Used when tokens are invalid/revoked to allow reconnection
  * @param userId - User ID
- * @returns Connection status
+ */
+const clearGoogleCalendarConnection = async (userId: string): Promise<void> => {
+  await UserModel.findByIdAndUpdate(userId, {
+    $unset: { 'googleCalendar': '' }
+  });
+};
+
+/**
+ * Get user's Google Calendar connection status
+ * Validates tokens and clears connection if tokens are invalid
+ * 
+ * IMPORTANT: This function ALWAYS returns a 200-style response with connection state.
+ * It NEVER throws errors - all errors are caught and result in { connected: false }.
+ * This ensures the frontend can always display the correct UI state.
+ * 
+ * @param userId - User ID
+ * @returns Connection status - always returns { connected: boolean, lastSyncAt?: Date }
  */
 export const getConnectionStatus = async (userId: string): Promise<{
   connected: boolean;
   lastSyncAt?: Date;
 }> => {
   try {
-    const user = await UserModel.findById(userId).select('googleCalendar');
-    
-    if (!user || !user.googleCalendar?.connected) {
+    // Validate userId
+    if (!userId) {
+      console.log('[GoogleCalendar] No userId provided for status check');
       return { connected: false };
+    }
+
+    // Include protected token fields for validation
+    const user = await UserModel.findById(userId).select('+googleCalendar.accessToken +googleCalendar.refreshToken googleCalendar');
+
+    // User not found or calendar never connected
+    if (!user) {
+      console.log('[GoogleCalendar] User not found:', userId);
+      return { connected: false };
+    }
+
+    if (!user.googleCalendar?.connected) {
+      return { connected: false };
+    }
+
+    // Check for missing tokens (corrupted state)
+    if (!user.googleCalendar.accessToken && !user.googleCalendar.refreshToken) {
+      console.log('[GoogleCalendar] User marked as connected but no tokens found, clearing:', userId);
+      await clearGoogleCalendarConnection(userId);
+      return { connected: false };
+    }
+
+    // Verify token is still valid by attempting refresh if expired
+    if (isTokenExpired(user.googleCalendar.tokenExpiry)) {
+      if (!user.googleCalendar.refreshToken) {
+        // No refresh token - clear connection so user can reconnect
+        console.log('[GoogleCalendar] No refresh token available, clearing connection for user:', userId);
+        await clearGoogleCalendarConnection(userId);
+        return { connected: false };
+      }
+
+      try {
+        const { accessToken, expiryDate } = await refreshAccessToken(user.googleCalendar.refreshToken);
+        // Update tokens in database
+        await UserModel.findByIdAndUpdate(userId, {
+          'googleCalendar.accessToken': accessToken,
+          'googleCalendar.tokenExpiry': expiryDate
+        });
+        console.log('[GoogleCalendar] Successfully refreshed token for user:', userId);
+      } catch (error) {
+        // Handle token refresh failure
+        if (error instanceof GoogleTokenError) {
+          if (error.isRevoked) {
+            console.log('[GoogleCalendar] Refresh token revoked, clearing connection for user:', userId);
+          } else {
+            console.log('[GoogleCalendar] Token refresh failed (non-revocation), clearing connection for user:', userId);
+          }
+        } else {
+          console.log('[GoogleCalendar] Unexpected error refreshing token, clearing connection for user:', userId, error);
+        }
+        
+        // Clear connection so user can reconnect with fresh OAuth flow
+        await clearGoogleCalendarConnection(userId);
+        return { connected: false };
+      }
     }
 
     return {
@@ -129,7 +224,18 @@ export const getConnectionStatus = async (userId: string): Promise<{
       lastSyncAt: user.googleCalendar.lastSyncAt || undefined
     };
   } catch (error) {
-    console.error('Error getting connection status:', error);
+    // Catch-all for any unexpected errors - NEVER throw from this function
+    console.error('[GoogleCalendar] Unexpected error in getConnectionStatus:', error);
+    
+    // Attempt to clear connection if possible (fire and forget)
+    try {
+      if (userId) {
+        await clearGoogleCalendarConnection(userId);
+      }
+    } catch (clearError) {
+      console.error('[GoogleCalendar] Failed to clear connection after error:', clearError);
+    }
+    
     return { connected: false };
   }
 };
@@ -602,6 +708,66 @@ export const syncCalendarEventsToTimeSlots = async (
     console.error('Error syncing calendar events to time slots:', error);
     // Don't throw - calendar sync should not break the system
     return undefined;
+  }
+};
+
+/**
+ * Result of syncing all connected calendars
+ */
+export interface SyncAllResult {
+  synced: number;
+  failed: number;
+  errors: Array<{ userId: string; error: string }>;
+}
+
+/**
+ * Sync calendar events for all users with connected Google Calendars
+ * Processes users in batches to avoid rate limits
+ * @returns Sync results summary
+ */
+export const syncAllConnectedCalendars = async (): Promise<SyncAllResult> => {
+  const results: SyncAllResult = { synced: 0, failed: 0, errors: [] };
+  const BATCH_SIZE = 5;
+
+  try {
+    // Find all users with connected Google Calendar
+    const users = await UserModel.find({
+      'googleCalendar.connected': true
+    }).select('_id googleCalendar.syncToken');
+
+    if (users.length === 0) {
+      console.log('[GoogleCalendarSync] No users with connected calendars');
+      return results;
+    }
+
+    console.log(`[GoogleCalendarSync] Processing ${users.length} users`);
+
+    // Process users in batches to avoid rate limits
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+
+      await Promise.all(batch.map(async (user) => {
+        try {
+          await syncCalendarEventsToTimeSlots(
+            user._id.toString(),
+            user.googleCalendar?.syncToken || undefined
+          );
+          results.synced++;
+        } catch (error) {
+          results.failed++;
+          results.errors.push({
+            userId: user._id.toString(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          console.error(`[GoogleCalendarSync] Failed for user ${user._id}:`, error);
+        }
+      }));
+    }
+
+    return results;
+  } catch (error) {
+    console.error('[GoogleCalendarSync] Error fetching users:', error);
+    return results;
   }
 };
 

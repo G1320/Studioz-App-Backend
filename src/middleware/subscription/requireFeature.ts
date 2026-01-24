@@ -1,20 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import { usageService } from '../../services/usageService.js';
-import { 
-  tierHasFeature, 
-  FeatureId, 
+import {
+  tierHasFeature,
+  FeatureId,
   SubscriptionTier,
-  FEATURE_REQUIRED_TIER 
+  FEATURE_REQUIRED_TIER
 } from '../../config/subscriptionTiers.js';
 
 interface AuthRequest extends Request {
   user?: { id: string };
+  decodedJwt?: { _id?: string; userId?: string; sub?: string };
   subscriptionTier?: SubscriptionTier;
 }
 
 /**
  * Middleware factory to require access to a specific feature
- * 
+ *
  * @example
  * router.post('/charge', requireFeature('payments'), handler);
  * router.get('/analytics', requireFeature('analytics'), handler);
@@ -22,7 +23,8 @@ interface AuthRequest extends Request {
 export const requireFeature = (feature: FeatureId) => {
   return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.user?.id;
+      // Support both req.user (passport) and req.decodedJwt (verifyTokenMw)
+      const userId = req.user?.id || req.decodedJwt?._id || req.decodedJwt?.userId;
       
       if (!userId) {
         res.status(401).json({

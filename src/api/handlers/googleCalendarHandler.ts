@@ -105,15 +105,29 @@ const disconnect = handleRequest(async (req: CustomRequest) => {
 /**
  * Get Google Calendar connection status
  * GET /api/auth/google/calendar/status
+ * 
+ * IMPORTANT: This endpoint ALWAYS returns 200 with connection state.
+ * It should NEVER return 401 for Google token issues - only if the user
+ * isn't authenticated to our app (which is handled by verifyTokenMw).
+ * 
+ * Expired/revoked Google tokens result in { connected: false }, not errors.
  */
 const getStatus = handleRequest(async (req: CustomRequest) => {
   const userId = req.decodedJwt?._id || req.decodedJwt?.userId;
   if (!userId) {
+    // This 401 is for app authentication, not Google Calendar tokens
     throw new ExpressError('User not authenticated', 401);
   }
 
-  const status = await getConnectionStatus(userId.toString());
-  return status;
+  try {
+    const status = await getConnectionStatus(userId.toString());
+    return status;
+  } catch (error) {
+    // Safety catch - getConnectionStatus should never throw, but if it does,
+    // return disconnected state instead of letting error propagate as 401/500
+    console.error('[GoogleCalendarHandler] Unexpected error in getStatus:', error);
+    return { connected: false };
+  }
 });
 
 /**

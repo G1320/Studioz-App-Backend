@@ -4,6 +4,7 @@ import { SubscriptionTier } from '../../config/subscriptionTiers.js';
 
 interface AuthRequest extends Request {
   user?: { id: string };
+  decodedJwt?: { _id?: string; userId?: string; sub?: string };
   subscriptionTier?: SubscriptionTier;
   listingCheck?: {
     allowed: boolean;
@@ -15,22 +16,23 @@ interface AuthRequest extends Request {
 
 /**
  * Middleware to check if user has reached their listing limit
- * 
+ *
  * @example
- * router.post('/items', 
- *   verifyToken, 
- *   checkListingLimit, 
- *   validateItem, 
+ * router.post('/items',
+ *   verifyToken,
+ *   checkListingLimit,
+ *   validateItem,
  *   handler
  * );
  */
 export const checkListingLimit = async (
-  req: AuthRequest, 
-  res: Response, 
+  req: AuthRequest,
+  res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    // Support both req.user (passport) and req.decodedJwt (verifyTokenMw)
+    const userId = req.user?.id || req.decodedJwt?._id || req.decodedJwt?.userId;
     
     if (!userId) {
       res.status(401).json({

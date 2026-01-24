@@ -4,6 +4,7 @@ import { SubscriptionModel } from '../../models/sumitModels/subscriptionModel.js
 
 interface AuthRequest extends Request {
   user?: { id: string };
+  decodedJwt?: { _id?: string; userId?: string; sub?: string };
 }
 
 /**
@@ -11,12 +12,13 @@ interface AuthRequest extends Request {
  * Use this for features that require any paid plan
  */
 export const requireSubscription = async (
-  req: AuthRequest, 
-  res: Response, 
+  req: AuthRequest,
+  res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    // Support both req.user (passport) and req.decodedJwt (verifyTokenMw)
+    const userId = req.user?.id || req.decodedJwt?._id || req.decodedJwt?.userId;
     
     if (!userId) {
       res.status(401).json({
