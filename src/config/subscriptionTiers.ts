@@ -54,7 +54,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     paymentsPerMonth: 0,
   },
   starter: {
-    listings: 1,
+    listings: 3,
     paymentsPerMonth: 25,
   },
   pro: {

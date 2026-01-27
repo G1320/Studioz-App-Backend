@@ -205,3 +205,30 @@ export async function createTestSetup() {
 
   return { user, studio, item };
 }
+
+/**
+ * Create a vendor user with Sumit payment credentials for testing
+ */
+export async function createTestVendor(
+  tier: SubscriptionTier = 'starter',
+  overrides: Partial<any> = {}
+) {
+  const { user, subscription } = await createTestUserWithSubscription(tier, {
+    sumitCompanyId: '12345',
+    sumitApiKey: 'test-api-key-123',
+    ...overrides,
+  });
+
+  return { user, subscription };
+}
+
+/**
+ * Create a vendor without Sumit credentials (for testing error cases)
+ */
+export async function createTestVendorWithoutCredentials(
+  tier: SubscriptionTier = 'starter',
+  overrides: Partial<any> = {}
+) {
+  const { user, subscription } = await createTestUserWithSubscription(tier, overrides);
+  return { user, subscription };
+}

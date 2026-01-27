@@ -12,6 +12,7 @@ import reservationRoutes from '../../api/routes/reservationRoutes.js';
 import bookingRoutes from '../../api/routes/bookingRoutes.js';
 import cartRoutes from '../../api/routes/cartRoutes.js';
 import googleCalendarRoutes from '../../api/routes/googleCalendarRoutes.js';
+import paymentRoutes from '../../api/routes/sumit/paymentRoutes.js';
 
 // Import error handlers
 import { handleErrorMw, handleDbErrorMw } from '../../middleware/index.js';
@@ -41,6 +42,7 @@ export function createTestApp(): Application {
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/cart', cartRoutes);
   app.use('/api/auth/google/calendar', googleCalendarRoutes);
+  app.use('/api/sumit/payments', paymentRoutes);
 
   // Error handlers
   app.use(handleDbErrorMw);
