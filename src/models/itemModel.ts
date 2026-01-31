@@ -34,6 +34,15 @@ const blockDiscountsSchema = new Schema({
   twelveHour: { type: Number, required: false }
 }, { _id: false });
 
+// Project pricing for remote async work (mixing, mastering, etc.)
+const projectPricingSchema = new Schema({
+  basePrice: { type: Number, required: false },
+  depositPercentage: { type: Number, required: false, min: 0, max: 100 },
+  estimatedDeliveryDays: { type: Number, required: false },
+  revisionsIncluded: { type: Number, required: false, default: 1 },
+  revisionPrice: { type: Number, required: false },
+}, { _id: false });
+
 const itemSchema: Schema = new Schema({
   studioId: { type: Schema.Types.ObjectId, ref: 'Studio' },
   sellerId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -80,6 +89,17 @@ const itemSchema: Schema = new Schema({
     required: false
   },
   softwareRequirements: [{ type: String, required: false }],
+
+  // Remote Project Settings (for async remote work like mixing/mastering)
+  remoteWorkType: {
+    type: String,
+    enum: ['session', 'project'],  // 'session' = video call, 'project' = async file-based
+    required: false
+  },
+  projectPricing: { type: projectPricingSchema, required: false },
+  acceptedFileTypes: [{ type: String, required: false }],  // e.g., ['.wav', '.aif', '.mp3']
+  maxFileSize: { type: Number, required: false },  // In MB
+  maxFilesPerProject: { type: Number, required: false },
   
   // Quantity Management
   maxQuantityPerBooking: { type: Number, required: false },

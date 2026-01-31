@@ -21,6 +21,8 @@
   "author": "Darnell Green",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.975.0",
+    "@aws-sdk/s3-request-presigner": "^3.975.0",
     "@getbrevo/brevo": "^3.0.1",
     "@paypal/paypal-server-sdk": "^0.6.0",
     "@sentry/node": "^10.33.0",
