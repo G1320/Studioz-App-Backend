@@ -15,5 +15,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/api/handlers/paypalHandler.js", "src/api/handlers/PPorderHandlerSDK.js", "src/api/handlers/PPSellerOnboardingHandler.js", "src/api/handlers/PPAuthHandler.ts", "src/api/routes/bluesnapRoutes.js"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/tests"]
 }

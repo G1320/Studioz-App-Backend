@@ -503,13 +503,10 @@ const releaseItemTimeSlots = handleRequest(async (req: Request) => {
     // Find or create the availability entry for the specified date
     const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
 
-    // Generate all time slots for the day starting from `startTime` for the item duration
-    const allBookedSlots = generateTimeSlots(startTime, hours);
+    // Generate the time slots that were booked
+    const slotsToRelease = generateTimeSlots(startTime, hours);
 
-    // Determine which slots to release (slots after `hours`)
-    const slotsToRelease = allBookedSlots.slice(hours);
-
-    // Update `dateAvailability.times` by adding back only the released slots
+    // Update `dateAvailability.times` by adding back all the released slots
     dateAvailability.times = addTimeSlots(dateAvailability.times, slotsToRelease);
 
     // Remove any duplicate entries
