@@ -35,6 +35,14 @@ const blockDiscountsSchema = Joi.object({
   twelveHour: Joi.number().positive().optional().allow(null)
 }).optional();
 
+const projectPricingSchema = Joi.object({
+  basePrice: Joi.number().positive().optional(),
+  depositPercentage: Joi.number().min(0).max(100).optional(),
+  estimatedDeliveryDays: Joi.number().positive().integer().optional(),
+  revisionsIncluded: Joi.number().min(0).integer().optional(),
+  revisionPrice: Joi.number().positive().optional()
+}).optional();
+
 const schema = Joi.object({
   name: translationTitleSchema,
   description: translationDescriptionSchema,
@@ -74,6 +82,14 @@ const schema = Joi.object({
   remoteService: Joi.boolean().optional(),
   remoteAccessMethod: Joi.string().valid('zoom', 'teams', 'skype', 'custom', 'other').optional(),
   softwareRequirements: Joi.array().items(Joi.string()).optional(),
+  
+  // Remote Project Settings
+  serviceDeliveryType: Joi.string().valid('in-studio', 'remote').optional(),
+  remoteWorkType: Joi.string().valid('session', 'project').optional(),
+  projectPricing: projectPricingSchema,
+  acceptedFileTypes: Joi.array().items(Joi.string()).optional(),
+  maxFileSize: Joi.number().positive().optional(),
+  maxFilesPerProject: Joi.number().positive().integer().optional(),
   
   // Quantity Management
   maxQuantityPerBooking: Joi.number().positive().optional()

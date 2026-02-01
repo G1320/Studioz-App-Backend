@@ -7,7 +7,16 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 
 const createItem = handleRequest(async (req: Request) => {
-  const item = new ItemModel(req.body);
+  const itemData = { ...req.body };
+
+  // Transform serviceDeliveryType from frontend to backend fields
+  if (itemData.serviceDeliveryType === 'remote') {
+    itemData.remoteService = true;
+    itemData.remoteWorkType = 'project';
+  }
+  delete itemData.serviceDeliveryType; // Remove UI-only field
+
+  const item = new ItemModel(itemData);
 
   await item.save();
 
@@ -221,10 +230,22 @@ const updateItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
 
-  const item = await ItemModel.findByIdAndUpdate(itemId, req.body, { new: true });
+  const updateData = { ...req.body };
+
+  // Transform serviceDeliveryType from frontend to backend fields
+  if (updateData.serviceDeliveryType === 'remote') {
+    updateData.remoteService = true;
+    updateData.remoteWorkType = 'project';
+  } else if (updateData.serviceDeliveryType === 'in-studio') {
+    updateData.remoteService = false;
+    updateData.remoteWorkType = undefined;
+  }
+  delete updateData.serviceDeliveryType; // Remove UI-only field
+
+  const item = await ItemModel.findByIdAndUpdate(itemId, updateData, { new: true });
   if (!item) throw new ExpressError('item not found', 404);
 
-  return req.body;
+  return item;
 });
 
 const deleteItemById = handleRequest(async (req: Request) => {
