@@ -13,6 +13,8 @@ const R2_ENDPOINT = process.env.R2_ENDPOINT;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'studios-remote-projects';
+// Custom domain for public access (bypasses CORS issues with S3 API endpoint)
+const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN; // e.g., 'files.studioz.co.il'
 
 // URL expiry times (in seconds)
 const UPLOAD_URL_EXPIRY = parseInt(process.env.R2_UPLOAD_URL_EXPIRY || '3600', 10); // 1 hour
@@ -60,25 +62,29 @@ export function generateStorageKey(
 /**
  * Generate a presigned URL for uploading a file directly to R2
  * Client can use this URL to upload the file via PUT request
+ *
+ * Note: We don't set ContentType/ContentLength in the command to avoid
+ * CORS issues with R2. The client can send any content type.
  */
 export async function getUploadUrl(
   storageKey: string,
-  contentType: string,
-  contentLength?: number
+  _contentType: string,
+  _contentLength?: number
 ): Promise<{ uploadUrl: string; storageKey: string }> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
 
+  // Simple PUT command without content constraints for better R2 CORS compatibility
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
-    ContentType: contentType,
-    ...(contentLength && { ContentLength: contentLength }),
   });
 
   const uploadUrl = await getSignedUrl(r2Client, command, {
     expiresIn: UPLOAD_URL_EXPIRY,
+    // Don't sign any headers except the minimum required
+    signableHeaders: new Set(['host']),
   });
 
   return { uploadUrl, storageKey };
