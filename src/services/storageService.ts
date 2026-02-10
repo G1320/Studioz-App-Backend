@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -140,17 +141,35 @@ export async function deleteFile(storageKey: string): Promise<void> {
 }
 
 /**
- * Delete all files for a project (cleanup on project deletion)
+ * Delete all files for a project from R2 (cleanup on project deletion).
+ * Caller is responsible for deleting ProjectFile records from the database.
  */
 export async function deleteProjectFiles(projectId: string): Promise<void> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
 
-  // Note: R2 doesn't support batch deletes in the same way as S3
-  // For now, this would need to be called per-file from the handler
-  // In a production environment, you might use Workers to handle bulk deletes
-  console.log(`[StorageService] Would delete all files for project: ${projectId}`);
+  const prefix = `${projectId}/`;
+  let continuationToken: string | undefined;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
+
+    const response = await r2Client.send(command);
+    const objects = response.Contents || [];
+
+    for (const obj of objects) {
+      if (obj.Key) {
+        await deleteFile(obj.Key);
+      }
+    }
+
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
 }
 
 /**

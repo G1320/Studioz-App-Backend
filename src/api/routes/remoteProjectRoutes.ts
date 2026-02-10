@@ -2,8 +2,12 @@ import express from 'express';
 import remoteProjectHandler from '../handlers/remoteProjectHandler.js';
 import projectFileHandler from '../handlers/projectFileHandler.js';
 import projectMessageHandler from '../handlers/projectMessageHandler.js';
+import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
+
+// All remote project routes require authentication
+router.use(verifyTokenMw);
 
 // Remote Project CRUD
 router.post('/', remoteProjectHandler.createProject);
