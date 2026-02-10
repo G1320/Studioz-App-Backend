@@ -83,8 +83,6 @@ export async function getUploadUrl(
 
   const uploadUrl = await getSignedUrl(r2Client, command, {
     expiresIn: UPLOAD_URL_EXPIRY,
-    // Don't sign any headers except the minimum required
-    signableHeaders: new Set(['host']),
   });
 
   return { uploadUrl, storageKey };

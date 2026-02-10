@@ -1,5 +1,4 @@
 // Cloudflare Worker to proxy R2 uploads with proper CORS headers
-// Deploy this as a Worker and use its URL instead of direct R2 presigned URLs
 
 const ALLOWED_ORIGINS = [
   'https://www.studioz.co.il',
@@ -16,7 +15,7 @@ function getCorsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, PUT, HEAD, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Content-Length, x-amz-content-sha256, x-amz-date, authorization',
+    'Access-Control-Allow-Headers': '*',
     'Access-Control-Expose-Headers': 'ETag',
     'Access-Control-Max-Age': '3600',
   };
@@ -34,8 +33,7 @@ export default {
       });
     }
 
-    // Get the target R2 URL from the path
-    // URL format: https://your-worker.workers.dev/proxy?url=<encoded-r2-url>
+    // Get the target R2 URL from the query parameter
     const url = new URL(request.url);
     const targetUrl = url.searchParams.get('url');
 
@@ -47,11 +45,10 @@ export default {
     }
 
     try {
-      // Forward the request to R2
+      // For presigned URLs, make a clean request - the auth is in the URL
       const r2Response = await fetch(targetUrl, {
         method: request.method,
-        headers: request.headers,
-        body: request.method === 'PUT' ? request.body : undefined,
+        body: request.method === 'PUT' || request.method === 'POST' ? request.body : undefined,
       });
 
       // Create response with CORS headers
