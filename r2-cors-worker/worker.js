@@ -1,4 +1,4 @@
-// Cloudflare Worker to proxy R2 uploads with proper CORS headers
+// Cloudflare Worker with R2 binding for direct uploads
 
 const ALLOWED_ORIGINS = [
   'https://www.studioz.co.il',
@@ -33,40 +33,80 @@ export default {
       });
     }
 
-    // Get the target R2 URL from the query parameter
     const url = new URL(request.url);
-    const targetUrl = url.searchParams.get('url');
 
-    if (!targetUrl) {
-      return new Response('Missing url parameter', {
-        status: 400,
-        headers: corsHeaders,
-      });
+    // Route: PUT /upload/:key - Upload file directly to R2
+    if (request.method === 'PUT' && url.pathname.startsWith('/upload/')) {
+      const key = decodeURIComponent(url.pathname.slice('/upload/'.length));
+
+      if (!key) {
+        return new Response('Missing key', {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      try {
+        // Upload directly to R2 using the binding
+        const object = await env.R2_BUCKET.put(key, request.body, {
+          httpMetadata: {
+            contentType: request.headers.get('Content-Type') || 'application/octet-stream',
+          },
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          key: object.key,
+          etag: object.etag,
+        }), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'ETag': object.etag,
+          },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     }
 
-    try {
-      // For presigned URLs, make a clean request - the auth is in the URL
-      const r2Response = await fetch(targetUrl, {
-        method: request.method,
-        body: request.method === 'PUT' || request.method === 'POST' ? request.body : undefined,
-      });
+    // Route: GET /download/:key - Download file from R2
+    if (request.method === 'GET' && url.pathname.startsWith('/download/')) {
+      const key = decodeURIComponent(url.pathname.slice('/download/'.length));
 
-      // Create response with CORS headers
-      const responseHeaders = new Headers(r2Response.headers);
-      Object.entries(corsHeaders).forEach(([key, value]) => {
-        responseHeaders.set(key, value);
-      });
+      try {
+        const object = await env.R2_BUCKET.get(key);
 
-      return new Response(r2Response.body, {
-        status: r2Response.status,
-        statusText: r2Response.statusText,
-        headers: responseHeaders,
-      });
-    } catch (error) {
-      return new Response(`Proxy error: ${error.message}`, {
-        status: 500,
-        headers: corsHeaders,
-      });
+        if (!object) {
+          return new Response('Not found', {
+            status: 404,
+            headers: corsHeaders,
+          });
+        }
+
+        const headers = new Headers(corsHeaders);
+        object.writeHttpMetadata(headers);
+        headers.set('etag', object.httpEtag);
+
+        return new Response(object.body, { headers });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
     }
+
+    return new Response('Not found', {
+      status: 404,
+      headers: corsHeaders,
+    });
   },
 };
