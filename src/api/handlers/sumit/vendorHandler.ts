@@ -29,14 +29,17 @@ const createVendor = handleRequest(async (req: Request) => {
   }
 
   // Step 1: Create the vendor company in Sumit
+  // Only send Sumit company fields — exclude bank details meant for the terminal
+  const { bankCode, branchCode, accountNumber, ...sumitCompanyFields } = companyDetails;
+
   const createResponse = await axios.post(
     `${SUMIT_API_URL}/website/companies/create/`,
     {
       Company: {
-        ...companyDetails,
+        ...sumitCompanyFields,
         CompanyType: 0
       },
-      Applications: ['CreditCard'], // Enable credit card processing module
+      Applications: ['CreditCard'],
       Credentials: {
         CompanyID: COMPANY_ID,
         APIKey: API_KEY
@@ -63,21 +66,25 @@ const createVendor = handleRequest(async (req: Request) => {
         CompanyID: vendorCredentials.CompanyID,
         APIKey: vendorCredentials.APIKey
       },
-      BankCode: companyDetails.bankCode,
-      BranchCode: companyDetails.branchCode,
-      AccountNumber: companyDetails.accountNumber,
+      BankCode: bankCode,
+      BranchCode: branchCode,
+      AccountNumber: accountNumber,
       Program: "OFFICEGUYNEW10"
     }
   );
 
-  // Validate payment terminal was opened successfully
-  if (paymentResponse.data?.Status !== 0 && !paymentResponse.data?.Data) {
+  const isBankAccountExistsError = paymentResponse.data?.Status === 1
+    && paymentResponse.data?.UserErrorMessage?.includes('חשבון בנק קיים');
+
+  if (isBankAccountExistsError) {
+    console.log('Payment terminal bank account already exists — treating as success for vendor:', vendorCredentials.CompanyID);
+  } else if (paymentResponse.data?.Status !== 0 && !paymentResponse.data?.Data) {
     const errorMsg = paymentResponse.data?.UserErrorMessage || 'Failed to open payment terminal';
     console.error('Payment terminal error:', paymentResponse.data);
     throw new ExpressError(errorMsg, 400);
+  } else {
+    console.log('Payment terminal opened successfully:', paymentResponse.data);
   }
-
-  console.log('Payment terminal opened successfully:', paymentResponse.data);
 
   // Step 3: Update user with vendor credentials
   const updatedUser = await UserModel.findByIdAndUpdate(
