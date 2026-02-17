@@ -58,6 +58,33 @@ const createVendor = handleRequest(async (req: Request) => {
     APIPublicKey: createResponse.data.Data.APIPublicKey
   };
 
+  // Step 1.5: Update company details using the vendor's own credentials
+  // companies/create uses the parent account credentials, so the new company's
+  // billing module may not have the name populated. This explicit update ensures
+  // the name is set across all Sumit modules before opening the terminal.
+  const updateResponse = await axios.post(
+    `${SUMIT_API_URL}/website/companies/update/`,
+    {
+      Company: {
+        Name: companyDetails.Name,
+        EmailAddress: companyDetails.EmailAddress,
+        Phone: companyDetails.Phone,
+        Address: companyDetails.Address,
+        CorporateNumber: companyDetails.CorporateNumber,
+        Country: companyDetails.Country,
+        CompanyType: 0
+      },
+      Credentials: {
+        CompanyID: vendorCredentials.CompanyID,
+        APIKey: vendorCredentials.APIKey
+      }
+    }
+  );
+
+  if (updateResponse.data?.Status !== 0) {
+    console.error('Company update warning:', updateResponse.data);
+  }
+
   // Step 2: Open payment terminal for the vendor
   const paymentResponse = await axios.post(
     `${SUMIT_API_URL}/billing/generalbilling/openupayterminal/`,
