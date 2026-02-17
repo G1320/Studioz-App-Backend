@@ -96,7 +96,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { 
         itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds,
         // Optional payment fields - only used when vendor accepts payments
-        singleUseToken, customerEmail, useSavedCard 
+        singleUseToken, customerEmail, useSavedCard, sumitCustomerId 
     } = req.body;
 
     const item = await ItemModel.findOne({ _id: itemId });
@@ -260,53 +260,88 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
           });
         }
         // Option 2: Saved card payment
-        else if (useSavedCard && customerId && user?.sumitCustomerId) {
-          const paymentAmount = reservation.totalPrice || 0;
+        // Support both logged-in users (via user.sumitCustomerId) and 
+        // incognito users (via sumitCustomerId from request body, looked up by phone)
+        else if (useSavedCard) {
+          const resolvedSumitCustomerId = user?.sumitCustomerId || sumitCustomerId;
           
-          // If instant book, charge immediately
-          if (item.instantBook) {
-            const chargeResult = await paymentService.chargeWithSavedCard({
-              userId: customerId,
-              vendorId: studio.createdBy.toString(),
-              amount: paymentAmount,
-              description: `Booking: ${item.name?.en || 'Reservation'}`
-            });
+          if (!resolvedSumitCustomerId) {
+            console.error('[Payment] useSavedCard=true but no Sumit customer ID available');
+            paymentResult = {
+              paymentStatus: 'failed' as const,
+              paymentDetails: {
+                sumitCustomerId: '',
+                amount: reservation.totalPrice || 0,
+                currency: 'ILS',
+                vendorId: studio.createdBy.toString(),
+                failureReason: 'No saved card found'
+              }
+            };
+          } else {
+            const paymentAmount = reservation.totalPrice || 0;
             
-            if (chargeResult.success) {
-              paymentResult = {
-                paymentStatus: 'charged' as const,
-                paymentDetails: {
-                  sumitCustomerId: user.sumitCustomerId,
-                  amount: paymentAmount,
-                  currency: 'ILS',
-                  vendorId: studio.createdBy.toString(),
-                  sumitPaymentId: chargeResult.paymentId,
-                  chargedAt: new Date()
+            // If instant book, charge immediately
+            if (item.instantBook) {
+              // Get vendor credentials for charging
+              const vendorCredentials = await paymentService.getVendorCredentials(studio.createdBy.toString());
+              
+              if (!vendorCredentials) {
+                console.error('[Payment] Vendor has no payment credentials');
+                paymentResult = {
+                  paymentStatus: 'failed' as const,
+                  paymentDetails: {
+                    sumitCustomerId: resolvedSumitCustomerId,
+                    amount: paymentAmount,
+                    currency: 'ILS',
+                    vendorId: studio.createdBy.toString(),
+                    failureReason: 'Vendor not set up for payments'
+                  }
+                };
+              } else {
+                const chargeResult = await paymentService.chargeSavedCard(
+                  resolvedSumitCustomerId,
+                  paymentAmount,
+                  `Booking: ${item.name?.en || 'Reservation'}`,
+                  vendorCredentials
+                );
+                
+                if (chargeResult.success) {
+                  paymentResult = {
+                    paymentStatus: 'charged' as const,
+                    paymentDetails: {
+                      sumitCustomerId: resolvedSumitCustomerId,
+                      amount: paymentAmount,
+                      currency: 'ILS',
+                      vendorId: studio.createdBy.toString(),
+                      sumitPaymentId: chargeResult.paymentId,
+                      chargedAt: new Date()
+                    }
+                  };
+                } else {
+                  paymentResult = {
+                    paymentStatus: 'failed' as const,
+                    paymentDetails: {
+                      sumitCustomerId: resolvedSumitCustomerId,
+                      amount: paymentAmount,
+                      currency: 'ILS',
+                      vendorId: studio.createdBy.toString(),
+                      failureReason: chargeResult.error
+                    }
+                  };
                 }
-              };
+              }
             } else {
+              // Not instant book - just mark card as ready, charge on approval
               paymentResult = {
-                paymentStatus: 'failed' as const,
+                paymentStatus: 'card_saved' as const,
                 paymentDetails: {
-                  sumitCustomerId: user.sumitCustomerId,
+                  sumitCustomerId: resolvedSumitCustomerId,
                   amount: paymentAmount,
                   currency: 'ILS',
-                  vendorId: studio.createdBy.toString(),
-                  failureReason: chargeResult.error
+                  vendorId: studio.createdBy.toString()
                 }
               };
             }
-          } else {
-            // Not instant book - just mark card as ready, charge on approval
-            paymentResult = {
-              paymentStatus: 'card_saved' as const,
-              paymentDetails: {
-                sumitCustomerId: user.sumitCustomerId,
-                amount: paymentAmount,
-                currency: 'ILS',
-                vendorId: studio.createdBy.toString()
-              }
-            };
           }
         }
 
