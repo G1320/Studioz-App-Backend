@@ -225,6 +225,45 @@ const updateReservationById = handleRequest(async (req: Request) => {
     // Notify customer when status changes to confirmed or cancelled
     if (previousStatus !== updatedReservation.status && bookerId) {
       if (updatedReservation.status === RESERVATION_STATUS.CONFIRMED) {
+        // ============================================================
+        // PAYMENT CHARGING on confirmation
+        // If reservation has a saved card, charge it before confirming
+        // (Same logic as approveReservation endpoint)
+        // ============================================================
+        if (previousStatus === RESERVATION_STATUS.PENDING && 
+            updatedReservation.paymentStatus === 'card_saved' && 
+            updatedReservation.paymentDetails?.sumitCustomerId) {
+          try {
+            const chargeResult = await paymentService.chargeReservation(updatedReservation);
+
+            if (chargeResult.paymentStatus === 'charged') {
+              updatedReservation.paymentStatus = 'charged';
+              if (updatedReservation.paymentDetails) {
+                updatedReservation.paymentDetails.sumitPaymentId = chargeResult.sumitPaymentId;
+                updatedReservation.paymentDetails.chargedAt = chargeResult.chargedAt;
+              }
+              await updatedReservation.save();
+            } else {
+              // Payment failed - revert to pending
+              updatedReservation.status = RESERVATION_STATUS.PENDING;
+              updatedReservation.paymentStatus = 'failed';
+              if (updatedReservation.paymentDetails) {
+                updatedReservation.paymentDetails.failureReason = chargeResult.failureReason;
+              }
+              await updatedReservation.save();
+              throw new ExpressError(
+                `Payment failed: ${chargeResult.failureReason}. Reservation not confirmed.`,
+                400
+              );
+            }
+          } catch (paymentError: any) {
+            if (paymentError instanceof ExpressError) {
+              throw paymentError;
+            }
+            console.error('Payment error during confirmation:', paymentError);
+          }
+        }
+
         await notifyCustomerReservationConfirmed(
           updatedReservation._id.toString(),
           bookerId
