@@ -3,10 +3,15 @@ import {
   getMerchantStats,
   getPopularTimeSlots,
   getCancellationStats,
-  getRepeatCustomerStats
+  getRepeatCustomerStats,
+  getStudioAnalytics,
+  getCustomerAnalytics,
+  getCustomerDetail,
+  getProjections,
+  getRevenueBreakdown
 } from '../handlers/merchantStatsHandler.js';
 import { getMerchantDocuments, getMerchantDocument } from '../handlers/merchantDocumentsHandler.js';
-import { verifyTokenMw, requireFeature } from '../../middleware/index.js';
+import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
@@ -26,11 +31,7 @@ router.get('/stats', verifyTokenMw, getMerchantStats);
  * @query   endDate - Optional end date filter
  * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/time-slots', 
-  verifyTokenMw, 
-  requireFeature('analytics'), 
-  getPopularTimeSlots
-);
+router.get('/analytics/time-slots', verifyTokenMw, getPopularTimeSlots);
 
 /**
  * @route   GET /api/merchant/analytics/cancellations
@@ -40,11 +41,7 @@ router.get('/analytics/time-slots',
  * @query   endDate - Optional end date filter
  * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/cancellations', 
-  verifyTokenMw, 
-  requireFeature('analytics'), 
-  getCancellationStats
-);
+router.get('/analytics/cancellations', verifyTokenMw, getCancellationStats);
 
 /**
  * @route   GET /api/merchant/analytics/repeat-customers
@@ -54,11 +51,13 @@ router.get('/analytics/cancellations',
  * @query   endDate - Optional end date filter
  * @access  Private - Requires 'analytics' feature (Pro tier)
  */
-router.get('/analytics/repeat-customers', 
-  verifyTokenMw, 
-  requireFeature('analytics'), 
-  getRepeatCustomerStats
-);
+router.get('/analytics/repeat-customers', verifyTokenMw, getRepeatCustomerStats);
+
+router.get('/analytics/studios', verifyTokenMw, getStudioAnalytics);
+router.get('/analytics/customers', verifyTokenMw, getCustomerAnalytics);
+router.get('/analytics/customers/:customerId', verifyTokenMw, getCustomerDetail);
+router.get('/analytics/projections', verifyTokenMw, getProjections);
+router.get('/analytics/revenue-breakdown', verifyTokenMw, getRevenueBreakdown);
 
 /**
  * @route   GET /api/merchant/documents

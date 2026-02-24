@@ -66,6 +66,12 @@ Start the Server: Starts the backend server in production mode. Ensure you have 
 npm start
 ```
 
+Seed stats demo: Populates the database with realistic demo data for the merchant stats/analytics dashboard (one demo vendor, 3 studios, 6 items, 15 customers, 200+ reservations over 14 months). Requires `DB_URL` in `.env`. After running, the script prints `DEMO_VENDOR_USER_ID`; set `VITE_DEMO_STATS_USER_ID` in the frontend `.env` to view stats as that vendor, or log in as that user if configured in Auth0.
+
+```bash
+npm run seed:stats-demo
+```
+
 ### Folder Structure
 
 dist/: Contains the compiled TypeScript files.

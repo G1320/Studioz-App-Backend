@@ -13,7 +13,8 @@
     "build": "npm i && tsc",
     "start": "node ./dist/server.js",
     "start:dev": "ts-node src/server.ts",
-    "cleanup:subcategories": "node --loader ts-node/esm src/scripts/cleanupSubCategories.ts"
+    "cleanup:subcategories": "node --loader ts-node/esm src/scripts/cleanupSubCategories.ts",
+    "seed:stats-demo": "node --loader ts-node/esm src/scripts/seedStatsDemo.ts"
   },
   "engines": {
     "node": "18.x"
