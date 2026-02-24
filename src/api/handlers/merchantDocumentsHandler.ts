@@ -4,6 +4,7 @@ import { ReservationModel } from '../../models/reservationModel.js';
 import { StudioModel } from '../../models/studioModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { escapeRegex } from '../../utils/escapeRegex.js';
 
 type DocStatus = 'paid' | 'pending' | 'overdue' | 'draft';
 type DocType = 'invoice' | 'credit_note' | 'receipt' | 'contract';
@@ -156,7 +157,7 @@ export const getMerchantDocuments = handleRequest(async (req: Request): Promise<
     orderId: { $exists: true, $ne: null }
   }).select('orderId studioId studioName');
 
-  const orderIds = studioReservations.map(r => r.orderId).filter(Boolean);
+  const orderIds = studioReservations.map(r => r.orderId).filter((id): id is string => Boolean(id));
   const reservationStudioMap = new Map(
     studioReservations.map(r => [r.orderId, { studioId: r.studioId?.toString(), studioName: r.studioName }])
   );
@@ -172,9 +173,9 @@ export const getMerchantDocuments = handleRequest(async (req: Request): Promise<
   // Add order-related conditions if there are orders
   if (orderIds.length > 0) {
     queryConditions.push(
-      { 'relatedEntity.type': 'PAYOUT', 'rawData.description': { $regex: new RegExp(orderIds.join('|'), 'i') } },
+      { 'relatedEntity.type': 'PAYOUT', 'rawData.description': { $regex: new RegExp(orderIds.map(escapeRegex).join('|'), 'i') } },
       { 'relatedEntity.type': 'ORDER', 'relatedEntity.id': { $in: orderIds } },
-      { 'rawData.remarks': { $regex: new RegExp(orderIds.join('|'), 'i') } }
+      { 'rawData.remarks': { $regex: new RegExp(orderIds.map(escapeRegex).join('|'), 'i') } }
     );
   }
 

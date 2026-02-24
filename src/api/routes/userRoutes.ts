@@ -9,15 +9,15 @@ router.get('/:sub', userHandler.getUserBySub);
 router.get('/:merchantId', userHandler.getUserByMerchantId);
 router.get('/my-studios/:id',  userHandler.getUserStudios);
 router.post('/', validateUser, userHandler.createUser);
-router.put('/:id',  validateUser, userHandler.updateUser);
-router.delete('/:id',  userHandler.deleteUser);
+router.put('/:id', verifyTokenMw, validateUser, userHandler.updateUser);
+router.delete('/:id', verifyTokenMw, userHandler.deleteUser);
 
-router.post('/:id/add-studio/:studioId',  userHandler.addStudioToUser);
-router.post('/:id/remove-studio/:studioId',  userHandler.removeStudioFromUser);
+router.post('/:id/add-studio/:studioId', verifyTokenMw, userHandler.addStudioToUser);
+router.post('/:id/remove-studio/:studioId', verifyTokenMw, userHandler.removeStudioFromUser);
 
 // Saved cards
-router.get('/:id/saved-cards', userHandler.getSavedCards);
-router.delete('/:id/saved-cards', userHandler.removeSavedCard);
+router.get('/:id/saved-cards', verifyTokenMw, userHandler.getSavedCards);
+router.delete('/:id/saved-cards', verifyTokenMw, userHandler.removeSavedCard);
 
 // Email preferences
 router.get('/:id/email-preferences', verifyTokenMw, userHandler.getEmailPreferences);

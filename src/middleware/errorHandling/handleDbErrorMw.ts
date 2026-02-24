@@ -7,13 +7,17 @@ interface DatabaseError extends Error {
   stack?: string;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const handleDbErrorMw = (err: DatabaseError, req: Request, res: Response, next: NextFunction): void => {
   if (err.name === 'CastError') {
     err = new ExpressError(`Error when requesting data: ID format is Invalid.`, 400);
   } else if (['ValidationError', 'DisconnectedError', 'MongoError'].includes(err.name)) {
     err = new ExpressError(handleDbErrorMsg(err), 400);
   }
-  console.error(err.stack);
+  if (!isProduction) {
+    console.error(err.stack);
+  }
   next(err);
 };
 

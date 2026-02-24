@@ -56,7 +56,7 @@ const createStudio = handleRequest(async (req: Request) => {
 const getStudios = handleRequest(async (req: Request) => {
   let query = StudioModel.find();
   if (req.query.name) {
-    query = query.where('name', new RegExp(req.query.name as string, 'i'));
+    query = query.where('name', new RegExp(escapeRegex(req.query.name as string), 'i'));
   }
   if (req.query.someOtherField) {
     query = query.where('someOtherField', req.query.someOtherField);

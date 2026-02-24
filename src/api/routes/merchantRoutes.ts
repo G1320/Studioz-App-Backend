@@ -73,7 +73,7 @@ router.get('/analytics/repeat-customers',
  * @query   endDate - Filter by end date
  * @access  Private
  */
-router.get('/documents', getMerchantDocuments);
+router.get('/documents', verifyTokenMw, getMerchantDocuments);
 
 /**
  * @route   GET /api/merchant/documents/:id
@@ -81,6 +81,6 @@ router.get('/documents', getMerchantDocuments);
  * @params  id - Document ID
  * @access  Private
  */
-router.get('/documents/:id', getMerchantDocument);
+router.get('/documents/:id', verifyTokenMw, getMerchantDocument);
 
 export default router;

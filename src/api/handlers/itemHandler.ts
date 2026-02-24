@@ -5,6 +5,7 @@ import { StudioModel } from '../../models/studioModel.js';
 import { ItemModel } from '../../models/itemModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { escapeRegex } from '../../utils/escapeRegex.js';
 
 const createItem = handleRequest(async (req: Request) => {
   const itemData = { ...req.body };
@@ -66,7 +67,7 @@ const createItem = handleRequest(async (req: Request) => {
 const getItems = handleRequest(async (req: Request) => {
   let query = ItemModel.find();
   if (req.query.name) {
-    query = query.where('name', new RegExp(req.query.name as string, 'i'));
+    query = query.where('name', new RegExp(escapeRegex(req.query.name as string), 'i'));
   }
   if (req.query.someOtherField) {
     query = query.where('someOtherField', req.query.someOtherField);

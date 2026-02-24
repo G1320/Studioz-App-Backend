@@ -33,6 +33,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import express, { type Application } from 'express';
 import { initializeSocket } from './webSockets/socket.js';
 import { createServer } from 'node:http';
@@ -98,6 +99,14 @@ app.use(logRequestsMw);
 app.use(bodyParser.json());
 
 app.use(cors(corsOptions));
+
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' }
+}));
 
 app.use(mongoSanitize());
 app.use(cookieParser(JWT_SECRET_KEY));

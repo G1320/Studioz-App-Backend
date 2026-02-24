@@ -239,6 +239,16 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const hasPaymentInfo = singleUseToken || useSavedCard;
     const canProcessPayment = reservation.totalPrice && reservation.totalPrice > 0 && studio?.createdBy;
    
+    console.log('[Payment Debug] Booking payment check:', {
+      hasPaymentInfo,
+      canProcessPayment: !!canProcessPayment,
+      useSavedCard,
+      hasSingleUseToken: !!singleUseToken,
+      sumitCustomerId,
+      totalPrice: reservation.totalPrice,
+      instantBook: item.instantBook
+    });
+
     if (hasPaymentInfo && canProcessPayment) {
       try {
         let paymentResult = null;

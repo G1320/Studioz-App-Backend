@@ -2,8 +2,11 @@
 import express from 'express';
 import { createInvoice, getInvoice, CreateInvoiceData, fetchToken } from '../handlers/invoiceHandler.js';
 import { InvoiceModel } from '../../models/invoiceModel.js';
+import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
+
+router.use(verifyTokenMw);
 
 router.get('/', async (req, res) => {
   try {

@@ -230,6 +230,13 @@ const updateReservationById = handleRequest(async (req: Request) => {
         // If reservation has a saved card, charge it before confirming
         // (Same logic as approveReservation endpoint)
         // ============================================================
+        console.log('[Payment Debug] Reservation confirmed via PUT:', {
+          previousStatus,
+          paymentStatus: updatedReservation.paymentStatus,
+          hasSumitCustomerId: !!updatedReservation.paymentDetails?.sumitCustomerId,
+          reservationId: updatedReservation._id
+        });
+
         if (previousStatus === RESERVATION_STATUS.PENDING && 
             updatedReservation.paymentStatus === 'card_saved' && 
             updatedReservation.paymentDetails?.sumitCustomerId) {
