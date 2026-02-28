@@ -1,38 +1,36 @@
 import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
 import { getSellerDetails } from '../../utils/payoutUtils.js';
+import { renderEmail } from '../../emails/render.js';
+import type { EmailTemplateName } from '../../emails/types.js';
 
 const apiKey = process.env.BREVO_EMAIL_API_KEY as string;
 const apiInstance = new TransactionalEmailsApi();
 apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
+const DEFAULT_SENDER = {
+  name: 'StudioZ',
+  email: process.env.BREVO_SENDER_EMAIL || 'noreply@studioz.online',
+};
+
 // ===========================================
-// Brevo Template IDs - Configure in Brevo Dashboard
+// Brevo Template IDs — DEPRECATED (kept for rollback)
 // ===========================================
 export const BREVO_TEMPLATE_IDS = {
-  // Auth & Account
   WELCOME: 6,
   PASSWORD_RESET: 4,
   EMAIL_VERIFICATION: 14,
   ACCOUNT_DEACTIVATION: 15,
-  
-  // Transactions
   ORDER_CONFIRMATION: 5,
   PAYOUT_NOTIFICATION: 7,
   REFUND_CONFIRMATION: 16,
   ORDER_CANCELLED: 17,
-  
-  // Bookings
   NEW_BOOKING_VENDOR: 18,
   BOOKING_CONFIRMED_CUSTOMER: 19,
   BOOKING_REMINDER: 20,
   BOOKING_CANCELLED_CUSTOMER: 21,
   BOOKING_CANCELLED_VENDOR: 22,
   BOOKING_MODIFIED: 23,
-  
-  // Reviews
   REVIEW_REQUEST: 24,
-  
-  // Subscriptions
   SUBSCRIPTION_CONFIRMATION: 10,
   SUBSCRIPTION_PAYMENT: 8,
   SUBSCRIPTION_CANCELLATION: 9,
@@ -43,16 +41,59 @@ export const BREVO_TEMPLATE_IDS = {
   SUBSCRIPTION_EXPIRING: 26,
   SUBSCRIPTION_UPGRADED: 27,
   SUBSCRIPTION_DOWNGRADED: 28,
-  
-  // Documents
   DOCUMENT_EMAIL: 29
 } as const;
+
+// ===========================================
+// Core Email Sending
+// ===========================================
 
 interface EmailParams {
   to: { email: string; name?: string }[];
   templateId: number;
   params?: Record<string, any>;
 }
+
+interface HtmlEmailParams {
+  to: { email: string; name?: string }[];
+  subject: string;
+  htmlContent: string;
+}
+
+/** @deprecated Use sendHtmlEmail with renderEmail instead */
+export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
+  try {
+    const response = await apiInstance.sendTransacEmail({
+      to,
+      templateId,
+      params
+    });
+    return response;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+/** Send rendered HTML email via Brevo */
+export const sendHtmlEmail = async ({ to, subject, htmlContent }: HtmlEmailParams) => {
+  try {
+    const response = await apiInstance.sendTransacEmail({
+      to,
+      sender: DEFAULT_SENDER,
+      subject,
+      htmlContent,
+    });
+    return response;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+// ===========================================
+// Interfaces
+// ===========================================
 
 interface OrderDetails {
   id: string;
@@ -65,7 +106,7 @@ interface OrderDetails {
     price: number;
   }>;
   total: number;
-  invoiceUrl?: string;  
+  invoiceUrl?: string;
 }
 
 interface PayoutNotificationParams {
@@ -85,164 +126,6 @@ interface SubscriptionDetails {
 
 type EmailType = 'activation' | 'payment' | 'cancellation';
 
-interface SubscriptionEmailConfig {
-  templateId: number;
-  includeNextBilling: boolean;
-  includeInvoice: boolean;
-}
-
-export const sendSubscriptionConfirmation = async (
-  userEmail: string, 
-  details: SubscriptionDetails,
-  type: EmailType
-) => {
-  // Get template configuration based on type
-  const emailConfig: Record<EmailType, SubscriptionEmailConfig> = {
-    activation: {
-      templateId: 10,
-      includeNextBilling: true,
-      includeInvoice: true
-    },
-    payment: {
-      templateId: 8,
-      includeNextBilling: true,
-      includeInvoice: true
-    },
-    cancellation: {
-      templateId: 9,
-      includeNextBilling: false,
-      includeInvoice: false
-    }
-  };
-
-  const config = emailConfig[type];
-
-  // Convert startDate to Date object if it's a string
-  const startDate = typeof details.startDate === 'string' 
-    ? new Date(details.startDate)
-    : details.startDate;
-
-  // Base params that are common to all types
-  const baseParams = {
-    customerName: details.customerName,
-    planName: details.planName,
-    amount: details.planPrice.toFixed(2),
-    subscriptionId: details.subscriptionId,
-    startDate: startDate.toLocaleDateString('he-IL')
-  };
-
-  // Add optional params based on type
-  const additionalParams = {
-    ...(config.includeNextBilling ? {
-      nextBillingDate: new Date(
-        startDate.getTime() + (type === 'activation' ? 14 : 30) * 24 * 60 * 60 * 1000
-      ).toLocaleDateString('he-IL')
-    } : {}),
-    ...(config.includeInvoice && details.invoiceUrl ? {
-      invoiceUrl: details.invoiceUrl
-    } : {}),
-    ...(type === 'cancellation' ? {
-      cancellationDate: new Date().toLocaleDateString('he-IL')
-    } : {})
-  };
-
-  return sendTemplateEmail({
-    to: [{ 
-      email: userEmail,
-      name: details.customerName 
-    }],
-    templateId: config.templateId,
-    params: {
-      ...baseParams,
-      ...additionalParams
-    }
-  });
-};
-
-export const sendTemplateEmail = async ({ to, templateId, params }: EmailParams) => {
-  try {
-    const response = await apiInstance.sendTransacEmail({
-      to,
-      templateId,
-      params
-    });
-    
-    return response;
-  } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
-  }
-};
-
-export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
-  
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: 6, 
-    params: {
-      name: userName,
-    }
-  });
-};
-
-
-export const sendOrderConfirmation = async (userEmail: string, orderDetails: OrderDetails) => {
-  
-  return sendTemplateEmail({
-    to: [{ email: userEmail }],
-    templateId: 5,
-    params: {
-      customerName: orderDetails.customerName,
-      id: orderDetails.id,            
-      orderDate: orderDetails.orderDate,
-      paymentStatus: orderDetails.paymentStatus,
-      items: orderDetails.items,       
-      total: orderDetails.total   ,
-      invoiceUrl: orderDetails.invoiceUrl      
-    }
-  });
-};
-
-export const sendPayoutNotification = async (
-  sellerId: string,
-  amount: number,
-  orderId:string,
-  invoiceUrl: string
-) => {
-  try {
-    const seller = await getSellerDetails(sellerId);
-
-    return sendTemplateEmail({
-      to: [{ 
-        email: seller.email || 'admin@studioz.online',
-        name: seller.name
-      }],
-      templateId: 7, 
-      params: {
-        sellerName: seller.name,
-        amount: amount.toFixed(2),
-        orderId: orderId,
-        invoiceUrl: invoiceUrl,
-        date: new Date().toISOString(),
-      }
-    });
-  } catch (error) {
-    console.error('Error sending payout notification:', error);
-    throw error;
-  }
-};
-
-export const sendPasswordReset = async (userEmail: string, resetToken: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail }],
-    templateId: 4,
-    params: {
-      resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
-    }
-  });
-};
-
-// Trial subscription email interfaces
 interface TrialEndingDetails {
   customerName: string;
   planName: string;
@@ -264,137 +147,6 @@ interface TrialStartedDetails {
   trialDays: number;
 }
 
-/**
- * Send trial ending reminder email
- * Template ID 11 - configure in Brevo with params: customerName, planName, planPrice, trialEndDate, daysRemaining
- */
-export const sendTrialEndingEmail = async (
-  userEmail: string,
-  details: TrialEndingDetails
-) => {
-  const trialEndDate = typeof details.trialEndDate === 'string'
-    ? new Date(details.trialEndDate)
-    : details.trialEndDate;
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: 11, // Trial ending reminder template - create in Brevo
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      planPrice: details.planPrice.toFixed(2),
-      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
-      daysRemaining: details.daysRemaining
-    }
-  });
-};
-
-/**
- * Send trial charge failed email
- * Template ID 12 - configure in Brevo with params: customerName, planName, subscriptionId
- */
-export const sendTrialChargeFailedEmail = async (
-  userEmail: string,
-  details: TrialChargeFailedDetails
-) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: 12, // Trial charge failed template - create in Brevo
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      subscriptionId: details.subscriptionId
-    }
-  });
-};
-
-/**
- * Send trial started confirmation email
- * Template ID 13 - configure in Brevo with params: customerName, planName, trialEndDate, trialDays
- */
-export const sendTrialStartedEmail = async (
-  userEmail: string,
-  details: TrialStartedDetails
-) => {
-  const trialEndDate = typeof details.trialEndDate === 'string'
-    ? new Date(details.trialEndDate)
-    : details.trialEndDate;
-
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: details.customerName }],
-    templateId: 13, // Trial started template - create in Brevo
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
-      trialDays: details.trialDays
-    }
-  });
-};
-
-// ===========================================
-// Auth & Account Emails
-// ===========================================
-
-export const sendEmailVerification = async (userEmail: string, userName: string, verificationToken: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: BREVO_TEMPLATE_IDS.EMAIL_VERIFICATION,
-    params: {
-      customerName: userName,
-      verificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
-      verificationCode: verificationToken.substring(0, 6).toUpperCase()
-    }
-  });
-};
-
-export const sendAccountDeactivation = async (userEmail: string, userName: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: userName }],
-    templateId: BREVO_TEMPLATE_IDS.ACCOUNT_DEACTIVATION,
-    params: {
-      customerName: userName,
-      deactivationDate: new Date().toLocaleDateString('he-IL')
-    }
-  });
-};
-
-// ===========================================
-// Transaction Emails
-// ===========================================
-
-export const sendRefundConfirmation = async (userEmail: string, customerName: string, refundAmount: number, orderId: string, reason?: string) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.REFUND_CONFIRMATION,
-    params: {
-      customerName,
-      refundAmount: `₪${refundAmount.toFixed(2)}`,
-      orderId,
-      reason: reason || 'לפי בקשת הלקוח',
-      refundDate: new Date().toLocaleDateString('he-IL')
-    }
-  });
-};
-
-export const sendOrderCancelled = async (userEmail: string, customerName: string, orderId: string, studioName: string, refundAmount?: number) => {
-  return sendTemplateEmail({
-    to: [{ email: userEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.ORDER_CANCELLED,
-    params: {
-      customerName,
-      orderId,
-      studioName,
-      refundAmount: refundAmount ? `₪${refundAmount.toFixed(2)}` : undefined,
-      cancellationDate: new Date().toLocaleDateString('he-IL')
-    }
-  });
-};
-
-// ===========================================
-// Booking Emails
-// ===========================================
-
 interface BookingDetails {
   id: string;
   studioName: string;
@@ -405,126 +157,6 @@ interface BookingDetails {
   totalPaid?: number;
   notes?: string;
 }
-
-export const sendNewBookingVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails) => {
-  return sendTemplateEmail({
-    to: [{ email: ownerEmail, name: ownerName }],
-    templateId: BREVO_TEMPLATE_IDS.NEW_BOOKING_VENDOR,
-    params: {
-      ownerName,
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      duration: booking.duration,
-      bookingId: booking.id,
-      totalPaid: booking.totalPaid ? `₪${booking.totalPaid.toFixed(2)}` : undefined,
-      notes: booking.notes
-    }
-  });
-};
-
-export const sendBookingConfirmedCustomer = async (customerEmail: string, booking: BookingDetails & { customerName?: string }) => {
-  return sendTemplateEmail({
-    to: [{ email: customerEmail, name: booking.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.BOOKING_CONFIRMED_CUSTOMER,
-    params: {
-      customerName: booking.customerName || 'לקוח יקר',
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      duration: booking.duration,
-      location: booking.location,
-      bookingId: booking.id,
-      totalPaid: booking.totalPaid ? `₪${booking.totalPaid.toFixed(2)}` : undefined,
-      notes: booking.notes
-    }
-  });
-};
-
-export const sendBookingReminder = async (customerEmail: string, booking: BookingDetails & { customerName?: string }, hoursUntil: number = 24) => {
-  return sendTemplateEmail({
-    to: [{ email: customerEmail, name: booking.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.BOOKING_REMINDER,
-    params: {
-      customerName: booking.customerName || 'לקוח יקר',
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      duration: booking.duration,
-      location: booking.location,
-      bookingId: booking.id,
-      hoursUntil
-    }
-  });
-};
-
-export const sendBookingCancelledCustomer = async (customerEmail: string, customerName: string, booking: BookingDetails, refundAmount?: number, reason?: string) => {
-  return sendTemplateEmail({
-    to: [{ email: customerEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.BOOKING_CANCELLED_CUSTOMER,
-    params: {
-      customerName,
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      bookingId: booking.id,
-      refundAmount: refundAmount ? `₪${refundAmount.toFixed(2)}` : undefined,
-      reason: reason || 'ביטול הזמנה',
-      cancellationDate: new Date().toLocaleDateString('he-IL')
-    }
-  });
-};
-
-export const sendBookingCancelledVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails, cancelledBy: string = 'customer') => {
-  return sendTemplateEmail({
-    to: [{ email: ownerEmail, name: ownerName }],
-    templateId: BREVO_TEMPLATE_IDS.BOOKING_CANCELLED_VENDOR,
-    params: {
-      ownerName,
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      bookingId: booking.id,
-      cancelledBy: cancelledBy === 'customer' ? 'הלקוח' : 'בעל הסטודיו',
-      cancellationDate: new Date().toLocaleDateString('he-IL')
-    }
-  });
-};
-
-export const sendBookingModified = async (customerEmail: string, customerName: string, booking: BookingDetails, changes: string) => {
-  return sendTemplateEmail({
-    to: [{ email: customerEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.BOOKING_MODIFIED,
-    params: {
-      customerName,
-      studioName: booking.studioName,
-      serviceName: booking.serviceName,
-      dateTime: booking.dateTime,
-      bookingId: booking.id,
-      changes
-    }
-  });
-};
-
-// ===========================================
-// Review Emails
-// ===========================================
-
-export const sendReviewRequest = async (customerEmail: string, customerName: string, studioName: string, studioId: string, bookingId: string) => {
-  return sendTemplateEmail({
-    to: [{ email: customerEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.REVIEW_REQUEST,
-    params: {
-      customerName,
-      studioName,
-      reviewUrl: `${process.env.FRONTEND_URL}/studio/${studioId}/review?booking=${bookingId}`
-    }
-  });
-};
-
-// ===========================================
-// Subscription Status Emails
-// ===========================================
 
 interface SubscriptionStatusDetails {
   customerName: string;
@@ -537,63 +169,392 @@ interface SubscriptionStatusDetails {
   effectiveDate?: Date;
 }
 
-export const sendSubscriptionPaymentFailed = async (userEmail: string, details: SubscriptionStatusDetails) => {
-  return sendTemplateEmail({
+// ===========================================
+// Auth & Account Emails
+// ===========================================
+
+export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
+  const { html, subject } = await renderEmail('WELCOME', { name: userName });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: userName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendPasswordReset = async (userEmail: string, resetToken: string) => {
+  const { html, subject } = await renderEmail('PASSWORD_RESET', {
+    customerName: '',
+    resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendEmailVerification = async (userEmail: string, userName: string, verificationToken: string) => {
+  const { html, subject } = await renderEmail('EMAIL_VERIFICATION', {
+    customerName: userName,
+    verificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
+    verificationCode: verificationToken.substring(0, 6).toUpperCase(),
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: userName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendAccountDeactivation = async (userEmail: string, userName: string) => {
+  const { html, subject } = await renderEmail('ACCOUNT_DEACTIVATION', {
+    customerName: userName,
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: userName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+// ===========================================
+// Transaction Emails
+// ===========================================
+
+export const sendOrderConfirmation = async (userEmail: string, orderDetails: OrderDetails) => {
+  const { html, subject } = await renderEmail('ORDER_CONFIRMATION', {
+    customerName: orderDetails.customerName,
+    orderId: orderDetails.id,
+    orderDate: orderDetails.orderDate,
+    total: `₪${orderDetails.total.toFixed(2)}`,
+    invoiceUrl: orderDetails.invoiceUrl,
+    items: orderDetails.items?.map(i => ({ name: i.name, price: `₪${i.price.toFixed(2)}` })),
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendPayoutNotification = async (
+  sellerId: string,
+  amount: number,
+  orderId: string,
+  invoiceUrl: string
+) => {
+  try {
+    const seller = await getSellerDetails(sellerId);
+
+    const { html, subject } = await renderEmail('PAYOUT_NOTIFICATION', {
+      ownerName: seller.name,
+      amount: amount.toFixed(2),
+      orderId,
+      invoiceUrl,
+      date: new Date().toLocaleDateString('he-IL'),
+    });
+    return sendHtmlEmail({
+      to: [{ email: seller.email || 'admin@studioz.online', name: seller.name }],
+      subject,
+      htmlContent: html,
+    });
+  } catch (error) {
+    console.error('Error sending payout notification:', error);
+    throw error;
+  }
+};
+
+export const sendRefundConfirmation = async (userEmail: string, customerName: string, refundAmount: number, orderId: string, reason?: string) => {
+  const { html, subject } = await renderEmail('REFUND_CONFIRMATION', {
+    customerName,
+    refundAmount: `₪${refundAmount.toFixed(2)}`,
+    orderId,
+    reason: reason || 'לפי בקשת הלקוח',
+    refundDate: new Date().toLocaleDateString('he-IL'),
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendOrderCancelled = async (userEmail: string, customerName: string, orderId: string, studioName: string, refundAmount?: number) => {
+  const { html, subject } = await renderEmail('ORDER_CANCELLED', {
+    customerName,
+    orderId,
+    studioName,
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+// ===========================================
+// Booking Emails
+// ===========================================
+
+export const sendNewBookingVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails) => {
+  const { html, subject } = await renderEmail('NEW_BOOKING_VENDOR', {
+    ownerName,
+    studioName: booking.studioName,
+    customerName: '',
+    guestEmail: '',
+    guestPhone: '',
+    serviceName: booking.serviceName,
+    dateTime: booking.dateTime,
+    duration: booking.duration,
+  });
+  return sendHtmlEmail({
+    to: [{ email: ownerEmail, name: ownerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingConfirmedCustomer = async (customerEmail: string, booking: BookingDetails & { customerName?: string }) => {
+  const { html, subject } = await renderEmail('BOOKING_CONFIRMED_CUSTOMER', {
+    customerName: booking.customerName || 'לקוח יקר',
+    studioName: booking.studioName,
+    serviceName: booking.serviceName,
+    dateTime: booking.dateTime,
+    duration: booking.duration,
+    location: booking.location || '',
+    totalPaid: booking.totalPaid ? `₪${booking.totalPaid.toFixed(2)}` : '',
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: booking.customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingReminder = async (customerEmail: string, booking: BookingDetails & { customerName?: string }, hoursUntil: number = 24) => {
+  const { html, subject } = await renderEmail('BOOKING_REMINDER', {
+    customerName: booking.customerName || 'לקוח יקר',
+    studioName: booking.studioName,
+    dateTime: booking.dateTime,
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: booking.customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingCancelledCustomer = async (customerEmail: string, customerName: string, booking: BookingDetails, refundAmount?: number, reason?: string) => {
+  const { html, subject } = await renderEmail('BOOKING_CANCELLED_CUSTOMER', {
+    customerName,
+    studioName: booking.studioName,
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingCancelledVendor = async (ownerEmail: string, ownerName: string, booking: BookingDetails, cancelledBy: string = 'customer') => {
+  const { html, subject } = await renderEmail('BOOKING_CANCELLED_VENDOR', {
+    ownerName,
+    studioName: booking.studioName,
+  });
+  return sendHtmlEmail({
+    to: [{ email: ownerEmail, name: ownerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingModified = async (customerEmail: string, customerName: string, booking: BookingDetails, changes: string) => {
+  const { html, subject } = await renderEmail('BOOKING_MODIFIED', {
+    customerName,
+    reservationId: booking.id,
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+// ===========================================
+// Review Emails
+// ===========================================
+
+export const sendReviewRequest = async (customerEmail: string, customerName: string, studioName: string, studioId: string, bookingId: string) => {
+  const { html, subject } = await renderEmail('REVIEW_REQUEST', {
+    customerName,
+    studioName,
+    reviewUrl: `${process.env.FRONTEND_URL}/studio/${studioId}/review?booking=${bookingId}`,
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+// ===========================================
+// Subscription Emails
+// ===========================================
+
+export const sendSubscriptionConfirmation = async (
+  userEmail: string,
+  details: SubscriptionDetails,
+  type: EmailType
+) => {
+  const templateMap: Record<EmailType, EmailTemplateName> = {
+    activation: 'SUBSCRIPTION_CONFIRMATION',
+    payment: 'SUBSCRIPTION_PAYMENT',
+    cancellation: 'SUBSCRIPTION_CANCELLATION',
+  };
+
+  const startDate = typeof details.startDate === 'string'
+    ? new Date(details.startDate)
+    : details.startDate;
+
+  const templateName = templateMap[type];
+
+  let props: Record<string, any> = {
+    customerName: details.customerName,
+    planName: details.planName,
+  };
+
+  if (type === 'activation') {
+    props.startDate = startDate.toLocaleDateString('he-IL');
+  } else if (type === 'payment') {
+    props.price = `₪${details.planPrice.toFixed(2)}`;
+    props.nextBillingDate = new Date(
+      startDate.getTime() + 30 * 24 * 60 * 60 * 1000
+    ).toLocaleDateString('he-IL');
+  }
+
+  const { html, subject } = await renderEmail(templateName, props);
+  return sendHtmlEmail({
     to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_PAYMENT_FAILED,
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      subscriptionId: details.subscriptionId,
-      failureReason: details.failureReason || 'בעיה בעיבוד התשלום'
-    }
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendTrialStartedEmail = async (
+  userEmail: string,
+  details: TrialStartedDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  const { html, subject } = await renderEmail('TRIAL_STARTED', {
+    customerName: details.customerName,
+    planName: details.planName,
+    price: '',
+    trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendTrialEndingEmail = async (
+  userEmail: string,
+  details: TrialEndingDetails
+) => {
+  const trialEndDate = typeof details.trialEndDate === 'string'
+    ? new Date(details.trialEndDate)
+    : details.trialEndDate;
+
+  const { html, subject } = await renderEmail('TRIAL_ENDING', {
+    customerName: details.customerName,
+    planName: details.planName,
+    price: `₪${details.planPrice.toFixed(2)}`,
+    daysRemaining: details.daysRemaining,
+    trialEndDate: trialEndDate.toLocaleDateString('he-IL'),
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendTrialChargeFailedEmail = async (
+  userEmail: string,
+  details: TrialChargeFailedDetails
+) => {
+  const { html, subject } = await renderEmail('TRIAL_CHARGE_FAILED', {
+    customerName: details.customerName,
+    planName: details.planName,
+    price: '',
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+// ===========================================
+// Subscription Status Emails
+// ===========================================
+
+export const sendSubscriptionPaymentFailed = async (userEmail: string, details: SubscriptionStatusDetails) => {
+  const { html, subject } = await renderEmail('SUBSCRIPTION_PAYMENT_FAILED', {
+    customerName: details.customerName,
+    planName: details.planName,
+    price: '',
+    failureReason: details.failureReason || 'בעיה בעיבוד התשלום',
+  });
+  return sendHtmlEmail({
+    to: [{ email: userEmail, name: details.customerName }],
+    subject,
+    htmlContent: html,
   });
 };
 
 export const sendSubscriptionExpiring = async (userEmail: string, details: SubscriptionStatusDetails) => {
-  const expirationDate = details.nextBillingDate 
+  const expirationDate = details.nextBillingDate
     ? (typeof details.nextBillingDate === 'string' ? new Date(details.nextBillingDate) : details.nextBillingDate).toLocaleDateString('he-IL')
-    : undefined;
-  return sendTemplateEmail({
+    : new Date().toLocaleDateString('he-IL');
+  const { html, subject } = await renderEmail('SUBSCRIPTION_EXPIRING', {
+    customerName: details.customerName,
+    planName: details.planName,
+    nextBillingDate: expirationDate,
+  });
+  return sendHtmlEmail({
     to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_EXPIRING,
-    params: {
-      customerName: details.customerName,
-      planName: details.planName,
-      expirationDate
-    }
+    subject,
+    htmlContent: html,
   });
 };
 
 export const sendSubscriptionUpgraded = async (userEmail: string, details: SubscriptionStatusDetails) => {
-  const effectiveDate = details.effectiveDate 
-    ? (typeof details.effectiveDate === 'string' ? new Date(details.effectiveDate) : details.effectiveDate).toLocaleDateString('he-IL')
-    : new Date().toLocaleDateString('he-IL');
-  return sendTemplateEmail({
+  const { html, subject } = await renderEmail('SUBSCRIPTION_UPGRADED', {
+    customerName: details.customerName,
+    planName: details.newPlanName || details.planName,
+  });
+  return sendHtmlEmail({
     to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_UPGRADED,
-    params: {
-      customerName: details.customerName,
-      oldPlanName: details.oldPlanName,
-      newPlanName: details.newPlanName || details.planName,
-      effectiveDate
-    }
+    subject,
+    htmlContent: html,
   });
 };
 
 export const sendSubscriptionDowngraded = async (userEmail: string, details: SubscriptionStatusDetails) => {
-  const effectiveDate = details.effectiveDate 
-    ? (typeof details.effectiveDate === 'string' ? new Date(details.effectiveDate) : details.effectiveDate).toLocaleDateString('he-IL')
-    : new Date().toLocaleDateString('he-IL');
-  return sendTemplateEmail({
+  const { html, subject } = await renderEmail('SUBSCRIPTION_DOWNGRADED', {
+    customerName: details.customerName,
+    planName: details.newPlanName || details.planName,
+  });
+  return sendHtmlEmail({
     to: [{ email: userEmail, name: details.customerName }],
-    templateId: BREVO_TEMPLATE_IDS.SUBSCRIPTION_DOWNGRADED,
-    params: {
-      customerName: details.customerName,
-      oldPlanName: details.oldPlanName,
-      newPlanName: details.newPlanName || details.planName,
-      effectiveDate
-    }
+    subject,
+    htmlContent: html,
   });
 };
 
@@ -602,14 +563,15 @@ export const sendSubscriptionDowngraded = async (userEmail: string, details: Sub
 // ===========================================
 
 export const sendDocumentEmail = async (userEmail: string, customerName: string, documentName: string, documentUrl: string, documentNumber?: string) => {
-  return sendTemplateEmail({
+  const { html, subject } = await renderEmail('DOCUMENT_EMAIL', {
+    customerName,
+    documentName,
+    documentUrl,
+    documentNumber,
+  });
+  return sendHtmlEmail({
     to: [{ email: userEmail, name: customerName }],
-    templateId: BREVO_TEMPLATE_IDS.DOCUMENT_EMAIL,
-    params: {
-      customerName,
-      documentName,
-      documentUrl,
-      documentNumber
-    }
+    subject,
+    htmlContent: html,
   });
 };

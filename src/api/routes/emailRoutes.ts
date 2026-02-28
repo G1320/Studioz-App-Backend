@@ -30,10 +30,12 @@ import {
   sendSubscriptionDowngraded,
   // Documents
   sendDocumentEmail,
-  // Test email
-  sendTemplateEmail,
+  // Email sending
+  sendHtmlEmail,
   BREVO_TEMPLATE_IDS
 } from '../handlers/emailHandler.js';
+import { renderEmail } from '../../emails/render.js';
+import type { EmailTemplateName, ThemeMode } from '../../emails/types.js';
 // import { authenticateUser } from '../middleware/auth'; // Assuming you have auth middleware
 
 import { formatOrderDetails } from '../../utils/orderFormatter.js';
@@ -535,32 +537,29 @@ router.post('/send-subscription-downgraded', async (req, res) => {
 // ===========================================
 router.post('/send-test', async (req, res) => {
   try {
-    const { email, templateType } = req.body;
+    const { email, templateType, mode } = req.body;
 
     if (!email || !templateType) {
       return res.status(400).json({ error: 'Email and template type are required' });
     }
 
-    // Get the template ID from the type
-    const templateId = BREVO_TEMPLATE_IDS[templateType as keyof typeof BREVO_TEMPLATE_IDS];
-
-    if (!templateId) {
-      return res.status(400).json({ error: `Invalid template type: ${templateType}` });
-    }
-
-    // Generate sample data based on template type
     const sampleParams = generateSampleParams(templateType);
+    const themeMode: ThemeMode = mode === 'light' ? 'light' : 'dark';
 
-    await sendTemplateEmail({
+    const { html, subject } = await renderEmail(
+      templateType as EmailTemplateName,
+      { ...sampleParams, mode: themeMode }
+    );
+
+    await sendHtmlEmail({
       to: [{ email, name: 'Admin Test' }],
-      templateId,
-      params: sampleParams
+      subject,
+      htmlContent: html,
     });
 
     res.status(200).json({
       message: `Test email sent successfully to ${email}`,
       templateType,
-      templateId
     });
   } catch (error) {
     console.error('Error sending test email:', error);
@@ -628,7 +627,46 @@ function generateSampleParams(templateType: string): Record<string, any> {
   return baseParams;
 }
 
-// Get all Brevo email templates (admin only)
+// ===========================================
+// Preview rendered email (Admin)
+// ===========================================
+router.get('/preview/:templateType', async (req, res) => {
+  try {
+    const { templateType } = req.params;
+    const mode: ThemeMode = req.query.mode === 'light' ? 'light' : 'dark';
+
+    const sampleParams = generateSampleParams(templateType);
+    const { html } = await renderEmail(
+      templateType as EmailTemplateName,
+      { ...sampleParams, mode }
+    );
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('Error previewing email:', error);
+    res.status(500).json({ error: 'Failed to preview email template' });
+  }
+});
+
+// Get all available template types
+router.get('/template-types', (_req, res) => {
+  const types: EmailTemplateName[] = [
+    'WELCOME', 'PASSWORD_RESET', 'EMAIL_VERIFICATION', 'ACCOUNT_DEACTIVATION',
+    'ORDER_CONFIRMATION', 'PAYOUT_NOTIFICATION', 'REFUND_CONFIRMATION', 'ORDER_CANCELLED',
+    'NEW_BOOKING_VENDOR', 'BOOKING_CONFIRMED_CUSTOMER', 'BOOKING_REMINDER',
+    'BOOKING_CANCELLED_CUSTOMER', 'BOOKING_CANCELLED_VENDOR', 'BOOKING_MODIFIED',
+    'REVIEW_REQUEST',
+    'SUBSCRIPTION_CONFIRMATION', 'SUBSCRIPTION_PAYMENT', 'SUBSCRIPTION_CANCELLATION',
+    'TRIAL_STARTED', 'TRIAL_ENDING', 'TRIAL_CHARGE_FAILED',
+    'SUBSCRIPTION_PAYMENT_FAILED', 'SUBSCRIPTION_EXPIRING',
+    'SUBSCRIPTION_UPGRADED', 'SUBSCRIPTION_DOWNGRADED',
+    'DOCUMENT_EMAIL',
+  ];
+  res.json({ types });
+});
+
+// Get all Brevo email templates (admin only) — DEPRECATED
 router.get('/templates', async (req, res) => {
   try {
     const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } = await import('@getbrevo/brevo');

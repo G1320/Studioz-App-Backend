@@ -4,7 +4,8 @@ import { StudioModel } from '../models/studioModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { ReservationModel } from '../models/reservationModel.js';
 import { UserModel } from '../models/userModel.js';
-import { sendTemplateEmail } from '../api/handlers/emailHandler.js';
+import { sendHtmlEmail } from '../api/handlers/emailHandler.js';
+import { renderEmail } from '../emails/render.js';
 import Notification, { NotificationType } from '../types/notification.js';
 
 interface NotificationData {
@@ -101,33 +102,25 @@ export const notifyVendorNewReservation = async (
       actionUrl
     );
 
-    // Send Brevo transactional email (template 11) to studio owner
+    // Send email to studio owner
     if (studioOwner?.email) {
-      const manageUrl =
-        process.env.FRONTEND_URL
-          ? `${process.env.FRONTEND_URL}/dashboard/reservations/${reservationId}`
-          : `/dashboard/reservations/${reservationId}`;
+      const guestEmail = reservation.customerId ? (await UserModel.findById(reservation.customerId))?.email || '' : '';
 
-      await sendTemplateEmail({
+      const { html, subject } = await renderEmail('NEW_BOOKING_VENDOR', {
+        ownerName: studioOwner.name || 'Studio owner',
+        studioName: studio.name?.en || studio.name?.he || 'Your studio',
+        customerName: customerDisplayName,
+        guestEmail,
+        guestPhone: reservation.customerPhone || '',
+        serviceName: item?.name?.en || item?.name?.he || 'Experience',
+        dateTime: `${bookingDate} ${startTime}`,
+        duration,
+      });
+
+      await sendHtmlEmail({
         to: [{ email: studioOwner.email, name: studioOwner.name }],
-        templateId: 11,
-        params: {
-          studioOwnerName: studioOwner.name || 'Studio owner',
-          studioName: studio.name?.en || studio.name?.he || 'Your studio',
-          itemName: item?.name?.en || item?.name?.he || 'Experience',
-          bookingDate,
-          startTime,
-          duration,
-          guestName: customerDisplayName,
-          guestEmail: reservation.customerId ? (await UserModel.findById(reservation.customerId))?.email || '' : '',
-          guestPhone: reservation.customerPhone || '',
-          price: reservation.totalPrice ?? reservation.itemPrice ?? 0,
-          currency: 'ILS',
-          reservationId,
-          location: [studio.city, studio.address].filter(Boolean).join(' · '),
-          specialRequests: reservation.comment || 'None',
-          manageUrl
-        }
+        subject,
+        htmlContent: html,
       });
     }
   } catch (error) {
@@ -175,30 +168,22 @@ export const notifyCustomerReservationConfirmed = async (
       actionUrl
     );
 
-    // Send Brevo transactional email (template 12) to customer
+    // Send confirmation email to customer
     if (customer?.email) {
-      const manageUrl =
-        process.env.FRONTEND_URL
-          ? `${process.env.FRONTEND_URL}/reservations/${reservationId}`
-          : `/reservations/${reservationId}`;
+      const { html, subject } = await renderEmail('BOOKING_CONFIRMED_CUSTOMER', {
+        customerName: customer.name || 'Customer',
+        studioName: studio?.name?.en || studio?.name?.he || 'Studio',
+        serviceName: item?.name?.en || item?.name?.he || itemName,
+        dateTime: `${bookingDate} ${startTime}`,
+        duration,
+        location: [studio?.city, studio?.address].filter(Boolean).join(' · '),
+        totalPaid: `₪${reservation.totalPrice ?? reservation.itemPrice ?? 0}`,
+      });
 
-      await sendTemplateEmail({
+      await sendHtmlEmail({
         to: [{ email: customer.email, name: customer.name }],
-        templateId: 12,
-        params: {
-          customerName: customer.name || 'Customer',
-          studioName: studio?.name?.en || studio?.name?.he || 'Studio',
-          itemName: item?.name?.en || item?.name?.he || itemName,
-          bookingDate,
-          startTime,
-          duration,
-          price: reservation.totalPrice ?? reservation.itemPrice ?? 0,
-          currency: 'ILS',
-          reservationId,
-          location: [studio?.city, studio?.address].filter(Boolean).join(' · '),
-          specialRequests: reservation.comment || 'None',
-          manageUrl
-        }
+        subject,
+        htmlContent: html,
       });
     } else {
       console.log('Customer email not found, skipping order confirmation email');
