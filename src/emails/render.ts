@@ -29,6 +29,8 @@ import { SubscriptionExpiringEmail } from './templates/subscriptions/Subscriptio
 import { SubscriptionUpgradedEmail } from './templates/subscriptions/SubscriptionUpgradedEmail.js';
 import { SubscriptionDowngradedEmail } from './templates/subscriptions/SubscriptionDowngradedEmail.js';
 import { DocumentEmail } from './templates/documents/DocumentEmail.js';
+import { PlatformFeeChargedEmail } from './templates/billing/PlatformFeeChargedEmail.js';
+import { PlatformFeeFailedEmail } from './templates/billing/PlatformFeeFailedEmail.js';
 
 // Map template names to their render functions
 // Each function takes (props, mode) and returns a JSX element
@@ -59,6 +61,8 @@ const TEMPLATE_MAP: Record<EmailTemplateName, (props: any) => React.JSX.Element>
   SUBSCRIPTION_UPGRADED: (p) => SubscriptionUpgradedEmail(p),
   SUBSCRIPTION_DOWNGRADED: (p) => SubscriptionDowngradedEmail(p),
   DOCUMENT_EMAIL: (p) => DocumentEmail(p),
+  PLATFORM_FEE_CHARGED: (p) => PlatformFeeChargedEmail(p),
+  PLATFORM_FEE_FAILED: (p) => PlatformFeeFailedEmail(p),
 };
 
 export async function renderEmail(

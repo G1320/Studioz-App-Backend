@@ -11,9 +11,14 @@ import {
   getRevenueBreakdown
 } from '../handlers/merchantStatsHandler.js';
 import { getMerchantDocuments, getMerchantDocument } from '../handlers/merchantDocumentsHandler.js';
-import { verifyTokenMw } from '../../middleware/index.js';
+import { billingHandler } from '../handlers/billingHandler.js';
+import { verifyTokenMw, verifyAdminMw } from '../../middleware/index.js';
 
 const router = express.Router();
+
+// TODO: All merchant routes trust userId from query params. Add ownership check
+// (compare req.query.userId against the authenticated user from the JWT token)
+// to prevent cross-vendor data access. Applies to stats, documents, AND billing.
 
 /**
  * @route   GET /api/merchant/stats
@@ -81,5 +86,35 @@ router.get('/documents', verifyTokenMw, getMerchantDocuments);
  * @access  Private
  */
 router.get('/documents/:id', verifyTokenMw, getMerchantDocument);
+
+/**
+ * @route   GET /api/merchant/billing/history
+ * @desc    Get vendor's platform fee billing history (monthly cycles)
+ * @query   userId - Required user ID
+ * @access  Private
+ */
+router.get('/billing/history', verifyTokenMw, billingHandler.getBillingHistory);
+
+/**
+ * @route   GET /api/merchant/billing/current
+ * @desc    Get vendor's pending platform fees for the current period
+ * @query   userId - Required user ID
+ * @access  Private
+ */
+router.get('/billing/current', verifyTokenMw, billingHandler.getCurrentFees);
+
+/**
+ * @route   GET /api/merchant/billing/cycle/:cycleId/fees
+ * @desc    Get itemised fees for a specific billing cycle
+ * @params  cycleId - Billing cycle ID
+ * @access  Private
+ */
+router.get('/billing/cycle/:cycleId/fees', verifyTokenMw, billingHandler.getBillingCycleFees);
+
+// ─── Admin billing management ────────────────────────────────
+router.get('/billing/admin/cycles', verifyTokenMw, verifyAdminMw, billingHandler.getAllBillingCycles);
+router.post('/billing/admin/run', verifyTokenMw, verifyAdminMw, billingHandler.triggerBillingRun);
+router.post('/billing/admin/retry/:cycleId', verifyTokenMw, verifyAdminMw, billingHandler.retryCycle);
+router.post('/billing/admin/waive/:feeId', verifyTokenMw, verifyAdminMw, billingHandler.waiveFee);
 
 export default router;

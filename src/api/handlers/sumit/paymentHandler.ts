@@ -7,6 +7,7 @@ import { InvoiceModel } from '../../../models/invoiceModel.js';
 import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
 import { paymentService } from '../../../services/paymentService.js';
 import { usageService } from '../../../services/usageService.js';
+import { platformFeeService } from '../../../services/platformFeeService.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -356,9 +357,11 @@ export const paymentHandler = {
 
         if (allValid) {
           // Save invoice record for each vendor
+          let chargeTotal = 0;
           for (const vendorData of vendors) {
             const items = vendorData.Items;
             if (items?.Payment?.ValidPayment) {
+              chargeTotal += items.Payment.Amount || 0;
               await saveSumitInvoice({
                 Payment: items.Payment,
                 DocumentID: items.DocumentID,
@@ -371,6 +374,16 @@ export const paymentHandler = {
                 description: 'Multivendor Charge'
               });
             }
+          }
+
+          // Record platform fee for the multivendor charge
+          if (vendorId && chargeTotal > 0) {
+            platformFeeService.recordFee({
+              vendorId,
+              transactionAmount: chargeTotal,
+              transactionType: 'multivendor',
+              sumitPaymentId: vendors[0]?.Items?.Payment?.ID
+            });
           }
 
           return res.status(200).json({
@@ -496,8 +509,15 @@ export const paymentHandler = {
         await usageService.incrementPaymentCount(vendorId, total);
       } catch (trackingError) {
         console.error('Failed to track payment usage:', trackingError);
-        // Don't fail the payment, just log the error
       }
+
+      // Record platform fee
+      platformFeeService.recordFee({
+        vendorId,
+        transactionAmount: total,
+        transactionType: 'quick_charge',
+        sumitPaymentId: response.data.Data.Payment.ID
+      });
 
       // NOTE: Green Invoice creation disabled - Sumit already issues חשבונית מס קבלה from vendor
       // Keeping code for potential future use if we want to switch back to Green Invoice

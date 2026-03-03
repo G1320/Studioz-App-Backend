@@ -21,6 +21,7 @@ interface CustomRequest extends Request {
 /**
  * Generate Google OAuth authorization URL
  * GET /api/auth/google/calendar/connect
+ * Query: lang (optional) - e.g. 'he', 'en' for callback redirect path
  */
 const getAuthUrl = handleRequest(async (req: CustomRequest) => {
   const userId = req.decodedJwt?._id || req.decodedJwt?.userId;
@@ -28,7 +29,8 @@ const getAuthUrl = handleRequest(async (req: CustomRequest) => {
     throw new ExpressError('User not authenticated', 401);
   }
 
-  const authUrl = generateAuthUrl(userId.toString());
+  const lang = typeof req.query.lang === 'string' ? req.query.lang : undefined;
+  const authUrl = generateAuthUrl(userId.toString(), lang);
   return { authUrl };
 });
 
@@ -49,11 +51,13 @@ const handleCallback = async (req: Request, res: Response, next: Function) => {
       throw new ExpressError('State parameter not provided', 400);
     }
 
-    // Decode state to get userId
+    // Decode state to get userId and optional lang
     let userId: string;
+    let lang: string = 'en';
     try {
       const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
       userId = decodedState.userId;
+      if (decodedState.lang) lang = decodedState.lang;
     } catch (error) {
       throw new ExpressError('Invalid state parameter', 400);
     }
@@ -61,11 +65,13 @@ const handleCallback = async (req: Request, res: Response, next: Function) => {
     // Connect calendar
     await connectCalendar(userId, code);
 
-    // Redirect to frontend success page
+    // Redirect to frontend success page (preserve language path)
     const { FRONTEND_URL } = await import('../../config/index.js');
-    const redirectUrl = FRONTEND_URL || 'https://studioz.co.il';
-    console.log('Redirecting to:', `${redirectUrl}/dashboard?calendar=connected`);
-    res.redirect(`${redirectUrl}/dashboard?calendar=connected`);
+    const baseUrl = FRONTEND_URL || 'https://studioz.co.il';
+    const path = `/${lang}/dashboard?calendar=connected`;
+    const redirectUrl = `${baseUrl}${path}`;
+    console.log('Redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error('Error in Google Calendar callback:', error);
     // Log more details for debugging

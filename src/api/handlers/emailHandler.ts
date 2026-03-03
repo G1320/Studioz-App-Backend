@@ -575,3 +575,46 @@ export const sendDocumentEmail = async (userEmail: string, customerName: string,
     htmlContent: html,
   });
 };
+
+// ===========================================
+// Platform Fee Billing Emails
+// ===========================================
+
+export const sendPlatformFeeCharged = async (
+  vendorEmail: string,
+  details: {
+    vendorName: string;
+    period: string;
+    totalFeeAmount: number;
+    totalTransactionAmount: number;
+    feeCount: number;
+    feePercentage: number;
+    invoiceUrl?: string;
+  }
+) => {
+  const { html, subject } = await renderEmail('PLATFORM_FEE_CHARGED', details);
+  return sendHtmlEmail({
+    to: [{ email: vendorEmail, name: details.vendorName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendPlatformFeeFailed = async (
+  vendorEmail: string,
+  details: {
+    vendorName: string;
+    period: string;
+    totalFeeAmount: number;
+    failureReason?: string;
+    retryCount: number;
+    maxRetries: number;
+  }
+) => {
+  const { html, subject } = await renderEmail('PLATFORM_FEE_FAILED', details);
+  return sendHtmlEmail({
+    to: [{ email: vendorEmail, name: details.vendorName }],
+    subject,
+    htmlContent: html,
+  });
+};

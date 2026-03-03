@@ -3,6 +3,7 @@ import { UserModel } from '../models/userModel.js';
 import { ItemModel } from '../models/itemModel.js';
 import { saveSumitInvoice } from '../utils/sumitUtils.js';
 import { usageService } from './usageService.js';
+import { platformFeeService } from './platformFeeService.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 
@@ -371,10 +372,12 @@ export const paymentService = {
     singleUseToken: string;
     customerInfo: CustomerInfo;
     vendorId: string;
-    userId?: string; // User's ID to save card for future use
+    userId?: string;
     amount: number;
     itemName: string;
     instantCharge: boolean;
+    reservationId?: string;
+    studioId?: string;
   }): Promise<{
     paymentStatus: 'card_saved' | 'charged' | 'failed';
     paymentDetails: {
@@ -461,8 +464,17 @@ export const paymentService = {
           await usageService.incrementPaymentCount(params.vendorId, params.amount);
         } catch (trackingError) {
           console.error('Failed to track payment usage:', trackingError);
-          // Don't fail the payment, just log the error
         }
+
+        // Record platform fee
+        platformFeeService.recordFee({
+          vendorId: params.vendorId,
+          transactionAmount: params.amount,
+          transactionType: 'reservation',
+          reservationId: params.reservationId,
+          studioId: params.studioId,
+          sumitPaymentId: chargeResult.paymentId
+        });
         
         return {
           paymentStatus: 'charged',
@@ -503,6 +515,7 @@ export const paymentService = {
     _id: any;
     totalPrice?: number;
     itemId: any;
+    studioId?: any;
     paymentDetails?: {
       sumitCustomerId?: string;
       amount?: number;
@@ -545,8 +558,17 @@ export const paymentService = {
         await usageService.incrementPaymentCount(paymentDetails.vendorId, amount);
       } catch (trackingError) {
         console.error('Failed to track payment usage:', trackingError);
-        // Don't fail the payment, just log the error
       }
+
+      // Record platform fee
+      platformFeeService.recordFee({
+        vendorId: paymentDetails.vendorId,
+        transactionAmount: amount,
+        transactionType: 'reservation',
+        reservationId: reservation._id?.toString(),
+        studioId: reservation.studioId?.toString(),
+        sumitPaymentId: chargeResult.paymentId
+      });
       
       return {
         paymentStatus: 'charged',
@@ -649,6 +671,11 @@ export const paymentService = {
     );
 
     if (refundResult.success) {
+      // Credit the platform fee for this reservation
+      if (reservation._id) {
+        platformFeeService.creditFee(reservation._id.toString(), 'Reservation refunded');
+      }
+
       return {
         success: true,
         paymentStatus: 'refunded',

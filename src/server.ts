@@ -42,6 +42,7 @@ import { initializeReservationScheduler, stopReservationScheduler } from './work
 import { initializeTrialScheduler, stopTrialScheduler } from './workers/trialSubscriptionScheduler.js';
 import { initializeBookingReminderScheduler, stopBookingReminderScheduler } from './workers/bookingReminderScheduler.js';
 import { initializeGoogleCalendarScheduler, stopGoogleCalendarScheduler } from './workers/googleCalendarScheduler.js';
+import { initializePlatformFeeScheduler, stopPlatformFeeScheduler } from './workers/platformFeeScheduler.js';
 
 
 try {
@@ -50,6 +51,7 @@ try {
   initializeTrialScheduler();
   initializeBookingReminderScheduler();
   initializeGoogleCalendarScheduler();
+  initializePlatformFeeScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -65,6 +67,7 @@ const gracefulShutdown = async () => {
   stopTrialScheduler();
   stopBookingReminderScheduler();
   stopGoogleCalendarScheduler();
+  stopPlatformFeeScheduler();
   if (io) await io.close();
     await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());

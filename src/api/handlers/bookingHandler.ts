@@ -27,6 +27,8 @@ import {
     getStudioOperatingHours
 } from '../../services/availabilityService.js';
 import { paymentService } from '../../services/paymentService.js';
+import { platformFeeService } from '../../services/platformFeeService.js';
+import { usageService } from '../../services/usageService.js';
 
 
 export const releaseReservationTimeSlots = async (reservation: Reservation) => {
@@ -263,10 +265,12 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
               phone: customerPhone || ''
             },
             vendorId: studio.createdBy.toString(),
-            userId: customerId, // Save card on user for future payments
+            userId: customerId,
             amount: reservation.totalPrice || 0,
             itemName: item.name?.en || 'Reservation',
-            instantCharge: !!item.instantBook
+            instantCharge: !!item.instantBook,
+            reservationId: reservation._id?.toString(),
+            studioId: item.studioId?.toString()
           });
         }
         // Option 2: Saved card payment
@@ -316,13 +320,27 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
                 );
                 
                 if (chargeResult.success) {
+                  const vendorId = studio.createdBy.toString();
+
+                  usageService.incrementPaymentCount(vendorId, paymentAmount)
+                    .catch(err => console.error('Failed to track payment usage:', err));
+
+                  platformFeeService.recordFee({
+                    vendorId,
+                    transactionAmount: paymentAmount,
+                    transactionType: 'reservation',
+                    reservationId: reservation._id?.toString(),
+                    studioId: item.studioId?.toString(),
+                    sumitPaymentId: chargeResult.paymentId
+                  });
+
                   paymentResult = {
                     paymentStatus: 'charged' as const,
                     paymentDetails: {
                       sumitCustomerId: resolvedSumitCustomerId,
                       amount: paymentAmount,
                       currency: 'ILS',
-                      vendorId: studio.createdBy.toString(),
+                      vendorId,
                       sumitPaymentId: chargeResult.paymentId,
                       chargedAt: new Date()
                     }

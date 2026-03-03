@@ -24,7 +24,9 @@ export type EmailTemplateName =
   | 'SUBSCRIPTION_EXPIRING'
   | 'SUBSCRIPTION_UPGRADED'
   | 'SUBSCRIPTION_DOWNGRADED'
-  | 'DOCUMENT_EMAIL';
+  | 'DOCUMENT_EMAIL'
+  | 'PLATFORM_FEE_CHARGED'
+  | 'PLATFORM_FEE_FAILED';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -60,3 +62,6 @@ export interface SubscriptionUpgradedEmailProps { customerName: string; planName
 export interface SubscriptionDowngradedEmailProps { customerName: string; planName: string; mode?: ThemeMode; }
 
 export interface DocumentEmailProps { customerName: string; documentName: string; documentUrl: string; documentNumber?: string; mode?: ThemeMode; }
+
+export interface PlatformFeeChargedEmailProps { vendorName: string; period: string; totalFeeAmount: number; totalTransactionAmount: number; feeCount: number; feePercentage: number; invoiceUrl?: string; mode?: ThemeMode; }
+export interface PlatformFeeFailedEmailProps { vendorName: string; period: string; totalFeeAmount: number; failureReason?: string; retryCount: number; maxRetries: number; mode?: ThemeMode; }

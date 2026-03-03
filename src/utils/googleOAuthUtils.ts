@@ -10,10 +10,11 @@ const oauth2Client = new google.auth.OAuth2(
 /**
  * Generate the Google OAuth authorization URL
  * @param userId - The user ID to include in the state parameter
+ * @param lang - Optional language code (e.g. 'he', 'en') for callback redirect
  * @returns The authorization URL
  */
-export const generateAuthUrl = (userId: string): string => {
-  const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
+export const generateAuthUrl = (userId: string, lang?: string): string => {
+  const state = Buffer.from(JSON.stringify({ userId, lang: lang || 'en' })).toString('base64');
   
   return oauth2Client.generateAuthUrl({
     access_type: 'offline', // Required to get refresh token
