@@ -108,6 +108,25 @@ const upsertReview = handleRequest(async (req: AuthenticatedRequest) => {
   await review.populate('userId', 'name firstName lastName avatar');
   await updateStudioReviewStats(studioId);
 
+  // Notify studio owner about new review
+  if (isNewReview && studio.createdBy) {
+    try {
+      const { createAndEmitNotification } = await import('../../utils/notificationUtils.js');
+      const studioName = studio.name?.en || studio.name?.he || 'your studio';
+      const reviewerName = user.name || 'A customer';
+      await createAndEmitNotification(
+        studio.createdBy.toString(),
+        'new_review',
+        `New ${rating}-star review`,
+        `${reviewerName} left a ${rating}-star review on ${studioName}`,
+        { studioId, reviewId: review._id.toString() },
+        `/studio/${studioId}/reviews`
+      );
+    } catch (notifError) {
+      console.error('Error sending new review notification:', notifError);
+    }
+  }
+
   return review;
 });
 

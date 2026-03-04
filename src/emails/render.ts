@@ -17,6 +17,7 @@ import { BookingReminderEmail } from './templates/bookings/BookingReminderEmail.
 import { BookingCancelledCustomerEmail } from './templates/bookings/BookingCancelledCustomerEmail.js';
 import { BookingCancelledVendorEmail } from './templates/bookings/BookingCancelledVendorEmail.js';
 import { BookingModifiedEmail } from './templates/bookings/BookingModifiedEmail.js';
+import { BookingExpiredCustomerEmail } from './templates/bookings/BookingExpiredCustomerEmail.js';
 import { ReviewRequestEmail } from './templates/reviews/ReviewRequestEmail.js';
 import { SubscriptionConfirmationEmail } from './templates/subscriptions/SubscriptionConfirmationEmail.js';
 import { SubscriptionPaymentEmail } from './templates/subscriptions/SubscriptionPaymentEmail.js';
@@ -49,6 +50,7 @@ const TEMPLATE_MAP: Record<EmailTemplateName, (props: any) => React.JSX.Element>
   BOOKING_CANCELLED_CUSTOMER: (p) => BookingCancelledCustomerEmail(p),
   BOOKING_CANCELLED_VENDOR: (p) => BookingCancelledVendorEmail(p),
   BOOKING_MODIFIED: (p) => BookingModifiedEmail(p),
+  BOOKING_EXPIRED_CUSTOMER: (p) => BookingExpiredCustomerEmail(p),
   REVIEW_REQUEST: (p) => ReviewRequestEmail(p),
   SUBSCRIPTION_CONFIRMATION: (p) => SubscriptionConfirmationEmail(p),
   SUBSCRIPTION_PAYMENT: (p) => SubscriptionPaymentEmail(p),

@@ -13,6 +13,7 @@ export type EmailTemplateName =
   | 'BOOKING_CANCELLED_CUSTOMER'
   | 'BOOKING_CANCELLED_VENDOR'
   | 'BOOKING_MODIFIED'
+  | 'BOOKING_EXPIRED_CUSTOMER'
   | 'REVIEW_REQUEST'
   | 'SUBSCRIPTION_CONFIRMATION'
   | 'SUBSCRIPTION_PAYMENT'
@@ -47,6 +48,7 @@ export interface BookingReminderEmailProps { customerName: string; studioName: s
 export interface BookingCancelledCustomerEmailProps { customerName: string; studioName?: string; mode?: ThemeMode; }
 export interface BookingCancelledVendorEmailProps { ownerName: string; studioName?: string; customerName?: string; mode?: ThemeMode; }
 export interface BookingModifiedEmailProps { customerName: string; reservationId: string; bookingUrl?: string; mode?: ThemeMode; }
+export interface BookingExpiredCustomerEmailProps { customerName: string; serviceName: string; studioName: string; mode?: ThemeMode; }
 
 export interface ReviewRequestEmailProps { customerName: string; studioName?: string; reviewUrl?: string; mode?: ThemeMode; }
 

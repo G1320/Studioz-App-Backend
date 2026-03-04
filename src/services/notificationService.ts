@@ -1,5 +1,11 @@
 import { NotificationModel } from '../models/notificationModel.js';
-import Notification, { NotificationType, NotificationPriority } from '../types/notification.js';
+import Notification, {
+  NotificationType,
+  NotificationCategory,
+  NotificationPriority,
+  NOTIFICATION_TYPE_CATEGORY,
+  NOTIFICATION_TYPE_PRIORITY
+} from '../types/notification.js';
 import mongoose from 'mongoose';
 
 export interface CreateNotificationData {
@@ -15,17 +21,27 @@ export interface CreateNotificationData {
   };
   priority?: NotificationPriority;
   actionUrl?: string;
+  expiresAt?: Date;
+  groupKey?: string;
 }
 
 export const createNotification = async (notificationData: CreateNotificationData): Promise<Notification> => {
+  const category = NOTIFICATION_TYPE_CATEGORY[notificationData.type] || 'system';
+  const priority = notificationData.priority
+    || NOTIFICATION_TYPE_PRIORITY[notificationData.type]
+    || 'medium';
+
   const notification = new NotificationModel({
     userId: notificationData.userId,
     type: notificationData.type,
+    category,
     title: notificationData.title,
     message: notificationData.message,
     data: notificationData.data || {},
-    priority: notificationData.priority || 'medium',
+    priority,
     actionUrl: notificationData.actionUrl,
+    expiresAt: notificationData.expiresAt,
+    groupKey: notificationData.groupKey,
     read: false
   });
 
@@ -37,22 +53,33 @@ export const getUserNotifications = async (
   userId: string,
   options: {
     read?: boolean;
+    category?: NotificationCategory;
     limit?: number;
     offset?: number;
+    cursor?: string;
   } = {}
 ): Promise<Notification[]> => {
-  const { read, limit = 20, offset = 0 } = options;
+  const { read, category, limit = 20, offset = 0, cursor } = options;
 
   const query: any = { userId: new mongoose.Types.ObjectId(userId) };
-  
+
   if (read !== undefined) {
     query.read = read;
+  }
+
+  if (category) {
+    query.category = category;
+  }
+
+  // Cursor-based pagination: fetch notifications older than cursor
+  if (cursor) {
+    query.createdAt = { $lt: new Date(cursor) };
   }
 
   const notifications = await NotificationModel.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
-    .skip(offset)
+    .skip(cursor ? 0 : offset)
     .lean();
 
   return notifications as Notification[];

@@ -41,6 +41,7 @@ totalPrice?: number;
 orderId?: string;
 customerName?: string;
 customerPhone?: string;
+customerEmail?: string;
 customerId?: string;
 comment?: string;
 addOnIds?: string[];

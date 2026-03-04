@@ -43,6 +43,9 @@ import { initializeTrialScheduler, stopTrialScheduler } from './workers/trialSub
 import { initializeBookingReminderScheduler, stopBookingReminderScheduler } from './workers/bookingReminderScheduler.js';
 import { initializeGoogleCalendarScheduler, stopGoogleCalendarScheduler } from './workers/googleCalendarScheduler.js';
 import { initializePlatformFeeScheduler, stopPlatformFeeScheduler } from './workers/platformFeeScheduler.js';
+import { initializeNotificationCleanupScheduler, stopNotificationCleanupScheduler } from './workers/notificationCleanupScheduler.js';
+import { initializeWeeklySummaryScheduler, stopWeeklySummaryScheduler } from './workers/weeklySummaryScheduler.js';
+import { drainQueue } from './services/notificationQueueService.js';
 
 
 try {
@@ -52,6 +55,8 @@ try {
   initializeBookingReminderScheduler();
   initializeGoogleCalendarScheduler();
   initializePlatformFeeScheduler();
+  initializeNotificationCleanupScheduler();
+  initializeWeeklySummaryScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -68,6 +73,9 @@ const gracefulShutdown = async () => {
   stopBookingReminderScheduler();
   stopGoogleCalendarScheduler();
   stopPlatformFeeScheduler();
+  stopNotificationCleanupScheduler();
+  stopWeeklySummaryScheduler();
+  await drainQueue(3000);
   if (io) await io.close();
     await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());

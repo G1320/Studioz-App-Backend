@@ -158,6 +158,23 @@ export const sendBookingReminders = async (hoursAhead: number = 24): Promise<num
           hoursUntil
         );
 
+        // Send in-app reservation_reminder notification
+        if (customerId) {
+          try {
+            const { notifyReservationReminder } = await import('../utils/notificationUtils.js');
+            await notifyReservationReminder(
+              reservation._id.toString(),
+              customerId.toString(),
+              itemName,
+              reservation.bookingDate,
+              reservation.timeSlots?.[0] || '',
+              hoursUntil
+            );
+          } catch (notifError) {
+            console.error(`Error sending in-app reminder for reservation ${reservation._id}:`, notifError);
+          }
+        }
+
         // Mark reminder as sent
         await ReservationModel.findByIdAndUpdate(reservation._id, { reminderSent: true });
 

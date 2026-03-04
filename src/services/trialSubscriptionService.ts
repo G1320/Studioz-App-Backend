@@ -184,7 +184,24 @@ const chargeTrialSubscription = async (subscription: any): Promise<{
           console.error('[Trial Service] Failed to send charge failed email:', emailError);
         }
       }
-      
+
+      // Send in-app notification for payment failure
+      if (subscription.userId) {
+        try {
+          const { createAndEmitNotification } = await import('../utils/notificationUtils.js');
+          await createAndEmitNotification(
+            subscription.userId.toString(),
+            'subscription_payment_failed',
+            'Subscription payment failed',
+            `Payment for ${planConfig.name} failed. ${subscription.trialChargeAttempts >= 3 ? 'Your trial has ended.' : 'We will retry automatically.'}`,
+            { subscriptionId: subscription._id.toString() },
+            '/settings/billing'
+          );
+        } catch (notifErr) {
+          console.error('[Trial Service] Failed to send in-app payment failed notification:', notifErr);
+        }
+      }
+
       await subscription.save();
 
       console.log(`[Trial Service] Failed to charge trial subscription ${subscription._id}: ${errorMessage}`);
@@ -269,6 +286,22 @@ export const sendTrialEndingReminders = async (): Promise<{
           trialEndDate: subscription.trialEndDate || new Date(),
           daysRemaining: 1
         });
+        // Send in-app notification
+        if (subscription.userId) {
+          try {
+            const { createAndEmitNotification } = await import('../utils/notificationUtils.js');
+            await createAndEmitNotification(
+              subscription.userId.toString(),
+              'subscription_trial_ending',
+              'Trial ends tomorrow',
+              `Your ${planConfig?.name || 'subscription'} trial ends tomorrow. Add a payment method to continue.`,
+              { subscriptionId: subscription._id.toString() },
+              '/settings/billing'
+            );
+          } catch (notifErr) {
+            console.error(`[Trial Service] Failed to send in-app notification for ${subscription._id}:`, notifErr);
+          }
+        }
         result.oneDayReminders++;
       } catch (error: any) {
         result.errors.push(`1-day reminder for ${subscription._id}: ${error.message}`);
@@ -286,6 +319,22 @@ export const sendTrialEndingReminders = async (): Promise<{
           trialEndDate: subscription.trialEndDate || new Date(),
           daysRemaining: 3
         });
+        // Send in-app notification
+        if (subscription.userId) {
+          try {
+            const { createAndEmitNotification } = await import('../utils/notificationUtils.js');
+            await createAndEmitNotification(
+              subscription.userId.toString(),
+              'subscription_trial_ending',
+              'Trial ends in 3 days',
+              `Your ${planConfig?.name || 'subscription'} trial ends in 3 days. Add a payment method to continue.`,
+              { subscriptionId: subscription._id.toString() },
+              '/settings/billing'
+            );
+          } catch (notifErr) {
+            console.error(`[Trial Service] Failed to send in-app notification for ${subscription._id}:`, notifErr);
+          }
+        }
         result.threeDayReminders++;
       } catch (error: any) {
         result.errors.push(`3-day reminder for ${subscription._id}: ${error.message}`);

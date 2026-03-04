@@ -1,8 +1,48 @@
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import { ALLOWED_ORIGINS } from '../config/index.js';
+import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
+import cookieSignature from 'cookie-signature';
+import { ALLOWED_ORIGINS, JWT_SECRET_KEY } from '../config/index.js';
+
+interface AuthenticatedSocket extends Socket {
+  userId?: string;
+}
 
 let io: Server | null = null;
+
+/**
+ * Extract JWT from socket handshake (cookie, auth object, or Authorization header).
+ */
+const extractToken = (socket: Socket): string | null => {
+  // 1. Auth object from client (socket.io auth option)
+  if (socket.handshake.auth?.token) {
+    return socket.handshake.auth.token;
+  }
+
+  // 2. Signed cookie from request headers
+  if (socket.handshake.headers.cookie) {
+    const cookieHeader = socket.handshake.headers.cookie;
+    const match = cookieHeader.match(/accessToken=([^;]+)/);
+    if (match) {
+      const raw = decodeURIComponent(match[1]);
+      // Signed cookies from cookie-parser start with "s:"
+      if (raw.startsWith('s:')) {
+        const unsigned = cookieSignature.unsign(raw.slice(2), JWT_SECRET_KEY as string);
+        if (unsigned !== false) return unsigned;
+      } else {
+        return raw;
+      }
+    }
+  }
+
+  // 3. Authorization header
+  const authHeader = socket.handshake.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return null;
+};
 
 export const initializeSocket = (httpServer: HttpServer) => {
   io = new Server(httpServer, {
@@ -14,21 +54,48 @@ export const initializeSocket = (httpServer: HttpServer) => {
     path: '/socket.io/'
   });
 
-  // Handle socket connections
-  if (io) {
-    io.on('connection', (socket) => {
-      // Handle user room joining
-      socket.on('join:user', (data: { userId: string }) => {
-        if (data.userId) {
-          socket.join(`user:${data.userId}`);
-        }
-      });
+  // JWT authentication middleware
+  io.use((socket: AuthenticatedSocket, next) => {
+    try {
+      const token = extractToken(socket);
 
-      socket.on('disconnect', () => {
-        // Socket automatically leaves all rooms on disconnect
-      });
+      if (!token) {
+        return next(new Error('Authentication required'));
+      }
+
+      const decoded = jwt.verify(token, JWT_SECRET_KEY as Secret) as JwtPayload;
+      socket.userId = decoded.userId || decoded._id || decoded.sub;
+
+      if (!socket.userId) {
+        return next(new Error('Invalid token payload'));
+      }
+
+      next();
+    } catch {
+      next(new Error('Invalid or expired token'));
+    }
+  });
+
+  // Handle authenticated socket connections
+  io.on('connection', (socket: AuthenticatedSocket) => {
+    const authenticatedUserId = socket.userId;
+
+    // Auto-join the authenticated user's room
+    if (authenticatedUserId) {
+      socket.join(`user:${authenticatedUserId}`);
+    }
+
+    // Verify userId matches on explicit room join (prevents impersonation)
+    socket.on('join:user', (data: { userId: string }) => {
+      if (data.userId && data.userId === authenticatedUserId) {
+        socket.join(`user:${data.userId}`);
+      }
     });
-  }
+
+    socket.on('disconnect', () => {
+      // Socket automatically leaves all rooms on disconnect
+    });
+  });
 
   return io;
 };

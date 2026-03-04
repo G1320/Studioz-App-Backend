@@ -93,6 +93,21 @@ export const updateExpiredReservations = async () => {
               reservation._id.toString(),
               reservation.customerId.toString()
             );
+          } else if (reservation.customerEmail) {
+            // Guest booking (no account) - send email notification
+            try {
+              const { sendBookingExpiredCustomer } = await import('../api/handlers/emailHandler.js');
+              const serviceName = reservation.itemName?.en || reservation.itemName?.he || 'Service';
+              const studioName = reservation.studioName?.en || reservation.studioName?.he || 'Studio';
+              await sendBookingExpiredCustomer(
+                reservation.customerEmail,
+                reservation.customerName || 'Customer',
+                serviceName,
+                studioName
+              );
+            } catch (emailError) {
+              console.error(`Error sending expiry email for guest reservation ${reservation._id}:`, emailError);
+            }
           }
         }
 

@@ -23,6 +23,22 @@ export class GoogleCalendarScheduler {
         console.log(`[GoogleCalendarSync] Completed: ${result.synced} synced, ${result.failed} failed`);
         if (result.errors.length > 0) {
           console.log('[GoogleCalendarSync] Errors:', result.errors);
+          // Notify affected users about sync failures
+          try {
+            const { createAndEmitNotification } = await import('../utils/notificationUtils.js');
+            for (const err of result.errors) {
+              await createAndEmitNotification(
+                err.userId,
+                'calendar_sync_error',
+                'Calendar sync failed',
+                `Google Calendar sync encountered an error: ${err.error}. Please reconnect your calendar if the issue persists.`,
+                { userId: err.userId },
+                '/settings/integrations'
+              );
+            }
+          } catch (notifErr) {
+            console.error('[GoogleCalendarSync] Failed to send sync error notifications:', notifErr);
+          }
         }
       } catch (error) {
         console.error('[GoogleCalendarSync] Job failed:', error);

@@ -38,6 +38,7 @@ const ReservationSchema = new mongoose.Schema({
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     customerName: { type: String, required: false },
     customerPhone: { type: String, required: false },
+    customerEmail: { type: String, required: false },
     comment: { type: String, required: false },
     orderId: { type: String, required: false },
     addOnIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AddOn', required: false }],

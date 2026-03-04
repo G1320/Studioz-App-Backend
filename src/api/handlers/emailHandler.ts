@@ -254,11 +254,28 @@ export const sendPayoutNotification = async (
       invoiceUrl,
       date: new Date().toLocaleDateString('he-IL'),
     });
-    return sendHtmlEmail({
+
+    // Send email
+    await sendHtmlEmail({
       to: [{ email: seller.email || 'admin@studioz.online', name: seller.name }],
       subject,
       htmlContent: html,
     });
+
+    // Send in-app notification alongside email
+    try {
+      const { createAndEmitNotification } = await import('../../utils/notificationUtils.js');
+      await createAndEmitNotification(
+        sellerId,
+        'payout_completed',
+        'Payout Sent',
+        `A payout of ₪${amount.toFixed(2)} has been sent for order ${orderId}`,
+        { orderId, amount, invoiceUrl },
+        '/documents'
+      );
+    } catch (notifError) {
+      console.error('Error sending payout in-app notification:', notifError);
+    }
   } catch (error) {
     console.error('Error sending payout notification:', error);
     throw error;
@@ -373,6 +390,19 @@ export const sendBookingModified = async (customerEmail: string, customerName: s
   const { html, subject } = await renderEmail('BOOKING_MODIFIED', {
     customerName,
     reservationId: booking.id,
+  });
+  return sendHtmlEmail({
+    to: [{ email: customerEmail, name: customerName }],
+    subject,
+    htmlContent: html,
+  });
+};
+
+export const sendBookingExpiredCustomer = async (customerEmail: string, customerName: string, serviceName: string, studioName: string) => {
+  const { html, subject } = await renderEmail('BOOKING_EXPIRED_CUSTOMER', {
+    customerName,
+    serviceName,
+    studioName,
   });
   return sendHtmlEmail({
     to: [{ email: customerEmail, name: customerName }],

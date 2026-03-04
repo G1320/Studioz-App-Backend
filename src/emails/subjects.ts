@@ -15,6 +15,7 @@ export const EMAIL_SUBJECTS: Record<EmailTemplateName, string> = {
   BOOKING_CANCELLED_CUSTOMER: 'ההזמנה בוטלה',
   BOOKING_CANCELLED_VENDOR: 'הזמנה בוטלה',
   BOOKING_MODIFIED: 'פרטי ההזמנה עודכנו',
+  BOOKING_EXPIRED_CUSTOMER: 'ההזמנה שלך פגה',
   REVIEW_REQUEST: 'איך היה בסטודיו?',
   SUBSCRIPTION_CONFIRMATION: 'המינוי שלך הופעל',
   SUBSCRIPTION_PAYMENT: 'אישור תשלום מינוי',

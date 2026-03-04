@@ -155,6 +155,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         customerId,
         customerName,
         customerPhone,
+        customerEmail: customerEmail || user?.email || '',
         comment,
         status: reservationStatus,
         addOnIds: addOnIds || [],
@@ -232,6 +233,27 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     } catch (error) {
       console.error('Error syncing reservation to Google Calendar:', error);
       // Don't fail the reservation creation if calendar sync fails
+    }
+
+    // Check if the day is nearly fully booked (<=2 slots remaining) and notify vendor
+    if (studio?.createdBy && dateAvailability.times.length <= 2) {
+      try {
+        const { createAndEmitNotification } = await import('../../utils/notificationUtils.js');
+        const itemName = item.name?.en || item.name?.he || 'your service';
+        const slotsLeft = dateAvailability.times.length;
+        await createAndEmitNotification(
+          studio.createdBy.toString(),
+          'availability_alert',
+          slotsLeft === 0 ? `${bookingDate} is fully booked` : `${bookingDate} nearly full`,
+          slotsLeft === 0
+            ? `${itemName} is fully booked on ${bookingDate}.`
+            : `Only ${slotsLeft} slot${slotsLeft > 1 ? 's' : ''} remaining for ${itemName} on ${bookingDate}.`,
+          { itemId: itemId.toString(), studioId: studio._id.toString(), date: bookingDate, slotsRemaining: slotsLeft },
+          `/dashboard`
+        );
+      } catch (notifErr) {
+        console.error('Error sending availability alert:', notifErr);
+      }
     }
 
     // ============================================================

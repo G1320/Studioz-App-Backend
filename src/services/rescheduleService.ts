@@ -227,6 +227,30 @@ export const rescheduleReservation = async (
   const bookerId = reservation.customerId?.toString() || reservation.userId?.toString() || '';
   emitReservationUpdate([reservation._id.toString()], bookerId);
 
+  // Send reservation_modified notifications
+  try {
+    const { notifyCustomerReservationModified, notifyVendorReservationModified } = await import('../utils/notificationUtils.js');
+
+    // Notify the customer (if they have an account)
+    if (bookerId) {
+      await notifyCustomerReservationModified(reservationId, bookerId, previousDate, newDate, newTimeSlots);
+    }
+
+    // Notify the vendor
+    if (reservation.studioId) {
+      await notifyVendorReservationModified(
+        reservationId,
+        reservation.studioId.toString(),
+        previousDate,
+        newDate,
+        newTimeSlots,
+        reservation.customerName
+      );
+    }
+  } catch (error) {
+    console.error('Error sending reschedule notifications:', error);
+  }
+
   // Sync to Google Calendar if connected
   try {
     const { syncReservationToCalendar } = await import('./googleCalendarService.js');
