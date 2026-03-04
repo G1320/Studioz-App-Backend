@@ -1,6 +1,6 @@
 import express from 'express';
 import { paymentHandler } from '../../handlers/sumit/paymentHandler.js';
-import { verifyTokenMw, requireFeature, checkPaymentLimit } from '../../../middleware/index.js';
+import { verifyTokenMw, requireFeature, checkPaymentLimit, requireSumitSetup } from '../../../middleware/index.js';
 
 const router = express.Router();
 
@@ -10,17 +10,19 @@ router.post('/create-subscription', paymentHandler.createSubscription);
 
 router.post('/cancel-subscription/:subscriptionId', paymentHandler.cancelSubscription);
 
-// Multivendor charge - requires payments feature and checks limit
+// Multivendor charge - requires Sumit setup, payments feature and checks limit
 router.post('/multivendor-charge', 
   verifyTokenMw, 
+  requireSumitSetup, 
   requireFeature('payments'), 
   checkPaymentLimit, 
   paymentHandler.multivendorCharge
 );
 
-// Quick charge for studio owners (סליקה מהירה) - requires payments feature and checks limit
+// Quick charge for studio owners (סליקה מהירה) - requires Sumit setup, payments feature and checks limit
 router.post('/quick-charge', 
   verifyTokenMw, 
+  requireSumitSetup, 
   requireFeature('payments'), 
   checkPaymentLimit, 
   paymentHandler.quickCharge
@@ -36,6 +38,7 @@ router.post('/webhook', paymentHandler.handleWebhook);
 router.post('/save-card', paymentHandler.saveCardForLaterCharge);
 router.post('/charge-saved-card', 
   verifyTokenMw, 
+  requireSumitSetup, 
   requireFeature('payments'), 
   checkPaymentLimit, 
   paymentHandler.chargeSavedCard

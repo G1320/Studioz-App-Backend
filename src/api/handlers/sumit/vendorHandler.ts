@@ -4,6 +4,12 @@ import ExpressError from '../../../utils/expressError.js';
 import handleRequest from '../../../utils/requestHandler.js';
 import { UserModel } from '../../../models/userModel.js';
 import { StudioModel } from '../../../models/studioModel.js';
+import { paymentService } from '../../../services/paymentService.js';
+
+interface AuthRequest extends Request {
+  user?: { id: string };
+  decodedJwt?: { _id?: string; userId?: string; sub?: string };
+}
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -149,6 +155,56 @@ const createVendor = handleRequest(async (req: Request) => {
   };
 });
 
+/**
+ * Save vendor's credit card for platform fee billing.
+ * Uses platform credentials to create a Sumit customer and store the card on the user.
+ * Requires authentication (verifyTokenMw).
+ */
+const saveVendorCard = handleRequest(async (req: AuthRequest) => {
+  const userId = req.user?.id || req.decodedJwt?._id || req.decodedJwt?.userId;
+  if (!userId) {
+    throw new ExpressError('Authentication required', 401);
+  }
+
+  const { singleUseToken } = req.body;
+  if (!singleUseToken) {
+    throw new ExpressError('Single-use token is required', 400);
+  }
+
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new ExpressError('User not found', 404);
+  }
+
+  const customerInfo = {
+    name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Vendor',
+    email: (user.email as string) || '',
+    phone: (user.phone as string) || ''
+  };
+
+  const saveResult = await paymentService.saveCardForLaterCharge(
+    singleUseToken,
+    customerInfo,
+    { companyId: '', apiKey: '', vendorId: userId }
+  );
+
+  if (!saveResult.success || !saveResult.customerId) {
+    throw new ExpressError(saveResult.error || 'Failed to save card', 400);
+  }
+
+  await UserModel.findByIdAndUpdate(userId, {
+    sumitCustomerId: saveResult.customerId,
+    savedCardLastFour: saveResult.lastFourDigits,
+    savedCardBrand: 'visa'
+  });
+
+  return {
+    success: true,
+    savedCardLastFour: saveResult.lastFourDigits
+  };
+});
+
 export default {
-  createVendor
+  createVendor,
+  saveVendorCard
 };

@@ -7,6 +7,7 @@ import handleDbErrorMw from './errorHandling/handleDbErrorMw.js';
 import handleErrorMw from './errorHandling/handleErrorMw.js';
 import verifyTokenMw from './auth/verifyTokenMw.js';
 import verifyAdminMw from './auth/verifyAdminMw.js';
+import { requireSumitSetup } from './requireSumitSetup.js';
 
 // Subscription middleware
 export {
@@ -27,5 +28,6 @@ export {
   handleDbErrorMw,
   handleErrorMw,
   verifyTokenMw,
-  verifyAdminMw
+  verifyAdminMw,
+  requireSumitSetup
 };

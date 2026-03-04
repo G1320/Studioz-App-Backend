@@ -28,9 +28,17 @@ export const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
   pro: 2,
 };
 
-// Features available per tier
+// Features available per tier (free tier has all features - platform is free forever)
 export const TIER_FEATURES: Record<SubscriptionTier, FeatureId[]> = {
-  free: [],
+  free: [
+    'calendar',
+    'googleCalendar',
+    'payments',
+    'prioritySupport',
+    'unlimitedListings',
+    'analytics',
+    'customBranding',
+  ],
   starter: [
     'calendar',
     'googleCalendar',
@@ -47,11 +55,11 @@ export const TIER_FEATURES: Record<SubscriptionTier, FeatureId[]> = {
   ],
 };
 
-// Limits per tier
+// Limits per tier (free tier unlimited - platform is free forever)
 export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   free: {
-    listings: 1,
-    paymentsPerMonth: 0,
+    listings: Infinity,
+    paymentsPerMonth: Infinity,
   },
   starter: {
     listings: 3,
@@ -63,15 +71,15 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   },
 };
 
-// Minimum tier required for each feature
+// Minimum tier required for each feature (all available on free)
 export const FEATURE_REQUIRED_TIER: Record<FeatureId, SubscriptionTier> = {
-  calendar: 'starter',
-  googleCalendar: 'starter',
-  payments: 'starter',
-  prioritySupport: 'pro',
-  unlimitedListings: 'pro',
-  analytics: 'pro',
-  customBranding: 'pro',
+  calendar: 'free',
+  googleCalendar: 'free',
+  payments: 'free',
+  prioritySupport: 'free',
+  unlimitedListings: 'free',
+  analytics: 'free',
+  customBranding: 'free',
 };
 
 /**
