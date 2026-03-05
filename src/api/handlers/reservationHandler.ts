@@ -421,6 +421,15 @@ const approveReservation = handleRequest(async (req: Request) => {
   // Only charges if reservation has a saved card (paymentStatus === 'card_saved')
   // If no payment is attached, reservation is simply confirmed
   // ============================================================
+  console.log('[Payment Debug] Approve reservation payment check:', {
+    reservationId,
+    paymentStatus: reservation.paymentStatus,
+    hasSumitCustomerId: !!reservation.paymentDetails?.sumitCustomerId,
+    hasVendorId: !!reservation.paymentDetails?.vendorId,
+    vendorId: reservation.paymentDetails?.vendorId?.toString(),
+    amount: reservation.paymentDetails?.amount
+  });
+
   if (reservation.paymentStatus === 'card_saved' && reservation.paymentDetails?.sumitCustomerId) {
     try {
       const chargeResult = await paymentService.chargeReservation(reservation);

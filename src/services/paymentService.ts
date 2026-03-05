@@ -187,26 +187,38 @@ export const paymentService = {
         }
       );
 
+      // Multivendorcharge returns Data.Vendors[].Items.Payment (not Data.Payment)
+      const vendors = response.data?.Data?.Vendors;
+      const vendorResult = vendors?.[0]?.Items;
+      const payment = vendorResult?.Payment;
+
       console.log('[Payment Debug] Charge response:', {
-        validPayment: response.data?.Data?.Payment?.ValidPayment,
-        paymentId: response.data?.Data?.Payment?.ID
+        validPayment: payment?.ValidPayment,
+        paymentId: payment?.ID,
+        vendorCount: vendors?.length
       });
 
-      if (response.data?.Data?.Payment?.ValidPayment) {
+      if (payment?.ValidPayment) {
         // Save invoice record
-        saveSumitInvoice(response.data.Data, {
-            description: description
+        saveSumitInvoice({
+          Payment: payment,
+          DocumentID: vendorResult?.DocumentID,
+          DocumentNumber: vendorResult?.DocumentNumber,
+          DocumentDownloadURL: vendorResult?.DocumentDownloadURL,
+          CustomerID: vendorResult?.CustomerID
+        }, {
+          description: description
         });
-        
+
         return {
           success: true,
-          paymentId: response.data.Data.Payment.ID
+          paymentId: payment.ID
         };
       }
 
       return {
         success: false,
-        error: response.data?.Data?.Payment?.StatusDescription || 'Payment failed'
+        error: payment?.StatusDescription || 'Payment failed'
       };
     } catch (error: any) {
       console.error('Charge error:', error.response?.data || error);
