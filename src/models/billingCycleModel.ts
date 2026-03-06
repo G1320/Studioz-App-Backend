@@ -28,6 +28,20 @@ const billingCycleSchema = new Schema({
     type: Number,
     required: true
   },
+  // 'flat' = legacy single rate, 'tiered' = marginal bracket tiers
+  feeModel: {
+    type: String,
+    enum: ['flat', 'tiered'],
+    default: 'tiered'
+  },
+  // Per-bracket breakdown (only for tiered model)
+  tierBreakdown: [{
+    tierIndex: Number,
+    label: String,
+    rate: Number,
+    amountInBand: Number,
+    feeAmount: Number
+  }],
   status: {
     type: String,
     enum: ['pending', 'processing', 'paid', 'failed'],

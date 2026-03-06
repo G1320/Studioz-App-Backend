@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import axios from 'axios';
 import { PlatformFeeModel } from '../models/platformFeeModel.js';
 import { BillingCycleModel } from '../models/billingCycleModel.js';
@@ -5,6 +6,12 @@ import { UserModel } from '../models/userModel.js';
 import { SubscriptionModel } from '../models/sumitModels/subscriptionModel.js';
 import { saveSumitInvoice } from '../utils/sumitUtils.js';
 import { sendPlatformFeeCharged, sendPlatformFeeFailed } from '../api/handlers/emailHandler.js';
+import {
+  PLATFORM_FEE_TIERS,
+  calculateTieredFee,
+  getNextTierNudge,
+  type TierBreakdownItem,
+} from '../config/platformFeeTiers.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const PLATFORM_COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -12,19 +19,6 @@ const PLATFORM_API_KEY = process.env.SUMIT_API_KEY;
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_INTERVAL_DAYS = 3;
-
-/**
- * Fee percentage from env, default 9%.
- * Stored as a decimal (0.09 = 9%).
- */
-const getFeePercentage = (): number => {
-  const raw = process.env.PLATFORM_FEE_PERCENTAGE;
-  if (raw) {
-    const parsed = parseFloat(raw);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return parsed;
-  }
-  return 0.09;
-};
 
 const getCurrentPeriod = (): string => {
   const now = new Date();
@@ -50,12 +44,26 @@ export const platformFeeService = {
 
   /**
    * Record a platform fee after a successful payment.
+   * Uses marginal tier calculation based on the vendor's current-month revenue.
    * Called from paymentService / paymentHandler after every charge.
    */
   async recordFee(params: RecordFeeParams): Promise<void> {
     try {
-      const feePercentage = getFeePercentage();
-      const feeAmount = parseFloat((params.transactionAmount * feePercentage).toFixed(2));
+      const period = getCurrentPeriod();
+
+      // Get vendor's already-recorded transaction volume this month
+      const existingVolume = await PlatformFeeModel.aggregate([
+        { $match: { vendorId: new mongoose.Types.ObjectId(params.vendorId), period, status: { $ne: 'credited' } } },
+        { $group: { _id: null, total: { $sum: '$transactionAmount' } } }
+      ]);
+      const priorRevenue = existingVolume[0]?.total || 0;
+
+      // Compute marginal fee for this transaction by calculating total fee
+      // at (prior + new) and subtracting total fee at (prior).
+      const feeWithNew = calculateTieredFee(priorRevenue + params.transactionAmount);
+      const feePrior = calculateTieredFee(priorRevenue);
+      const feeAmount = parseFloat((feeWithNew.totalFeeAmount - feePrior.totalFeeAmount).toFixed(2));
+      const effectiveRate = params.transactionAmount > 0 ? feeAmount / params.transactionAmount : PLATFORM_FEE_TIERS[0].rate;
 
       if (feeAmount <= 0) return;
 
@@ -65,14 +73,14 @@ export const platformFeeService = {
         studioId: params.studioId || undefined,
         transactionType: params.transactionType,
         transactionAmount: params.transactionAmount,
-        feePercentage,
+        feePercentage: parseFloat(effectiveRate.toFixed(4)),
         feeAmount,
         status: 'pending',
         sumitPaymentId: params.sumitPaymentId || undefined,
-        period: getCurrentPeriod()
+        period
       });
 
-      console.log(`[PlatformFee] Recorded fee: ${feeAmount} ILS (${(feePercentage * 100).toFixed(0)}% of ${params.transactionAmount}) for vendor ${params.vendorId}`);
+      console.log(`[PlatformFee] Recorded fee: ${feeAmount} ILS (effective ${(effectiveRate * 100).toFixed(1)}% of ${params.transactionAmount}) for vendor ${params.vendorId}`);
     } catch (error) {
       // Never fail a payment because fee recording failed
       console.error('[PlatformFee] Failed to record fee:', error);
@@ -133,7 +141,6 @@ export const platformFeeService = {
 
     let created = 0;
     let skipped = 0;
-    const feePercentage = getFeePercentage();
 
     for (const vendorAgg of vendorFees) {
       const vendorId = vendorAgg._id;
@@ -148,13 +155,18 @@ export const platformFeeService = {
       try {
         const sumitCustomerId = await this.getVendorSumitCustomerId(vendorId.toString());
 
+        // Use tiered calculation for the entire month's volume
+        const tierResult = calculateTieredFee(vendorAgg.totalTransactionAmount);
+
         const cycle = await BillingCycleModel.create({
           vendorId,
           period: targetPeriod,
           totalTransactionAmount: vendorAgg.totalTransactionAmount,
-          totalFeeAmount: parseFloat(vendorAgg.totalFeeAmount.toFixed(2)),
+          totalFeeAmount: tierResult.totalFeeAmount,
           feeCount: vendorAgg.feeCount,
-          feePercentage,
+          feePercentage: tierResult.effectiveRate,
+          feeModel: 'tiered',
+          tierBreakdown: tierResult.breakdown,
           status: 'pending',
           sumitCustomerId: sumitCustomerId || undefined
         });
@@ -237,7 +249,7 @@ export const platformFeeService = {
             Quantity: 1,
             UnitPrice: cycle.totalFeeAmount,
             Total: cycle.totalFeeAmount,
-            Description: `Platform service fee (${(cycle.feePercentage * 100).toFixed(0)}%) on ${cycle.feeCount} transactions totalling ${cycle.totalTransactionAmount} ILS`
+            Description: `Platform service fee (effective ${(cycle.feePercentage * 100).toFixed(1)}%) on ${cycle.feeCount} transactions totalling ${cycle.totalTransactionAmount} ILS`
           }],
           VATIncluded: true,
           SendDocumentByEmail: true,
@@ -409,6 +421,7 @@ export const platformFeeService = {
 
   /**
    * Get vendor's pending (not yet billed) fees for the current period.
+   * Includes tiered calculation breakdown and next-tier nudge.
    */
   async getVendorCurrentFees(vendorId: string) {
     const period = getCurrentPeriod();
@@ -418,20 +431,28 @@ export const platformFeeService = {
       status: 'pending'
     }).sort({ createdAt: -1 }).lean();
 
-    const totals = fees.reduce(
-      (acc, f) => ({
-        totalFeeAmount: acc.totalFeeAmount + f.feeAmount,
-        totalTransactionAmount: acc.totalTransactionAmount + f.transactionAmount,
-        count: acc.count + 1
-      }),
-      { totalFeeAmount: 0, totalTransactionAmount: 0, count: 0 }
-    );
+    const totalTransactionAmount = fees.reduce((sum, f) => sum + f.transactionAmount, 0);
+    const count = fees.length;
+
+    // Compute tiered fee for the full month volume
+    const tierResult = calculateTieredFee(totalTransactionAmount);
+    const nextTier = getNextTierNudge(totalTransactionAmount);
 
     return {
       period,
-      feePercentage: getFeePercentage(),
+      feePercentage: tierResult.effectiveRate,
       fees,
-      ...totals
+      totalFeeAmount: tierResult.totalFeeAmount,
+      totalTransactionAmount,
+      count,
+      feeTier: {
+        tierIndex: tierResult.tierIndex,
+        tierLabel: tierResult.tierLabel,
+        effectiveRate: tierResult.effectiveRate,
+        breakdown: tierResult.breakdown,
+      },
+      nextTier: nextTier || undefined,
+      tiers: PLATFORM_FEE_TIERS,
     };
   },
 

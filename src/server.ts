@@ -29,6 +29,8 @@ import googleCalendarRoutes from './api/routes/googleCalendarRoutes.js';
 import couponRoutes from './api/routes/couponRoutes.js';
 import studioCouponRoutes from './api/routes/studioCouponRoutes.js';
 import merchantRoutes from './api/routes/merchantRoutes.js';
+import metaRoutes from './api/routes/metaRoutes.js';
+import paymentCanaryRoutes from './api/routes/paymentCanaryRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -45,6 +47,7 @@ import { initializeGoogleCalendarScheduler, stopGoogleCalendarScheduler } from '
 import { initializePlatformFeeScheduler, stopPlatformFeeScheduler } from './workers/platformFeeScheduler.js';
 import { initializeNotificationCleanupScheduler, stopNotificationCleanupScheduler } from './workers/notificationCleanupScheduler.js';
 import { initializeWeeklySummaryScheduler, stopWeeklySummaryScheduler } from './workers/weeklySummaryScheduler.js';
+import { initializePaymentCanaryScheduler, stopPaymentCanaryScheduler } from './workers/paymentCanaryScheduler.js';
 import { drainQueue } from './services/notificationQueueService.js';
 
 
@@ -57,6 +60,7 @@ try {
   initializePlatformFeeScheduler();
   initializeNotificationCleanupScheduler();
   initializeWeeklySummaryScheduler();
+  initializePaymentCanaryScheduler();
 } catch (error) {
   console.error('Failed to initialize server:', error);
   process.exit(1);
@@ -75,6 +79,7 @@ const gracefulShutdown = async () => {
   stopPlatformFeeScheduler();
   stopNotificationCleanupScheduler();
   stopWeeklySummaryScheduler();
+  stopPaymentCanaryScheduler();
   await drainQueue(3000);
   if (io) await io.close();
     await new Promise<void>((resolve) => {
@@ -149,6 +154,8 @@ app.use('/api/auth/google/calendar', googleCalendarRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/studio-coupons', studioCouponRoutes);
 app.use('/api/merchant', merchantRoutes);
+app.use('/api/meta', metaRoutes);
+app.use('/api/payment-canary', paymentCanaryRoutes);
 
 // Debug route to test Sentry error tracking
 app.get("/debug-sentry", function mainHandler(req, res) {
