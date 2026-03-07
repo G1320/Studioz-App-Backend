@@ -131,40 +131,38 @@ export const paymentCanaryService = {
     }
 
     // --- Step 1: Charge via multivendorcharge (same path as real customer orders) ---
-    // Use SearchMode: 0 (Automatic) with the customer's email + explicit PaymentMethod
-    // with the saved CreditCard_Token, because multiple customers may share the same
-    // email from prior setup attempts.
+    // Use the same approach as paymentService.chargeSavedCard:
+    // SearchMode: 1 with the customer ID from setforcustomer.
+    // Also pass the CreditCard_Token in PaymentMethod as a fallback.
     let sumitPaymentId: string | undefined;
     let chargeLatencyMs: number;
 
     console.log('[Payment Canary] Running test with:', {
-      customerEmail: canaryConfig.customerEmail,
-      customerName: canaryConfig.customerName,
       customerId: canaryConfig.sumitCustomerId,
-      creditCardToken: canaryConfig.creditCardToken ? '***' : 'MISSING',
+      customerEmail: canaryConfig.customerEmail,
+      creditCardToken: canaryConfig.creditCardToken ? canaryConfig.creditCardToken.substring(0, 8) + '...' : 'MISSING',
       vendorCompanyId: vendorCreds.companyId,
       platformCompanyId: PLATFORM_COMPANY_ID
     });
 
     const chargePayload: Record<string, any> = {
       Customer: {
-        Name: canaryConfig.customerName,
-        EmailAddress: canaryConfig.customerEmail,
-        SearchMode: 0
+        ID: parseInt(canaryConfig.sumitCustomerId),
+        SearchMode: 1
       },
       Items: [{
         Item: { Name: 'Payment Health Check' },
         Quantity: 1,
         UnitPrice: CANARY_CHARGE_AMOUNT,
         Total: CANARY_CHARGE_AMOUNT,
-        Currency: 'ILS',
+        Currency: 0,
         Description: 'Automated canary test — will be refunded immediately',
         CompanyID: vendorCreds.companyId,
         APIKey: vendorCreds.apiKey
       }],
       VATIncluded: true,
       SendDocumentByEmail: false,
-      DocumentLanguage: 'Hebrew',
+      DocumentLanguage: 0,
       Credentials: {
         CompanyID: PLATFORM_COMPANY_ID,
         APIKey: PLATFORM_API_KEY
@@ -359,7 +357,7 @@ export const paymentCanaryService = {
   }> {
     try {
       const customerName = customerInfo.name || 'Canary Test Admin';
-      const customerEmail = customerInfo.email || 'canary@studioz.online';
+      const customerEmail = customerInfo.email || 'canary-billing@studioz.online';
 
       console.log('[Payment Canary] saveCanaryCard — saving card via setforcustomer (SearchMode: 0):', {
         customerName,
@@ -401,14 +399,14 @@ export const paymentCanaryService = {
       const lastFourDigits = responseData.PaymentMethod?.CreditCard_LastDigits;
       const creditCardToken = responseData.PaymentMethod?.CreditCard_Token;
 
-      console.log('[Payment Canary] Card saved — CustomerID:', customerId, 'LastDigits:', lastFourDigits);
+      console.log('[Payment Canary] Card saved — CustomerID:', customerId, 'LastDigits:', lastFourDigits, 'Token:', creditCardToken ? creditCardToken.substring(0, 8) + '...' : 'MISSING');
 
       await this.saveCanaryConfig({
         sumitCustomerId: customerId,
-        customerEmail: customerEmail,
-        customerName: customerName,
-        lastFourDigits,
-        creditCardToken,
+        customerEmail,
+        customerName,
+        lastFourDigits: lastFourDigits || undefined,
+        creditCardToken: creditCardToken || undefined,
       });
 
       return {

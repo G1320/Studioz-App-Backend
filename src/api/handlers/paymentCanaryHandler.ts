@@ -60,7 +60,7 @@ export const setupCanaryCard = handleRequest(async (req: Request, res: Response)
 
   const result = await paymentCanaryService.saveCanaryCard(singleUseToken, {
     name: name || 'Canary Test Admin',
-    email: email || 'canary@studioz.online',
+    email: email || 'canary-billing@studioz.online',
     phone: phone || ''
   });
 
