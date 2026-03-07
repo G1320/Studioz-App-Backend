@@ -40,6 +40,8 @@ export const PaymentCanaryResultModel = mongoose.model<IPaymentCanaryResult>(
 export interface IPaymentCanaryConfig extends Document {
   key: string;
   sumitCustomerId: string;
+  customerEmail: string;
+  customerName: string;
   lastFourDigits?: string;
   creditCardToken?: string;
   setupAt: Date;
@@ -48,6 +50,8 @@ export interface IPaymentCanaryConfig extends Document {
 const paymentCanaryConfigSchema = new Schema<IPaymentCanaryConfig>({
   key: { type: String, default: 'canary', unique: true },
   sumitCustomerId: { type: String, required: true },
+  customerEmail: { type: String, required: true },
+  customerName: { type: String, required: true },
   lastFourDigits: { type: String },
   creditCardToken: { type: String },
   setupAt: { type: Date, default: Date.now }
