@@ -11,7 +11,6 @@ const PLATFORM_API_KEY = process.env.SUMIT_API_KEY;
 const CANARY_VENDOR_ID = () => process.env.CANARY_VENDOR_ID;
 const CANARY_ALERT_EMAIL = () => process.env.CANARY_ALERT_EMAIL || 'admin@studioz.online';
 const CANARY_CHARGE_AMOUNT = 1; // 1 ILS
-const CANARY_SETUP_VERSION = 3;
 
 export const paymentCanaryService = {
   /**
@@ -44,7 +43,6 @@ export const paymentCanaryService = {
           customerName: params.customerName,
           lastFourDigits: params.lastFourDigits ?? null,
           creditCardToken: params.creditCardToken ?? null,
-          setupVersion: CANARY_SETUP_VERSION,
           setupAt: new Date()
         }
       },
@@ -89,30 +87,24 @@ export const paymentCanaryService = {
 
   /**
    * Run a canary payment test via multivendorcharge (same path as real orders):
-   * 1. Charge 1 ILS via multivendorcharge with vendor credentials
-   * 2. Verify the charge succeeded
-   * 3. Immediately refund the charge via vendor credentials
-   * 4. Log the result and alert on failure
+   * 1. Validate 1 ILS via multivendorcharge with AuthoriseOnly: true
+   * 2. Validates the full pipeline (customer, card, vendor creds) without moving money
+   * 3. No refund needed — transaction is never committed
    */
   async runCanaryTest(): Promise<IPaymentCanaryResult> {
     const testId = randomUUID();
     const canaryConfig = await this.getCanaryConfig();
 
-    if (!canaryConfig?.sumitCustomerId || !canaryConfig?.customerEmail) {
-      const result = await PaymentCanaryResultModel.create({
-        testId,
-        timestamp: new Date(),
-        status: 'charge_failed',
-        chargeAmount: CANARY_CHARGE_AMOUNT,
-        currency: 'ILS',
-        chargeLatencyMs: 0,
-        errorMessage: 'Canary customer not configured. Use the Setup Card button first.'
-      });
-      await this.sendCanaryAlert(result);
-      return result;
-    }
+    console.log('[Payment Canary] Pre-check — config from MongoDB:', {
+      hasSumitCustomerId: !!canaryConfig?.sumitCustomerId,
+      sumitCustomerId: canaryConfig?.sumitCustomerId || 'MISSING',
+      hasCustomerEmail: !!canaryConfig?.customerEmail,
+      customerEmail: canaryConfig?.customerEmail || 'MISSING',
+      hasCreditCardToken: !!canaryConfig?.creditCardToken,
+      hasPlatformCreds: !!PLATFORM_COMPANY_ID && !!PLATFORM_API_KEY
+    });
 
-    if ((canaryConfig as any).setupVersion !== CANARY_SETUP_VERSION) {
+    if (!canaryConfig?.sumitCustomerId) {
       const result = await PaymentCanaryResultModel.create({
         testId,
         timestamp: new Date(),
@@ -120,7 +112,7 @@ export const paymentCanaryService = {
         chargeAmount: CANARY_CHARGE_AMOUNT,
         currency: 'ILS',
         chargeLatencyMs: 0,
-        errorMessage: `Canary config is outdated (v${(canaryConfig as any).setupVersion || 'unknown'}, need v${CANARY_SETUP_VERSION}). Please re-run Setup Card to create a fresh customer.`
+        errorMessage: 'Canary customer not configured — no sumitCustomerId. Use the Setup Card button first.'
       });
       await this.sendCanaryAlert(result);
       return result;
@@ -141,6 +133,8 @@ export const paymentCanaryService = {
     }
 
     const vendorCreds = await this.getCanaryVendorCredentials();
+    console.log('[Payment Canary] Pre-check — vendor creds:', vendorCreds ? { companyId: vendorCreds.companyId } : 'NONE');
+
     if (!vendorCreds) {
       const result = await PaymentCanaryResultModel.create({
         testId,
@@ -155,20 +149,9 @@ export const paymentCanaryService = {
       return result;
     }
 
-    // --- Step 1: Charge via multivendorcharge (same path as real customer orders) ---
-    // Mirrors paymentService.chargeSavedCard exactly:
-    // Customer by ID (SearchMode: 1), vendor creds in Items, platform creds at top level.
-    let sumitPaymentId: string | undefined;
-    let chargeLatencyMs: number;
-
-    console.log('[Payment Canary] Running test with:', {
-      customerId: canaryConfig.sumitCustomerId,
-      customerEmail: canaryConfig.customerEmail,
-      creditCardToken: canaryConfig.creditCardToken ? canaryConfig.creditCardToken.substring(0, 8) + '...' : 'MISSING',
-      vendorCompanyId: vendorCreds.companyId,
-      platformCompanyId: PLATFORM_COMPANY_ID
-    });
-
+    // Validate via multivendorcharge — same path as real customer orders.
+    // AuthoriseOnly: true = validate only, no money moves, document issued as Draft.
+    // Sumit docs: "This field could be used for testing the Charge action easily."
     const chargePayload = {
       Customer: {
         ID: parseInt(canaryConfig.sumitCustomerId),
@@ -180,21 +163,26 @@ export const paymentCanaryService = {
         UnitPrice: CANARY_CHARGE_AMOUNT,
         Total: CANARY_CHARGE_AMOUNT,
         Currency: 'ILS',
-        Description: 'Automated canary test — will be refunded immediately',
+        Description: 'Automated canary — validate only',
         CompanyID: vendorCreds.companyId,
         APIKey: vendorCreds.apiKey
       }],
       VATIncluded: true,
       SendDocumentByEmail: false,
       DocumentLanguage: 'Hebrew',
-      DocumentType: 'InvoiceAndReceipt (1)',
+      AuthoriseOnly: true,
+      DraftDocument: true,
       Credentials: {
         CompanyID: PLATFORM_COMPANY_ID,
         APIKey: PLATFORM_API_KEY
       }
     };
 
+    console.log('[Payment Canary] Sending multivendorcharge (authorize-only):', JSON.stringify(chargePayload, null, 2));
+
+    let chargeLatencyMs: number;
     const chargeStart = Date.now();
+
     try {
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
@@ -202,30 +190,39 @@ export const paymentCanaryService = {
       );
       chargeLatencyMs = Date.now() - chargeStart;
 
-      console.log('[Payment Canary] multivendorcharge full response:', JSON.stringify(response.data, null, 2));
+      console.log('[Payment Canary] multivendorcharge response:', JSON.stringify(response.data, null, 2));
 
       const vendors = response.data?.Data?.Vendors;
       const vendorResult = vendors?.[0]?.Items;
       const payment = vendorResult?.Payment;
 
-      if (!payment?.ValidPayment) {
+      if (payment?.ValidPayment) {
         const result = await PaymentCanaryResultModel.create({
           testId,
           timestamp: new Date(),
-          status: 'charge_failed',
+          status: 'pass',
           chargeAmount: CANARY_CHARGE_AMOUNT,
           currency: 'ILS',
-          chargeLatencyMs,
-          errorMessage: payment?.StatusDescription || response.data?.UserErrorMessage || 'Multivendor charge returned invalid payment',
-          errorDetails: { responseData: response.data }
+          sumitPaymentId: payment.ID?.toString(),
+          chargeLatencyMs
         });
-        console.error(`[Payment Canary] CHARGE FAILED (${chargeLatencyMs}ms):`, result.errorMessage);
-        await this.sendCanaryAlert(result);
+        console.log(`[Payment Canary] PASS — authorized in ${chargeLatencyMs}ms, PaymentID: ${payment.ID}`);
         return result;
       }
 
-      sumitPaymentId = payment.ID?.toString();
-      console.log(`[Payment Canary] Charge OK via multivendorcharge (${chargeLatencyMs}ms) — PaymentID: ${sumitPaymentId}`);
+      const result = await PaymentCanaryResultModel.create({
+        testId,
+        timestamp: new Date(),
+        status: 'charge_failed',
+        chargeAmount: CANARY_CHARGE_AMOUNT,
+        currency: 'ILS',
+        chargeLatencyMs,
+        errorMessage: payment?.StatusDescription || response.data?.UserErrorMessage || 'Authorization returned invalid payment',
+        errorDetails: { responseData: response.data }
+      });
+      console.error(`[Payment Canary] AUTH FAILED (${chargeLatencyMs}ms):`, result.errorMessage);
+      await this.sendCanaryAlert(result);
+      return result;
     } catch (error: any) {
       chargeLatencyMs = Date.now() - chargeStart;
       const result = await PaymentCanaryResultModel.create({
@@ -235,87 +232,13 @@ export const paymentCanaryService = {
         chargeAmount: CANARY_CHARGE_AMOUNT,
         currency: 'ILS',
         chargeLatencyMs,
-        errorMessage: error.response?.data?.UserErrorMessage || error.message || 'Multivendor charge request failed',
+        errorMessage: error.response?.data?.UserErrorMessage || error.message || 'Multivendor authorize request failed',
         errorDetails: {
           status: error.response?.status,
           data: error.response?.data
         }
       });
-      console.error(`[Payment Canary] CHARGE ERROR (${chargeLatencyMs}ms):`, result.errorMessage);
-      await this.sendCanaryAlert(result);
-      return result;
-    }
-
-    // --- Step 2: Refund via vendor credentials (same as real refund flow) ---
-    let refundLatencyMs: number;
-    const refundStart = Date.now();
-
-    try {
-      const response = await axios.post(
-        `${SUMIT_API_URL}/billing/payments/refund/`,
-        {
-          PaymentID: sumitPaymentId,
-          Amount: CANARY_CHARGE_AMOUNT,
-          Credentials: {
-            CompanyID: vendorCreds.companyId,
-            APIKey: vendorCreds.apiKey
-          }
-        }
-      );
-      refundLatencyMs = Date.now() - refundStart;
-
-      const refundData = response.data?.Data;
-      const refundId = refundData?.Refund?.ID || refundData?.ID;
-
-      if (refundId || response.data?.Status === 0) {
-        const result = await PaymentCanaryResultModel.create({
-          testId,
-          timestamp: new Date(),
-          status: 'pass',
-          chargeAmount: CANARY_CHARGE_AMOUNT,
-          currency: 'ILS',
-          sumitPaymentId,
-          refundId: refundId?.toString(),
-          chargeLatencyMs,
-          refundLatencyMs
-        });
-        console.log(`[Payment Canary] PASS — charge ${chargeLatencyMs}ms, refund ${refundLatencyMs}ms`);
-        return result;
-      }
-
-      const result = await PaymentCanaryResultModel.create({
-        testId,
-        timestamp: new Date(),
-        status: 'refund_failed',
-        chargeAmount: CANARY_CHARGE_AMOUNT,
-        currency: 'ILS',
-        sumitPaymentId,
-        chargeLatencyMs,
-        refundLatencyMs,
-        errorMessage: response.data?.UserErrorMessage || refundData?.StatusDescription || 'Refund returned unexpected response',
-        errorDetails: { responseData: response.data }
-      });
-      console.error(`[Payment Canary] REFUND FAILED (${refundLatencyMs}ms):`, result.errorMessage);
-      await this.sendCanaryAlert(result);
-      return result;
-    } catch (error: any) {
-      refundLatencyMs = Date.now() - refundStart;
-      const result = await PaymentCanaryResultModel.create({
-        testId,
-        timestamp: new Date(),
-        status: 'refund_failed',
-        chargeAmount: CANARY_CHARGE_AMOUNT,
-        currency: 'ILS',
-        sumitPaymentId,
-        chargeLatencyMs,
-        refundLatencyMs,
-        errorMessage: error.response?.data?.UserErrorMessage || error.message || 'Refund request failed',
-        errorDetails: {
-          status: error.response?.status,
-          data: error.response?.data
-        }
-      });
-      console.error(`[Payment Canary] REFUND ERROR (${refundLatencyMs}ms):`, result.errorMessage);
+      console.error(`[Payment Canary] AUTH ERROR (${chargeLatencyMs}ms):`, result.errorMessage);
       await this.sendCanaryAlert(result);
       return result;
     }
@@ -326,7 +249,7 @@ export const paymentCanaryService = {
    */
   async sendCanaryAlert(result: IPaymentCanaryResult): Promise<void> {
     const alertEmail = CANARY_ALERT_EMAIL();
-    const statusLabel = result.status === 'charge_failed' ? 'CHARGE FAILED' : 'REFUND FAILED';
+    const statusLabel = result.status === 'charge_failed' ? 'AUTH FAILED' : 'FAILED';
     const timestamp = new Date(result.timestamp).toLocaleString('en-IL', { timeZone: 'Asia/Jerusalem' });
 
     try {

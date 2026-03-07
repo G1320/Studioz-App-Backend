@@ -12,9 +12,7 @@ export const triggerCanaryTest = handleRequest(async (_req: Request, _res: Respo
     testId: result.testId,
     status: result.status,
     chargeLatencyMs: result.chargeLatencyMs,
-    refundLatencyMs: result.refundLatencyMs,
     sumitPaymentId: result.sumitPaymentId,
-    refundId: result.refundId,
     errorMessage: result.errorMessage,
     timestamp: result.timestamp
   };
@@ -41,7 +39,6 @@ export const getCanaryConfig = handleRequest(async (_req: Request, _res: Respons
     configured: !!config?.sumitCustomerId,
     customerId: config?.sumitCustomerId || null,
     hasVendor: !!vendorCreds,
-    setupVersion: (config as any)?.setupVersion || null,
     hasCreditCardToken: !!config?.creditCardToken,
     customerEmail: config?.customerEmail || null,
     setupAt: config?.setupAt || null

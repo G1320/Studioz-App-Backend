@@ -3,13 +3,11 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IPaymentCanaryResult extends Document {
   testId: string;
   timestamp: Date;
-  status: 'pass' | 'charge_failed' | 'refund_failed';
+  status: 'pass' | 'charge_failed';
   chargeAmount: number;
   currency: string;
   sumitPaymentId?: string;
-  refundId?: string;
   chargeLatencyMs: number;
-  refundLatencyMs?: number;
   errorMessage?: string;
   errorDetails?: Record<string, unknown>;
 }
@@ -17,13 +15,11 @@ export interface IPaymentCanaryResult extends Document {
 const paymentCanaryResultSchema = new Schema<IPaymentCanaryResult>({
   testId: { type: String, required: true, unique: true, index: true },
   timestamp: { type: Date, default: Date.now, index: true },
-  status: { type: String, enum: ['pass', 'charge_failed', 'refund_failed'], required: true },
+  status: { type: String, enum: ['pass', 'charge_failed'], required: true },
   chargeAmount: { type: Number, required: true },
   currency: { type: String, default: 'ILS' },
   sumitPaymentId: { type: String },
-  refundId: { type: String },
   chargeLatencyMs: { type: Number, required: true },
-  refundLatencyMs: { type: Number },
   errorMessage: { type: String },
   errorDetails: { type: Schema.Types.Mixed }
 });
@@ -44,7 +40,6 @@ export interface IPaymentCanaryConfig extends Document {
   customerName: string;
   lastFourDigits?: string;
   creditCardToken?: string;
-  setupVersion?: number;
   setupAt: Date;
 }
 
@@ -55,7 +50,6 @@ const paymentCanaryConfigSchema = new Schema<IPaymentCanaryConfig>({
   customerName: { type: String, required: true },
   lastFourDigits: { type: String },
   creditCardToken: { type: String },
-  setupVersion: { type: Number },
   setupAt: { type: Date, default: Date.now }
 });
 
