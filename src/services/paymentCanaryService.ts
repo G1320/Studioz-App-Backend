@@ -316,9 +316,10 @@ export const paymentCanaryService = {
   /**
    * One-time setup: save the admin's credit card for canary testing.
    *
-   * 1. Create the customer in Sumit's accounting module so multivendorcharge can find them
-   * 2. Save the card on that customer via setforcustomer
-   * 3. Persist customerId + creditCardToken to MongoDB
+   * 1. Create the customer in Sumit's accounting module via /accounting/customers/create/
+   *    so that multivendorcharge can find them by ID (SearchMode: 1).
+   * 2. Save the card on that customer via /billing/paymentmethods/setforcustomer/.
+   * 3. Persist customerId to MongoDB.
    */
   async saveCanaryCard(singleUseToken: string, customerInfo: { name: string; email: string; phone: string }): Promise<{
     success: boolean;
@@ -337,13 +338,11 @@ export const paymentCanaryService = {
       });
 
       // Step 1: Create the customer in the accounting module.
-      // Customers created only via setforcustomer live in the billing namespace
-      // and are invisible to multivendorcharge. Creating via accounting/customers/create
-      // ensures multivendorcharge can look them up by ID.
+      // The accounting API uses "Details" (not "Customer") as the field name.
       const createResponse = await axios.post(
         `${SUMIT_API_URL}/accounting/customers/create/`,
         {
-          Customer: {
+          Details: {
             Name: customerName,
             EmailAddress: customerEmail,
             Phone: customerInfo.phone || '',
