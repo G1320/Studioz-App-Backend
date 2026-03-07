@@ -4,17 +4,17 @@ import { paymentCanaryService } from '../services/paymentCanaryService.js';
 /**
  * Payment Canary Scheduler
  *
- * Runs a real charge + refund test every 12 hours to verify the
+ * Runs a real charge + refund test every hour to verify the
  * Sumit payment integration is healthy. Sends an email alert on failure.
  *
- * Schedule: every 12 hours (midnight and noon Israel time)
+ * Schedule: every hour (on the hour)
  */
 export class PaymentCanaryScheduler {
   private canaryJob: schedule.Job;
 
   constructor() {
-    // Run at 00:00 and 12:00 every day
-    this.canaryJob = schedule.scheduleJob('0 */12 * * *', async () => {
+    // Run every hour on the hour
+    this.canaryJob = schedule.scheduleJob('0 * * * *', async () => {
       console.log('[Payment Canary] Running scheduled canary test...');
       try {
         const result = await paymentCanaryService.runCanaryTest();
@@ -24,7 +24,7 @@ export class PaymentCanaryScheduler {
       }
     });
 
-    console.log('[Payment Canary] Initialized — runs every 12 hours (00:00, 12:00)');
+    console.log('[Payment Canary] Initialized — runs every hour');
   }
 
   stop(): void {
