@@ -34,6 +34,8 @@ export const paymentCanaryService = {
     lastFourDigits?: string;
     creditCardToken?: string;
     paymentMethodId?: string;
+    cardExpMonth?: number;
+    cardExpYear?: number;
   }): Promise<void> {
     await PaymentCanaryConfigModel.findOneAndUpdate(
       { key: 'canary' },
@@ -45,6 +47,8 @@ export const paymentCanaryService = {
           lastFourDigits: params.lastFourDigits ?? null,
           creditCardToken: params.creditCardToken ?? null,
           paymentMethodId: params.paymentMethodId ?? null,
+          cardExpMonth: params.cardExpMonth ?? null,
+          cardExpYear: params.cardExpYear ?? null,
           setupAt: new Date()
         }
       },
@@ -156,8 +160,7 @@ export const paymentCanaryService = {
     // Sumit docs: "This field could be used for testing the Charge action easily."
     // Use SearchMode 0 (Automatic) with email to find the customer — avoids the
     // "Invalid Customer ID" issue that occurs with SearchMode 1 on newly created customers.
-    const paymentMethodId = (canaryConfig as any).paymentMethodId;
-    if (!canaryConfig.creditCardToken && !paymentMethodId) {
+    if (!canaryConfig.creditCardToken) {
       const result = await PaymentCanaryResultModel.create({
         testId,
         timestamp: new Date(),
@@ -165,7 +168,7 @@ export const paymentCanaryService = {
         chargeAmount: CANARY_CHARGE_AMOUNT,
         currency: 'ILS',
         chargeLatencyMs: 0,
-        errorMessage: 'No creditCardToken or paymentMethodId saved. Re-run Setup Card.'
+        errorMessage: 'No creditCardToken saved. Re-run Setup Card.'
       });
       await this.sendCanaryAlert(result);
       return result;
@@ -177,9 +180,12 @@ export const paymentCanaryService = {
         EmailAddress: canaryConfig.customerEmail || 'canary-billing@studioz.online',
         SearchMode: 0
       },
-      PaymentMethod: paymentMethodId
-        ? { ID: parseInt(paymentMethodId), Type: 1 }
-        : { CreditCard_Token: canaryConfig.creditCardToken, Type: 1 },
+      PaymentMethod: {
+        CreditCard_Token: canaryConfig.creditCardToken,
+        CreditCard_ExpirationMonth: canaryConfig.cardExpMonth || undefined,
+        CreditCard_ExpirationYear: canaryConfig.cardExpYear || undefined,
+        Type: 1
+      },
       Items: [{
         Item: { Name: 'Payment Health Check' },
         Quantity: 1,
@@ -379,6 +385,8 @@ export const paymentCanaryService = {
         lastFourDigits: lastFourDigits || undefined,
         creditCardToken: creditCardToken || undefined,
         paymentMethodId: paymentMethodId?.toString() || undefined,
+        cardExpMonth: pm?.CreditCard_ExpirationMonth || undefined,
+        cardExpYear: pm?.CreditCard_ExpirationYear || undefined,
       });
 
       return {
