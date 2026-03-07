@@ -48,7 +48,7 @@ export const getCanaryConfig = handleRequest(async (_req: Request, _res: Respons
  * POST /api/payment-canary/setup-card
  * One-time setup: save the admin's credit card for canary tests.
  * Body: { singleUseToken, name, email, phone }
- * Persists the customerId to MongoDB so it survives restarts.
+ * Creates accounting customer, saves card, persists to MongoDB.
  */
 export const setupCanaryCard = handleRequest(async (req: Request, res: Response) => {
   const { singleUseToken, name, email, phone } = req.body;
@@ -60,7 +60,7 @@ export const setupCanaryCard = handleRequest(async (req: Request, res: Response)
 
   const result = await paymentCanaryService.saveCanaryCard(singleUseToken, {
     name: name || 'Canary Test Admin',
-    email: email || '',
+    email: email || 'canary@studioz.online',
     phone: phone || ''
   });
 

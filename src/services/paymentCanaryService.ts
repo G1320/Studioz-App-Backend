@@ -27,10 +27,10 @@ export const paymentCanaryService = {
   /**
    * Persist canary config to MongoDB so it survives process restarts.
    */
-  async saveCanaryConfig(sumitCustomerId: string, lastFourDigits?: string): Promise<void> {
+  async saveCanaryConfig(sumitCustomerId: string, lastFourDigits?: string, creditCardToken?: string): Promise<void> {
     await PaymentCanaryConfigModel.findOneAndUpdate(
       { key: 'canary' },
-      { sumitCustomerId, lastFourDigits, setupAt: new Date() },
+      { sumitCustomerId, lastFourDigits, creditCardToken, setupAt: new Date() },
       { upsert: true }
     );
     process.env.CANARY_SUMIT_CUSTOMER_ID = sumitCustomerId;
@@ -51,7 +51,6 @@ export const paymentCanaryService = {
       return null;
     }
 
-    // Fallback: find any vendor with Sumit credentials
     const vendor = await UserModel.findOne({
       sumitCompanyId: { $exists: true, $ne: '' },
       sumitApiKey: { $exists: true, $ne: '' }
@@ -65,7 +64,7 @@ export const paymentCanaryService = {
   },
 
   /**
-   * Run a full canary payment test using multivendorcharge (same path as real orders):
+   * Run a canary payment test via multivendorcharge (same path as real orders):
    * 1. Charge 1 ILS via multivendorcharge with vendor credentials
    * 2. Verify the charge succeeded
    * 3. Immediately refund the charge via vendor credentials
@@ -83,7 +82,7 @@ export const paymentCanaryService = {
         chargeAmount: CANARY_CHARGE_AMOUNT,
         currency: 'ILS',
         chargeLatencyMs: 0,
-        errorMessage: 'CANARY_SUMIT_CUSTOMER_ID not configured. Run the setup-card endpoint first.'
+        errorMessage: 'Canary customer not configured. Use the Setup Card button first.'
       });
       await this.sendCanaryAlert(result);
       return result;
@@ -103,7 +102,6 @@ export const paymentCanaryService = {
       return result;
     }
 
-    // Look up vendor credentials for multivendorcharge
     const vendorCreds = await this.getCanaryVendorCredentials();
     if (!vendorCreds) {
       const result = await PaymentCanaryResultModel.create({
@@ -119,7 +117,7 @@ export const paymentCanaryService = {
       return result;
     }
 
-    // --- Step 1: Charge via multivendorcharge (same as real customer orders) ---
+    // --- Step 1: Charge via multivendorcharge (same path as real customer orders) ---
     let sumitPaymentId: string | undefined;
     let chargeLatencyMs: number;
 
@@ -162,7 +160,6 @@ export const paymentCanaryService = {
 
       console.log('[Payment Canary] multivendorcharge full response:', JSON.stringify(response.data, null, 2));
 
-      // Multivendor response: Data.Vendors[].Items.Payment
       const vendors = response.data?.Data?.Vendors;
       const vendorResult = vendors?.[0]?.Items;
       const payment = vendorResult?.Payment;
@@ -242,7 +239,6 @@ export const paymentCanaryService = {
         return result;
       }
 
-      // Refund call succeeded but returned unexpected response
       const result = await PaymentCanaryResultModel.create({
         testId,
         timestamp: new Date(),
@@ -319,7 +315,10 @@ export const paymentCanaryService = {
 
   /**
    * One-time setup: save the admin's credit card for canary testing.
-   * Persists the customerId to MongoDB via saveCanaryConfig.
+   *
+   * 1. Create the customer in Sumit's accounting module so multivendorcharge can find them
+   * 2. Save the card on that customer via setforcustomer
+   * 3. Persist customerId + creditCardToken to MongoDB
    */
   async saveCanaryCard(singleUseToken: string, customerInfo: { name: string; email: string; phone: string }): Promise<{
     success: boolean;
@@ -328,19 +327,25 @@ export const paymentCanaryService = {
     error?: string;
   }> {
     try {
-      console.log('[Payment Canary] saveCanaryCard request:', {
-        token: singleUseToken ? `${singleUseToken.substring(0, 8)}...` : 'MISSING',
-        customerName: customerInfo.name,
+      const customerName = customerInfo.name || 'Canary Test Admin';
+      const customerEmail = customerInfo.email || 'canary@studioz.online';
+
+      console.log('[Payment Canary] saveCanaryCard — Step 1: creating accounting customer:', {
+        customerName,
+        customerEmail,
         platformCompanyId: PLATFORM_COMPANY_ID
       });
 
-      const response = await axios.post(
-        `${SUMIT_API_URL}/billing/paymentmethods/setforcustomer/`,
+      // Step 1: Create the customer in the accounting module.
+      // Customers created only via setforcustomer live in the billing namespace
+      // and are invisible to multivendorcharge. Creating via accounting/customers/create
+      // ensures multivendorcharge can look them up by ID.
+      const createResponse = await axios.post(
+        `${SUMIT_API_URL}/accounting/customers/create/`,
         {
-          SingleUseToken: singleUseToken,
           Customer: {
-            Name: customerInfo.name || 'Canary Test Admin',
-            EmailAddress: customerInfo.email || '',
+            Name: customerName,
+            EmailAddress: customerEmail,
             Phone: customerInfo.phone || '',
             SearchMode: 0
           },
@@ -351,30 +356,63 @@ export const paymentCanaryService = {
         }
       );
 
-      console.log('[Payment Canary] saveCanaryCard full response:', JSON.stringify(response.data, null, 2));
+      console.log('[Payment Canary] accounting/customers/create response:', JSON.stringify(createResponse.data, null, 2));
 
-      const responseData = response.data?.Data || response.data;
+      const accountingData = createResponse.data?.Data || createResponse.data;
+      const accountingCustomerId = accountingData?.CustomerID || accountingData?.ID;
 
-      if (responseData?.CustomerID) {
-        const customerId = responseData.CustomerID.toString();
-        const lastFourDigits = responseData.PaymentMethod?.CreditCard_LastDigits;
-        console.log('[Payment Canary] Card saved — CustomerID:', customerId, 'LastDigits:', lastFourDigits);
-
-        await this.saveCanaryConfig(customerId, lastFourDigits);
-
+      if (!accountingCustomerId) {
         return {
-          success: true,
-          customerId,
-          lastFourDigits
+          success: false,
+          error: createResponse.data?.UserErrorMessage || 'Failed to create accounting customer'
         };
       }
 
-      console.error('[Payment Canary] saveCanaryCard failed — no CustomerID in response');
+      console.log('[Payment Canary] saveCanaryCard — Step 2: saving card via setforcustomer for customer:', accountingCustomerId);
+
+      // Step 2: Save the card on the accounting customer via setforcustomer.
+      // Use SearchMode: 1 (by ID) to attach the card to the exact customer we just created.
+      const setCardResponse = await axios.post(
+        `${SUMIT_API_URL}/billing/paymentmethods/setforcustomer/`,
+        {
+          SingleUseToken: singleUseToken,
+          Customer: {
+            ID: accountingCustomerId,
+            SearchMode: 1
+          },
+          Credentials: {
+            CompanyID: PLATFORM_COMPANY_ID,
+            APIKey: PLATFORM_API_KEY
+          }
+        }
+      );
+
+      console.log('[Payment Canary] setforcustomer response:', JSON.stringify(setCardResponse.data, null, 2));
+
+      const cardData = setCardResponse.data?.Data || setCardResponse.data;
+
+      if (!cardData?.CustomerID && !cardData?.PaymentMethod) {
+        return {
+          success: false,
+          error: setCardResponse.data?.UserErrorMessage || 'Failed to save card on customer'
+        };
+      }
+
+      const customerId = (cardData.CustomerID || accountingCustomerId).toString();
+      const lastFourDigits = cardData.PaymentMethod?.CreditCard_LastDigits;
+      const creditCardToken = cardData.PaymentMethod?.CreditCard_Token;
+
+      console.log('[Payment Canary] Card saved — CustomerID:', customerId, 'LastDigits:', lastFourDigits);
+
+      await this.saveCanaryConfig(customerId, lastFourDigits, creditCardToken);
+
       return {
-        success: false,
-        error: response.data?.UserErrorMessage || 'Failed to save card'
+        success: true,
+        customerId,
+        lastFourDigits
       };
     } catch (error: any) {
+      console.error('[Payment Canary] saveCanaryCard error:', error.response?.data || error.message);
       return {
         success: false,
         error: error.response?.data?.UserErrorMessage || error.message || 'Failed to save card'
