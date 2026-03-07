@@ -131,9 +131,9 @@ export const paymentCanaryService = {
     }
 
     // --- Step 1: Charge via multivendorcharge (same path as real customer orders) ---
-    // Use SearchMode: 0 (Automatic) with the customer's email.
-    // multivendorcharge does NOT support SearchMode: 1 (by ID).
-    // Sumit finds the customer by email and charges their saved card.
+    // Use SearchMode: 0 (Automatic) with the customer's email + explicit PaymentMethod
+    // with the saved CreditCard_Token, because multiple customers may share the same
+    // email from prior setup attempts.
     let sumitPaymentId: string | undefined;
     let chargeLatencyMs: number;
 
@@ -141,38 +141,48 @@ export const paymentCanaryService = {
       customerEmail: canaryConfig.customerEmail,
       customerName: canaryConfig.customerName,
       customerId: canaryConfig.sumitCustomerId,
+      creditCardToken: canaryConfig.creditCardToken ? '***' : 'MISSING',
       vendorCompanyId: vendorCreds.companyId,
       platformCompanyId: PLATFORM_COMPANY_ID
     });
+
+    const chargePayload: Record<string, any> = {
+      Customer: {
+        Name: canaryConfig.customerName,
+        EmailAddress: canaryConfig.customerEmail,
+        SearchMode: 0
+      },
+      Items: [{
+        Item: { Name: 'Payment Health Check' },
+        Quantity: 1,
+        UnitPrice: CANARY_CHARGE_AMOUNT,
+        Total: CANARY_CHARGE_AMOUNT,
+        Currency: 'ILS',
+        Description: 'Automated canary test — will be refunded immediately',
+        CompanyID: vendorCreds.companyId,
+        APIKey: vendorCreds.apiKey
+      }],
+      VATIncluded: true,
+      SendDocumentByEmail: false,
+      DocumentLanguage: 'Hebrew',
+      Credentials: {
+        CompanyID: PLATFORM_COMPANY_ID,
+        APIKey: PLATFORM_API_KEY
+      }
+    };
+
+    if (canaryConfig.creditCardToken) {
+      chargePayload.PaymentMethod = {
+        CreditCard_Token: canaryConfig.creditCardToken,
+        Type: 1
+      };
+    }
 
     const chargeStart = Date.now();
     try {
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
-        {
-          Customer: {
-            Name: canaryConfig.customerName,
-            EmailAddress: canaryConfig.customerEmail,
-            SearchMode: 0
-          },
-          Items: [{
-            Item: { Name: 'Payment Health Check' },
-            Quantity: 1,
-            UnitPrice: CANARY_CHARGE_AMOUNT,
-            Total: CANARY_CHARGE_AMOUNT,
-            Currency: 'ILS',
-            Description: 'Automated canary test — will be refunded immediately',
-            CompanyID: vendorCreds.companyId,
-            APIKey: vendorCreds.apiKey
-          }],
-          VATIncluded: true,
-          SendDocumentByEmail: false,
-          DocumentLanguage: 'Hebrew',
-          Credentials: {
-            CompanyID: PLATFORM_COMPANY_ID,
-            APIKey: PLATFORM_API_KEY
-          }
-        }
+        chargePayload
       );
       chargeLatencyMs = Date.now() - chargeStart;
 
