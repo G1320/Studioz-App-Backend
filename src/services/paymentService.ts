@@ -149,14 +149,15 @@ export const paymentService = {
     amount: number,
     description: string,
     credentials: VendorCredentials,
-    customerInfo?: { email?: string; name?: string }
+    customerInfo?: { email?: string; name?: string; phone?: string }
   ): Promise<ChargeResult> {
     try {
       console.log('[Payment Debug] Charging saved card via multivendorcharge:', {
         customerId: sumitCustomerId,
         amount,
         vendorCompanyId: credentials.companyId,
-        hasEmail: !!customerInfo?.email
+        hasEmail: !!customerInfo?.email,
+        hasPhone: !!customerInfo?.phone
       });
 
       // Fetch saved card details so we can pass them explicitly —
@@ -176,10 +177,17 @@ export const paymentService = {
         console.warn('[Payment Debug] Could not fetch payment method details:', err);
       }
 
-      // Prefer email-based lookup (SearchMode 0) — SearchMode 1 returns
-      // "Invalid Customer ID" in multivendorcharge for some customer records.
-      const customer = customerInfo?.email
-        ? { Name: customerInfo.name || 'Customer', EmailAddress: customerInfo.email, SearchMode: 0 }
+      // SearchMode 0 (Automatic) finds customers by email, phone, or name.
+      // SearchMode 1 (by ID) returns "Invalid Customer ID" in multivendorcharge,
+      // so we always use SearchMode 0 with whatever identifier is available.
+      const hasIdentifier = customerInfo?.email || customerInfo?.phone || customerInfo?.name;
+      const customer = hasIdentifier
+        ? {
+            ...(customerInfo?.name && { Name: customerInfo.name }),
+            ...(customerInfo?.email && { EmailAddress: customerInfo.email }),
+            ...(customerInfo?.phone && { Phone: customerInfo.phone }),
+            SearchMode: 0
+          }
         : { ID: parseInt(sumitCustomerId), SearchMode: 1 };
 
       const response = await axios.post(
@@ -490,7 +498,7 @@ export const paymentService = {
         params.amount,
         `Booking: ${params.itemName}`,
         credentials,
-        { email: params.customerInfo.email, name: params.customerInfo.name }
+        { email: params.customerInfo.email, name: params.customerInfo.name, phone: params.customerInfo.phone }
       );
 
       if (chargeResult.success) {
@@ -552,12 +560,13 @@ export const paymentService = {
     itemId: any;
     studioId?: any;
     userId?: any;
+    customerEmail?: string;
+    customerName?: string;
+    customerPhone?: string;
     paymentDetails?: {
       sumitCustomerId?: string;
       amount?: number;
       vendorId?: string;
-      customerEmail?: string;
-      customerName?: string;
     };
   }): Promise<{
     paymentStatus: 'charged' | 'failed';
@@ -583,13 +592,18 @@ export const paymentService = {
     const itemName = item?.name?.en || 'Reservation';
     const amount = paymentDetails.amount || reservation.totalPrice || 0;
 
-    // Get customer email for reliable Sumit lookup (SearchMode 0)
-    let customerEmail = paymentDetails.customerEmail;
-    let customerName = paymentDetails.customerName;
-    if (!customerEmail && reservation.userId) {
+    // Collect customer identifiers for SearchMode 0 (Automatic).
+    // Reservation has customerEmail/customerPhone/customerName directly.
+    // Non-logged-in guests may only have a phone — that's fine for SearchMode 0.
+    let customerEmail = reservation.customerEmail;
+    let customerName = reservation.customerName;
+    let customerPhone = reservation.customerPhone;
+
+    if (!customerEmail && !customerPhone && reservation.userId) {
       const user = await UserModel.findById(reservation.userId);
       customerEmail = user?.email;
       customerName = customerName || user?.name;
+      customerPhone = customerPhone || (user as any)?.phone;
     }
 
     const chargeResult = await this.chargeSavedCard(
@@ -597,7 +611,7 @@ export const paymentService = {
       amount,
       `Booking: ${itemName}`,
       credentials,
-      customerEmail ? { email: customerEmail, name: customerName } : undefined
+      { email: customerEmail, name: customerName, phone: customerPhone }
     );
 
     if (chargeResult.success) {
@@ -838,7 +852,7 @@ export const paymentService = {
       params.amount,
       params.description,
       credentials,
-      { email: user.email, name: user.name }
+      { email: user.email, name: user.name, phone: user.phone }
     );
   },
 
