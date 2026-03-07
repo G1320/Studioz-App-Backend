@@ -17,9 +17,8 @@ export const getStatus = handleRequest(async (_req: Request, _res: Response) => 
   const health = await healthCheckService.checkAll();
 
   // Last 24h canary results — only count tests that actually reached the
-  // payment gateway (chargeLatencyMs > 0). Tests that fail due to missing
-  // config (no card, no credentials) have latency 0 and aren't real
-  // gateway failures.
+  // payment gateway (chargeLatencyMs > 0). Config-level failures (missing
+  // card/credentials) have latency 0 and aren't real gateway issues.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const canaryResults = await PaymentCanaryResultModel.find({
     timestamp: { $gte: since },
@@ -33,17 +32,26 @@ export const getStatus = handleRequest(async (_req: Request, _res: Response) => 
   const passedTests = canaryResults.filter((r) => r.status === 'pass').length;
   const uptimePercent = totalTests > 0 ? Math.round((passedTests / totalTests) * 10000) / 100 : 100;
   const avgLatency =
-    totalTests > 0
-      ? Math.round(canaryResults.reduce((sum, r) => sum + r.chargeLatencyMs, 0) / totalTests)
+    passedTests > 0
+      ? Math.round(
+          canaryResults
+            .filter((r) => r.status === 'pass')
+            .reduce((sum, r) => sum + r.chargeLatencyMs, 0) / passedTests
+        )
       : 0;
 
   const lastCheck = canaryResults[0]?.timestamp || null;
-  const lastTestFailed = canaryResults.length > 0 && canaryResults[0]?.status === 'charge_failed';
+
+  // Determine payment status from the most recent 3 gateway-reaching tests.
+  // This avoids false alarms from intermittent canary failures (rate limits,
+  // token quirks) while still catching real outages.
+  const recent3 = canaryResults.slice(0, 3);
+  const recentPasses = recent3.filter((r) => r.status === 'pass').length;
 
   let paymentStatus: ServiceStatus = 'operational';
-  if (totalTests > 0) {
-    if (uptimePercent < 50) paymentStatus = 'down';
-    else if (uptimePercent < 90 || lastTestFailed) paymentStatus = 'degraded';
+  if (recent3.length > 0) {
+    if (recentPasses === 0) paymentStatus = 'down';
+    else if (recent3[0]?.status === 'charge_failed') paymentStatus = 'degraded';
   }
 
   const overall = resolveOverall(health.server.status, health.database.status, paymentStatus);
@@ -66,7 +74,6 @@ export const getStatus = handleRequest(async (_req: Request, _res: Response) => 
         totalTests24h: totalTests,
         passedTests24h: passedTests,
         lastCheck,
-        lastTestFailed,
       },
     },
     timestamp: new Date().toISOString(),
