@@ -28,10 +28,30 @@ const paymentCanaryResultSchema = new Schema<IPaymentCanaryResult>({
   errorDetails: { type: Schema.Types.Mixed }
 });
 
-// Auto-clean results older than 90 days
 paymentCanaryResultSchema.index({ timestamp: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
 export const PaymentCanaryResultModel = mongoose.model<IPaymentCanaryResult>(
   'PaymentCanaryResult',
   paymentCanaryResultSchema
+);
+
+// --- Canary Config (persisted across restarts) ---
+
+export interface IPaymentCanaryConfig extends Document {
+  key: string;
+  sumitCustomerId: string;
+  lastFourDigits?: string;
+  setupAt: Date;
+}
+
+const paymentCanaryConfigSchema = new Schema<IPaymentCanaryConfig>({
+  key: { type: String, default: 'canary', unique: true },
+  sumitCustomerId: { type: String, required: true },
+  lastFourDigits: { type: String },
+  setupAt: { type: Date, default: Date.now }
+});
+
+export const PaymentCanaryConfigModel = mongoose.model<IPaymentCanaryConfig>(
+  'PaymentCanaryConfig',
+  paymentCanaryConfigSchema
 );

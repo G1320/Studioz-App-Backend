@@ -35,7 +35,7 @@ export const getCanaryHistory = handleRequest(async (req: Request, _res: Respons
  * Returns whether the canary is configured and card info
  */
 export const getCanaryConfig = handleRequest(async (_req: Request, _res: Response) => {
-  const customerId = process.env.CANARY_SUMIT_CUSTOMER_ID;
+  const customerId = await paymentCanaryService.getCanaryCustomerId();
   const vendorCreds = await paymentCanaryService.getCanaryVendorCredentials();
   return {
     configured: !!customerId,
@@ -46,9 +46,9 @@ export const getCanaryConfig = handleRequest(async (_req: Request, _res: Respons
 
 /**
  * POST /api/payment-canary/setup-card
- * One-time setup: save the admin's credit card for canary tests
+ * One-time setup: save the admin's credit card for canary tests.
  * Body: { singleUseToken, name, email, phone }
- * Returns the customerId to configure in .env as CANARY_SUMIT_CUSTOMER_ID
+ * Persists the customerId to MongoDB so it survives restarts.
  */
 export const setupCanaryCard = handleRequest(async (req: Request, res: Response) => {
   const { singleUseToken, name, email, phone } = req.body;
@@ -69,13 +69,10 @@ export const setupCanaryCard = handleRequest(async (req: Request, res: Response)
     return { error: result.error };
   }
 
-  // Set at runtime so it works immediately without restart
-  process.env.CANARY_SUMIT_CUSTOMER_ID = result.customerId;
-
   return {
     success: true,
     customerId: result.customerId,
     lastFourDigits: result.lastFourDigits,
-    instructions: `Card saved. Add CANARY_SUMIT_CUSTOMER_ID=${result.customerId} to your .env file for persistence across restarts.`
+    instructions: `Card saved. Customer ID ${result.customerId} has been persisted and will survive restarts.`
   };
 });
