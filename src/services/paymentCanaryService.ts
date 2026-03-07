@@ -178,8 +178,8 @@ export const paymentCanaryService = {
         SearchMode: 0
       },
       PaymentMethod: paymentMethodId
-        ? { ID: parseInt(paymentMethodId), Type: 'CreditCard (1)' }
-        : { CreditCard_Token: canaryConfig.creditCardToken, Type: 'CreditCard (1)' },
+        ? { ID: parseInt(paymentMethodId), Type: 1 }
+        : { CreditCard_Token: canaryConfig.creditCardToken, Type: 1 },
       Items: [{
         Item: { Name: 'Payment Health Check' },
         Quantity: 1,
