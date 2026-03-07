@@ -148,22 +148,45 @@ export const paymentService = {
     sumitCustomerId: string,
     amount: number,
     description: string,
-    credentials: VendorCredentials
+    credentials: VendorCredentials,
+    customerInfo?: { email?: string; name?: string }
   ): Promise<ChargeResult> {
     try {
       console.log('[Payment Debug] Charging saved card via multivendorcharge:', {
         customerId: sumitCustomerId,
         amount,
-        vendorCompanyId: credentials.companyId
+        vendorCompanyId: credentials.companyId,
+        hasEmail: !!customerInfo?.email
       });
+
+      // Fetch saved card details so we can pass them explicitly —
+      // multivendorcharge needs the token + expiration in PaymentMethod.
+      let paymentMethod: Record<string, any> | undefined;
+      try {
+        const saved = await this.getSavedPaymentMethods(sumitCustomerId);
+        if (saved.success && saved.paymentMethod) {
+          paymentMethod = {
+            CreditCard_Token: saved.paymentMethod.token,
+            CreditCard_ExpirationMonth: saved.paymentMethod.expirationMonth,
+            CreditCard_ExpirationYear: saved.paymentMethod.expirationYear,
+            Type: 1
+          };
+        }
+      } catch (err) {
+        console.warn('[Payment Debug] Could not fetch payment method details:', err);
+      }
+
+      // Prefer email-based lookup (SearchMode 0) — SearchMode 1 returns
+      // "Invalid Customer ID" in multivendorcharge for some customer records.
+      const customer = customerInfo?.email
+        ? { Name: customerInfo.name || 'Customer', EmailAddress: customerInfo.email, SearchMode: 0 }
+        : { ID: parseInt(sumitCustomerId), SearchMode: 1 };
 
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/payments/multivendorcharge/`,
         {
-          Customer: {
-            ID: parseInt(sumitCustomerId),
-            SearchMode: 1 // Search by ID
-          },
+          Customer: customer,
+          ...(paymentMethod && { PaymentMethod: paymentMethod }),
           Items: [{
             Item: { 
               Name: description
@@ -179,7 +202,6 @@ export const paymentService = {
           VATIncluded: true,
           SendDocumentByEmail: true,
           DocumentLanguage: 'Hebrew',
-          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
           Credentials: {
             CompanyID: PLATFORM_COMPANY_ID,
             APIKey: PLATFORM_API_KEY
@@ -187,25 +209,25 @@ export const paymentService = {
         }
       );
 
-      // Multivendorcharge returns Data.Vendors[].Items.Payment (not Data.Payment)
+      // Multivendorcharge response: Data.Vendors[].Payment (NOT .Items.Payment)
       const vendors = response.data?.Data?.Vendors;
-      const vendorResult = vendors?.[0]?.Items;
-      const payment = vendorResult?.Payment;
+      const vendorData = vendors?.[0];
+      const payment = vendorData?.Payment;
 
       console.log('[Payment Debug] Charge response:', {
         validPayment: payment?.ValidPayment,
         paymentId: payment?.ID,
-        vendorCount: vendors?.length
+        vendorCount: vendors?.length,
+        status: response.data?.Status
       });
 
       if (payment?.ValidPayment) {
-        // Save invoice record
         saveSumitInvoice({
           Payment: payment,
-          DocumentID: vendorResult?.DocumentID,
-          DocumentNumber: vendorResult?.DocumentNumber,
-          DocumentDownloadURL: vendorResult?.DocumentDownloadURL,
-          CustomerID: vendorResult?.CustomerID
+          DocumentID: vendorData?.DocumentID,
+          DocumentNumber: vendorData?.DocumentNumber,
+          DocumentDownloadURL: vendorData?.DocumentDownloadURL,
+          CustomerID: vendorData?.CustomerID
         }, {
           description: description
         });
@@ -218,7 +240,7 @@ export const paymentService = {
 
       return {
         success: false,
-        error: payment?.StatusDescription || 'Payment failed'
+        error: payment?.StatusDescription || response.data?.UserErrorMessage || 'Payment failed'
       };
     } catch (error: any) {
       console.error('Charge error:', error.response?.data || error);
@@ -467,7 +489,8 @@ export const paymentService = {
         saveResult.customerId,
         params.amount,
         `Booking: ${params.itemName}`,
-        credentials
+        credentials,
+        { email: params.customerInfo.email, name: params.customerInfo.name }
       );
 
       if (chargeResult.success) {
@@ -528,10 +551,13 @@ export const paymentService = {
     totalPrice?: number;
     itemId: any;
     studioId?: any;
+    userId?: any;
     paymentDetails?: {
       sumitCustomerId?: string;
       amount?: number;
       vendorId?: string;
+      customerEmail?: string;
+      customerName?: string;
     };
   }): Promise<{
     paymentStatus: 'charged' | 'failed';
@@ -557,11 +583,21 @@ export const paymentService = {
     const itemName = item?.name?.en || 'Reservation';
     const amount = paymentDetails.amount || reservation.totalPrice || 0;
 
+    // Get customer email for reliable Sumit lookup (SearchMode 0)
+    let customerEmail = paymentDetails.customerEmail;
+    let customerName = paymentDetails.customerName;
+    if (!customerEmail && reservation.userId) {
+      const user = await UserModel.findById(reservation.userId);
+      customerEmail = user?.email;
+      customerName = customerName || user?.name;
+    }
+
     const chargeResult = await this.chargeSavedCard(
       paymentDetails.sumitCustomerId,
       amount,
       `Booking: ${itemName}`,
-      credentials
+      credentials,
+      customerEmail ? { email: customerEmail, name: customerName } : undefined
     );
 
     if (chargeResult.success) {
@@ -797,12 +833,12 @@ export const paymentService = {
       return { success: false, error: 'Vendor not set up for payments' };
     }
 
-    // Charge the saved card
     return this.chargeSavedCard(
       user.sumitCustomerId,
       params.amount,
       params.description,
-      credentials
+      credentials,
+      { email: user.email, name: user.name }
     );
   },
 

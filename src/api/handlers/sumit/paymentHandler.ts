@@ -340,7 +340,6 @@ export const paymentHandler = {
           VATIncluded: true,
           SendDocumentByEmail: true,
           DocumentLanguage: 'Hebrew',
-          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
           Credentials: {
             CompanyID: COMPANY_ID,
             APIKey: API_KEY
@@ -348,26 +347,23 @@ export const paymentHandler = {
         }
       );
 
-      // Multivendor response structure: Data.Vendors[].Items contains Payment, DocumentID, etc.
+      // Multivendor response: Data.Vendors[].Payment (NOT .Items.Payment)
       const vendors = response.data.Data?.Vendors;
 
       if (vendors && vendors.length > 0) {
-        // Check if all vendor payments succeeded
-        const allValid = vendors.every((v: any) => v.Items?.Payment?.ValidPayment);
+        const allValid = vendors.every((v: any) => v.Payment?.ValidPayment);
 
         if (allValid) {
-          // Save invoice record for each vendor
           let chargeTotal = 0;
           for (const vendorData of vendors) {
-            const items = vendorData.Items;
-            if (items?.Payment?.ValidPayment) {
-              chargeTotal += items.Payment.Amount || 0;
+            if (vendorData.Payment?.ValidPayment) {
+              chargeTotal += vendorData.Payment.Amount || 0;
               await saveSumitInvoice({
-                Payment: items.Payment,
-                DocumentID: items.DocumentID,
-                DocumentNumber: items.DocumentNumber,
-                DocumentDownloadURL: items.DocumentDownloadURL,
-                CustomerID: items.CustomerID
+                Payment: vendorData.Payment,
+                DocumentID: vendorData.DocumentID,
+                DocumentNumber: vendorData.DocumentNumber,
+                DocumentDownloadURL: vendorData.DocumentDownloadURL,
+                CustomerID: vendorData.CustomerID
               }, {
                 customerName: customerInfo.name,
                 customerEmail: customerInfo.email,
@@ -376,13 +372,12 @@ export const paymentHandler = {
             }
           }
 
-          // Record platform fee for the multivendor charge
           if (vendorId && chargeTotal > 0) {
             platformFeeService.recordFee({
               vendorId,
               transactionAmount: chargeTotal,
               transactionType: 'multivendor',
-              sumitPaymentId: vendors[0]?.Items?.Payment?.ID
+              sumitPaymentId: vendors[0]?.Payment?.ID
             });
           }
 
@@ -392,11 +387,10 @@ export const paymentHandler = {
           });
         }
 
-        // Find first failed payment for error message
-        const failedVendor = vendors.find((v: any) => !v.Items?.Payment?.ValidPayment);
+        const failedVendor = vendors.find((v: any) => !v.Payment?.ValidPayment);
         return res.status(400).json({
           success: false,
-          error: failedVendor?.Items?.Payment?.StatusDescription || 'Payment failed'
+          error: failedVendor?.Payment?.StatusDescription || 'Payment failed'
         });
       }
 
@@ -481,7 +475,6 @@ export const paymentHandler = {
           VATIncluded: true,
           SendDocumentByEmail: true,
           DocumentLanguage: 'Hebrew',
-          DocumentType: 'InvoiceAndReceipt (1)', // חשבונית מס קבלה - issued by vendor
           Credentials: {
             CompanyID: vendor.sumitCompanyId,
             APIKey: vendor.sumitApiKey
