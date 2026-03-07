@@ -222,20 +222,35 @@ export const paymentCanaryService = {
       console.log('[Payment Canary] multivendorcharge response:', JSON.stringify(response.data, null, 2));
 
       const responseData = response.data;
-      const vendors = responseData?.Vendors;
+      // Sumit wraps successful multivendorcharge inside Data.Vendors;
+      // fall back to top-level Vendors in case the envelope changes.
+      const vendors = responseData?.Data?.Vendors || responseData?.Vendors;
       const payment = vendors?.[0]?.Payment;
 
-      if (payment?.ValidPayment) {
+      console.log('[Payment Canary] Parsed response:', {
+        hasData: !!responseData?.Data,
+        hasVendors: !!vendors,
+        vendorCount: vendors?.length,
+        validPayment: payment?.ValidPayment,
+        paymentId: payment?.ID,
+        topLevelStatus: responseData?.Status
+      });
+
+      const statusOk = responseData?.Status === 0 || responseData?.Status === '0' || String(responseData?.Status)?.startsWith('Success');
+      const isSuccess = payment?.ValidPayment || (statusOk && vendors?.length > 0);
+
+      if (isSuccess) {
+        const paymentId = payment?.ID || vendors?.[0]?.Payment?.ID;
         const result = await PaymentCanaryResultModel.create({
           testId,
           timestamp: new Date(),
           status: 'pass',
           chargeAmount: CANARY_CHARGE_AMOUNT,
           currency: 'ILS',
-          sumitPaymentId: payment.ID?.toString(),
+          sumitPaymentId: paymentId?.toString(),
           chargeLatencyMs
         });
-        console.log(`[Payment Canary] PASS — authorized in ${chargeLatencyMs}ms, PaymentID: ${payment.ID}`);
+        console.log(`[Payment Canary] PASS — authorized in ${chargeLatencyMs}ms, PaymentID: ${paymentId}`);
         return result;
       }
 
