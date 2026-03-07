@@ -154,11 +154,28 @@ export const paymentCanaryService = {
     // Sumit docs: "This field could be used for testing the Charge action easily."
     // Use SearchMode 0 (Automatic) with email to find the customer — avoids the
     // "Invalid Customer ID" issue that occurs with SearchMode 1 on newly created customers.
+    if (!canaryConfig.creditCardToken) {
+      const result = await PaymentCanaryResultModel.create({
+        testId,
+        timestamp: new Date(),
+        status: 'charge_failed',
+        chargeAmount: CANARY_CHARGE_AMOUNT,
+        currency: 'ILS',
+        chargeLatencyMs: 0,
+        errorMessage: 'No creditCardToken saved. Re-run Setup Card — the token must be returned by setforcustomer.'
+      });
+      await this.sendCanaryAlert(result);
+      return result;
+    }
+
     const chargePayload = {
       Customer: {
         Name: canaryConfig.customerName || 'Canary Test Admin',
         EmailAddress: canaryConfig.customerEmail || 'canary-billing@studioz.online',
         SearchMode: 0
+      },
+      PaymentMethod: {
+        CreditCard_Token: canaryConfig.creditCardToken
       },
       Items: [{
         Item: { Name: 'Payment Health Check' },
