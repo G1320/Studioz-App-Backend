@@ -175,7 +175,8 @@ export const paymentCanaryService = {
         SearchMode: 0
       },
       PaymentMethod: {
-        CreditCard_Token: canaryConfig.creditCardToken
+        CreditCard_Token: canaryConfig.creditCardToken,
+        Type: 'CreditCard'
       },
       Items: [{
         Item: { Name: 'Payment Health Check' },
