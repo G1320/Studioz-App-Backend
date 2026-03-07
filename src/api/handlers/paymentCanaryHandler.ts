@@ -35,12 +35,16 @@ export const getCanaryHistory = handleRequest(async (req: Request, _res: Respons
  * Returns whether the canary is configured and card info
  */
 export const getCanaryConfig = handleRequest(async (_req: Request, _res: Response) => {
-  const customerId = await paymentCanaryService.getCanaryCustomerId();
+  const config = await paymentCanaryService.getCanaryConfig();
   const vendorCreds = await paymentCanaryService.getCanaryVendorCredentials();
   return {
-    configured: !!customerId,
-    customerId: customerId || null,
-    hasVendor: !!vendorCreds
+    configured: !!config?.sumitCustomerId,
+    customerId: config?.sumitCustomerId || null,
+    hasVendor: !!vendorCreds,
+    setupVersion: (config as any)?.setupVersion || null,
+    hasCreditCardToken: !!config?.creditCardToken,
+    customerEmail: config?.customerEmail || null,
+    setupAt: config?.setupAt || null
   };
 });
 

@@ -44,6 +44,7 @@ export interface IPaymentCanaryConfig extends Document {
   customerName: string;
   lastFourDigits?: string;
   creditCardToken?: string;
+  setupVersion?: number;
   setupAt: Date;
 }
 
@@ -54,6 +55,7 @@ const paymentCanaryConfigSchema = new Schema<IPaymentCanaryConfig>({
   customerName: { type: String, required: true },
   lastFourDigits: { type: String },
   creditCardToken: { type: String },
+  setupVersion: { type: Number },
   setupAt: { type: Date, default: Date.now }
 });
 

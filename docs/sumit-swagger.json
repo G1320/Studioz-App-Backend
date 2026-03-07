@@ -1,0 +1,30 @@
+# Sumit API - Key schemas for payment canary
+
+## multivendorcharge Request Schema
+`OfficeGuy.Apps.Billing.MVC.API.PaymentsController_Payments_MultiVendorCharge_Request`
+
+Required fields: Credentials, Customer, Items
+
+- Customer: `Accounting_Typed_Customer` (same shared schema across ALL endpoints)
+  - SearchMode: "Automatic (0)", "None (1)", "ExternalIdentifier (2)", "Name (3)", "CompanyNumber (4)", "Phone (5)", "EmailAddress (6)"
+  - ID, Name, EmailAddress, Phone, etc.
+- PaymentMethod: `PaymentMethod` (nullable) - "Leave this empty to use the customer payment method, or when using the SingleUseToken"
+  - CreditCard_Token, CreditCard_Number, Type, etc.
+- SingleUseToken: nullable string
+- Items: MultiVendorChargeItem[] (includes CompanyID + APIKey per vendor item)
+
+## Key insight from PaymentMethod description:
+> "Leave this empty to use the customer payment method, or when using the SingleUseToken"
+
+This means: if PaymentMethod is null AND SingleUseToken is null, Sumit uses the CUSTOMER'S saved payment method.
+
+## Customer SearchMode enum:
+- Automatic (0) - search by name/email/phone automatically  
+- None (1) - search by ID
+- ExternalIdentifier (2)
+- Name (3)
+- CompanyNumber (4)
+- Phone (5)
+- EmailAddress (6)
+
+NOTE: SearchMode "None (1)" means lookup by ID, NOT "no search". This is DIFFERENT from what we assumed!

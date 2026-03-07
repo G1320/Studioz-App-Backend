@@ -11,6 +11,7 @@ const PLATFORM_API_KEY = process.env.SUMIT_API_KEY;
 const CANARY_VENDOR_ID = () => process.env.CANARY_VENDOR_ID;
 const CANARY_ALERT_EMAIL = () => process.env.CANARY_ALERT_EMAIL || 'admin@studioz.online';
 const CANARY_CHARGE_AMOUNT = 1; // 1 ILS
+const CANARY_SETUP_VERSION = 3;
 
 export const paymentCanaryService = {
   /**
@@ -36,7 +37,17 @@ export const paymentCanaryService = {
   }): Promise<void> {
     await PaymentCanaryConfigModel.findOneAndUpdate(
       { key: 'canary' },
-      { ...params, setupAt: new Date() },
+      {
+        $set: {
+          sumitCustomerId: params.sumitCustomerId,
+          customerEmail: params.customerEmail,
+          customerName: params.customerName,
+          lastFourDigits: params.lastFourDigits ?? null,
+          creditCardToken: params.creditCardToken ?? null,
+          setupVersion: CANARY_SETUP_VERSION,
+          setupAt: new Date()
+        }
+      },
       { upsert: true }
     );
     process.env.CANARY_SUMIT_CUSTOMER_ID = params.sumitCustomerId;
@@ -101,6 +112,20 @@ export const paymentCanaryService = {
       return result;
     }
 
+    if ((canaryConfig as any).setupVersion !== CANARY_SETUP_VERSION) {
+      const result = await PaymentCanaryResultModel.create({
+        testId,
+        timestamp: new Date(),
+        status: 'charge_failed',
+        chargeAmount: CANARY_CHARGE_AMOUNT,
+        currency: 'ILS',
+        chargeLatencyMs: 0,
+        errorMessage: `Canary config is outdated (v${(canaryConfig as any).setupVersion || 'unknown'}, need v${CANARY_SETUP_VERSION}). Please re-run Setup Card to create a fresh customer.`
+      });
+      await this.sendCanaryAlert(result);
+      return result;
+    }
+
     if (!PLATFORM_COMPANY_ID || !PLATFORM_API_KEY) {
       const result = await PaymentCanaryResultModel.create({
         testId,
@@ -131,9 +156,8 @@ export const paymentCanaryService = {
     }
 
     // --- Step 1: Charge via multivendorcharge (same path as real customer orders) ---
-    // Use the same approach as paymentService.chargeSavedCard:
-    // SearchMode: 1 with the customer ID from setforcustomer.
-    // Also pass the CreditCard_Token in PaymentMethod as a fallback.
+    // Mirrors paymentService.chargeSavedCard exactly:
+    // Customer by ID (SearchMode: 1), vendor creds in Items, platform creds at top level.
     let sumitPaymentId: string | undefined;
     let chargeLatencyMs: number;
 
@@ -145,7 +169,7 @@ export const paymentCanaryService = {
       platformCompanyId: PLATFORM_COMPANY_ID
     });
 
-    const chargePayload: Record<string, any> = {
+    const chargePayload = {
       Customer: {
         ID: parseInt(canaryConfig.sumitCustomerId),
         SearchMode: 1
@@ -155,26 +179,20 @@ export const paymentCanaryService = {
         Quantity: 1,
         UnitPrice: CANARY_CHARGE_AMOUNT,
         Total: CANARY_CHARGE_AMOUNT,
-        Currency: 0,
+        Currency: 'ILS',
         Description: 'Automated canary test — will be refunded immediately',
         CompanyID: vendorCreds.companyId,
         APIKey: vendorCreds.apiKey
       }],
       VATIncluded: true,
       SendDocumentByEmail: false,
-      DocumentLanguage: 0,
+      DocumentLanguage: 'Hebrew',
+      DocumentType: 'InvoiceAndReceipt (1)',
       Credentials: {
         CompanyID: PLATFORM_COMPANY_ID,
         APIKey: PLATFORM_API_KEY
       }
     };
-
-    if (canaryConfig.creditCardToken) {
-      chargePayload.PaymentMethod = {
-        CreditCard_Token: canaryConfig.creditCardToken,
-        Type: 1
-      };
-    }
 
     const chargeStart = Date.now();
     try {
@@ -347,7 +365,7 @@ export const paymentCanaryService = {
    *    customer and saves the card in one step.
    * 2. Persist customerId + email to MongoDB.
    *
-   * multivendorcharge then finds this customer by email (SearchMode: 0).
+   * multivendorcharge then finds this customer by ID (SearchMode: 1).
    */
   async saveCanaryCard(singleUseToken: string, customerInfo: { name: string; email: string; phone: string }): Promise<{
     success: boolean;
