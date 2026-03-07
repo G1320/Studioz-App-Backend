@@ -221,9 +221,9 @@ export const paymentCanaryService = {
 
       console.log('[Payment Canary] multivendorcharge response:', JSON.stringify(response.data, null, 2));
 
-      const vendors = response.data?.Data?.Vendors;
-      const vendorResult = vendors?.[0]?.Items;
-      const payment = vendorResult?.Payment;
+      const responseData = response.data;
+      const vendors = responseData?.Vendors;
+      const payment = vendors?.[0]?.Payment;
 
       if (payment?.ValidPayment) {
         const result = await PaymentCanaryResultModel.create({
@@ -246,8 +246,8 @@ export const paymentCanaryService = {
         chargeAmount: CANARY_CHARGE_AMOUNT,
         currency: 'ILS',
         chargeLatencyMs,
-        errorMessage: payment?.StatusDescription || response.data?.UserErrorMessage || 'Authorization returned invalid payment',
-        errorDetails: { responseData: response.data }
+        errorMessage: payment?.StatusDescription || responseData?.UserErrorMessage || 'Authorization returned invalid payment',
+        errorDetails: { responseData }
       });
       console.error(`[Payment Canary] AUTH FAILED (${chargeLatencyMs}ms):`, result.errorMessage);
       await this.sendCanaryAlert(result);
