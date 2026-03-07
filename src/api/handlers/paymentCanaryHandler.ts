@@ -36,9 +36,11 @@ export const getCanaryHistory = handleRequest(async (req: Request, _res: Respons
  */
 export const getCanaryConfig = handleRequest(async (_req: Request, _res: Response) => {
   const customerId = process.env.CANARY_SUMIT_CUSTOMER_ID;
+  const vendorCreds = await paymentCanaryService.getCanaryVendorCredentials();
   return {
     configured: !!customerId,
-    customerId: customerId || null
+    customerId: customerId || null,
+    hasVendor: !!vendorCreds
   };
 });
 
