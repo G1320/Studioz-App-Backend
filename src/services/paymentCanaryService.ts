@@ -152,10 +152,13 @@ export const paymentCanaryService = {
     // Validate via multivendorcharge — same path as real customer orders.
     // AuthoriseOnly: true = validate only, no money moves, document issued as Draft.
     // Sumit docs: "This field could be used for testing the Charge action easily."
+    // Use SearchMode 0 (Automatic) with email to find the customer — avoids the
+    // "Invalid Customer ID" issue that occurs with SearchMode 1 on newly created customers.
     const chargePayload = {
       Customer: {
-        ID: parseInt(canaryConfig.sumitCustomerId),
-        SearchMode: 1
+        Name: canaryConfig.customerName || 'Canary Test Admin',
+        EmailAddress: canaryConfig.customerEmail || 'canary-billing@studioz.online',
+        SearchMode: 0
       },
       Items: [{
         Item: { Name: 'Payment Health Check' },
@@ -287,7 +290,7 @@ export const paymentCanaryService = {
    *    customer and saves the card in one step.
    * 2. Persist customerId + email to MongoDB.
    *
-   * multivendorcharge then finds this customer by ID (SearchMode: 1).
+   * multivendorcharge then finds this customer by email (SearchMode: 0).
    */
   async saveCanaryCard(singleUseToken: string, customerInfo: { name: string; email: string; phone: string }): Promise<{
     success: boolean;
