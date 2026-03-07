@@ -26,6 +26,7 @@ import sumitRoutes from './api/routes/sumit/paymentRoutes.js';
 import subscriptionRoutes from './api/routes/sumit/subscriptionRoutes.js';
 import vendorRoutes from './api/routes/sumit/vendorRoutes.js';
 import googleCalendarRoutes from './api/routes/googleCalendarRoutes.js';
+import googleCalendarWebhookRoutes from './api/routes/googleCalendarWebhookRoutes.js';
 import couponRoutes from './api/routes/couponRoutes.js';
 import studioCouponRoutes from './api/routes/studioCouponRoutes.js';
 import merchantRoutes from './api/routes/merchantRoutes.js';
@@ -151,6 +152,7 @@ app.use('/api/vendors', vendorRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
+app.use('/api/webhooks/google-calendar', googleCalendarWebhookRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/studio-coupons', studioCouponRoutes);
 app.use('/api/merchant', merchantRoutes);

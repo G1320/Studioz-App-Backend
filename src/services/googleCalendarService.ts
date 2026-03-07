@@ -1,4 +1,5 @@
 import { google, calendar_v3 } from 'googleapis';
+import { randomUUID } from 'crypto';
 import { UserModel } from '../models/userModel.js';
 import { StudioModel } from '../models/studioModel.js';
 import { ItemModel } from '../models/itemModel.js';
@@ -7,6 +8,7 @@ import { getValidAccessToken, getAuthenticatedClient, isTokenExpired, refreshAcc
 import { formatReservationToCalendarEvent, parseCalendarEventToTimeSlots, shouldBlockTimeSlotsForEvent } from '../utils/googleCalendarUtils.js';
 import { initializeAvailability, findOrCreateDateAvailability, removeTimeSlots, generateTimeSlots } from '../utils/timeSlotUtils.js';
 import { emitAvailabilityUpdate, emitBulkAvailabilityUpdate } from '../webSockets/socket.js';
+import { GOOGLE_CALENDAR_CONFIG } from '../config/googleCalendarConfig.js';
 import ExpressError from '../utils/expressError.js';
 import Reservation from '../types/reservation.js';
 
@@ -103,6 +105,14 @@ export const connectCalendar = async (userId: string, authCode: string): Promise
       // Don't fail the connection if sync fails
     }
 
+    // Set up push notifications for real-time sync
+    try {
+      await startWatchingCalendar(userId);
+    } catch (error) {
+      console.error('Error setting up calendar watch:', error);
+      // Don't fail the connection if watch fails - polling will still work
+    }
+
   } catch (error) {
     console.error('Error connecting Google Calendar:', error);
     if (error instanceof ExpressError) {
@@ -120,6 +130,9 @@ export const connectCalendar = async (userId: string, authCode: string): Promise
  */
 export const disconnectCalendar = async (userId: string): Promise<void> => {
   try {
+    // Stop push notifications before disconnecting
+    await stopWatchingCalendar(userId);
+
     await UserModel.findByIdAndUpdate(userId, {
       $unset: {
         'googleCalendar': ''
@@ -137,6 +150,7 @@ export const disconnectCalendar = async (userId: string): Promise<void> => {
  * @param userId - User ID
  */
 const clearGoogleCalendarConnection = async (userId: string): Promise<void> => {
+  // Clear watch channel fields along with the rest (no API call since tokens are invalid)
   await UserModel.findByIdAndUpdate(userId, {
     $unset: { 'googleCalendar': '' }
   });
@@ -719,6 +733,209 @@ export interface SyncAllResult {
   failed: number;
   errors: Array<{ userId: string; error: string }>;
 }
+
+/**
+ * Start watching a user's Google Calendar for push notifications
+ * Creates a watch channel so Google sends real-time notifications when events change
+ * @param userId - User ID
+ */
+export const startWatchingCalendar = async (userId: string): Promise<void> => {
+  try {
+    if (!GOOGLE_CALENDAR_CONFIG.webhookUrl) {
+      console.log('[GoogleCalendar] No webhook URL configured, skipping watch setup for user:', userId);
+      return;
+    }
+
+    const user = await UserModel.findById(userId).select('+googleCalendar.accessToken +googleCalendar.refreshToken googleCalendar');
+    if (!user || !user.googleCalendar?.connected) {
+      return;
+    }
+
+    const accessToken = await getAndRefreshToken(userId, user);
+    const calendar = google.calendar({ version: 'v3', auth: getAuthenticatedClient(accessToken) });
+    const calendarId = user.googleCalendar.calendarId || 'primary';
+
+    const channelId = randomUUID();
+    // Watch channels expire after ~7 days max; request slightly less to allow renewal
+    const expiration = Date.now() + 6 * 24 * 60 * 60 * 1000; // 6 days
+
+    const response = await calendar.events.watch({
+      calendarId,
+      requestBody: {
+        id: channelId,
+        type: 'web_hook',
+        address: GOOGLE_CALENDAR_CONFIG.webhookUrl,
+        token: userId, // Used to identify the user when webhook fires
+        expiration: String(expiration)
+      }
+    });
+
+    // Save watch channel info
+    await UserModel.findByIdAndUpdate(userId, {
+      'googleCalendar.watchChannelId': channelId,
+      'googleCalendar.watchResourceId': response.data.resourceId,
+      'googleCalendar.watchExpiration': new Date(Number(response.data.expiration))
+    });
+
+    console.log('[GoogleCalendar] Watch channel created for user:', userId, 'channelId:', channelId);
+  } catch (error) {
+    console.error('[GoogleCalendar] Error starting watch for user:', userId, error);
+    // Don't throw - watch setup failure shouldn't break the flow
+  }
+};
+
+/**
+ * Stop watching a user's Google Calendar
+ * Stops the push notification channel
+ * @param userId - User ID
+ */
+export const stopWatchingCalendar = async (userId: string): Promise<void> => {
+  try {
+    const user = await UserModel.findById(userId).select('+googleCalendar.accessToken +googleCalendar.refreshToken googleCalendar');
+    if (!user?.googleCalendar?.watchChannelId || !user.googleCalendar.watchResourceId) {
+      return;
+    }
+
+    const accessToken = await getAndRefreshToken(userId, user);
+    const calendar = google.calendar({ version: 'v3', auth: getAuthenticatedClient(accessToken) });
+
+    await calendar.channels.stop({
+      requestBody: {
+        id: user.googleCalendar.watchChannelId,
+        resourceId: user.googleCalendar.watchResourceId
+      }
+    });
+
+    console.log('[GoogleCalendar] Watch channel stopped for user:', userId);
+  } catch (error) {
+    // Channel may already be expired/stopped - that's fine
+    console.log('[GoogleCalendar] Error stopping watch (may already be expired):', userId, error instanceof Error ? error.message : error);
+  } finally {
+    // Always clear the watch fields
+    await UserModel.findByIdAndUpdate(userId, {
+      $unset: {
+        'googleCalendar.watchChannelId': '',
+        'googleCalendar.watchResourceId': '',
+        'googleCalendar.watchExpiration': ''
+      }
+    });
+  }
+};
+
+/**
+ * Process an incoming Google Calendar webhook notification
+ * Triggered when events change on a watched calendar
+ * @param channelId - The watch channel ID (from X-Goog-Channel-ID header)
+ * @param resourceId - The resource ID (from X-Goog-Resource-ID header)
+ */
+export const processWebhookNotification = async (channelId: string, resourceId: string): Promise<void> => {
+  try {
+    // Find the user by watch channel info
+    const user = await UserModel.findOne({
+      'googleCalendar.watchChannelId': channelId,
+      'googleCalendar.watchResourceId': resourceId,
+      'googleCalendar.connected': true
+    }).select('+googleCalendar.accessToken +googleCalendar.refreshToken googleCalendar');
+
+    if (!user) {
+      console.log('[GoogleCalendar] No user found for webhook channelId:', channelId);
+      return;
+    }
+
+    const userId = user._id.toString();
+    console.log('[GoogleCalendar] Processing webhook notification for user:', userId);
+
+    // Use the existing sync function with the stored sync token
+    await syncCalendarEventsToTimeSlots(userId, user.googleCalendar?.syncToken || undefined);
+    console.log('[GoogleCalendar] Webhook sync completed for user:', userId);
+  } catch (error) {
+    console.error('[GoogleCalendar] Error processing webhook notification:', error);
+  }
+};
+
+/**
+ * Renew watch channels that are about to expire
+ * Should be called periodically (e.g., daily) to keep channels alive
+ */
+export const renewExpiringWatchChannels = async (): Promise<{ renewed: number; failed: number }> => {
+  const results = { renewed: 0, failed: 0 };
+
+  try {
+    // Find users with watch channels expiring within 24 hours
+    const expirationThreshold = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const users = await UserModel.find({
+      'googleCalendar.connected': true,
+      'googleCalendar.watchChannelId': { $exists: true, $ne: null },
+      'googleCalendar.watchExpiration': { $lt: expirationThreshold }
+    }).select('_id');
+
+    if (users.length === 0) {
+      return results;
+    }
+
+    console.log(`[GoogleCalendar] Renewing ${users.length} expiring watch channels`);
+
+    for (const user of users) {
+      try {
+        await stopWatchingCalendar(user._id.toString());
+        await startWatchingCalendar(user._id.toString());
+        results.renewed++;
+      } catch (error) {
+        results.failed++;
+        console.error('[GoogleCalendar] Failed to renew watch for user:', user._id, error);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('[GoogleCalendar] Error renewing watch channels:', error);
+    return results;
+  }
+};
+
+/**
+ * Set up watch channels for all connected users that don't have one
+ * Useful for initial setup or recovery after server restart
+ */
+export const setupMissingWatchChannels = async (): Promise<{ setup: number; failed: number }> => {
+  const results = { setup: 0, failed: 0 };
+
+  try {
+    if (!GOOGLE_CALENDAR_CONFIG.webhookUrl) {
+      return results;
+    }
+
+    const users = await UserModel.find({
+      'googleCalendar.connected': true,
+      $or: [
+        { 'googleCalendar.watchChannelId': { $exists: false } },
+        { 'googleCalendar.watchChannelId': null }
+      ]
+    }).select('_id');
+
+    if (users.length === 0) {
+      return results;
+    }
+
+    console.log(`[GoogleCalendar] Setting up watch channels for ${users.length} users`);
+
+    for (const user of users) {
+      try {
+        await startWatchingCalendar(user._id.toString());
+        results.setup++;
+      } catch (error) {
+        results.failed++;
+        console.error('[GoogleCalendar] Failed to setup watch for user:', user._id, error);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('[GoogleCalendar] Error setting up watch channels:', error);
+    return results;
+  }
+};
 
 /**
  * Sync calendar events for all users with connected Google Calendars

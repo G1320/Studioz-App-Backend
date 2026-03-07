@@ -31,6 +31,18 @@ export const getCanaryHistory = handleRequest(async (req: Request, _res: Respons
 });
 
 /**
+ * GET /api/payment-canary/config
+ * Returns whether the canary is configured and card info
+ */
+export const getCanaryConfig = handleRequest(async (_req: Request, _res: Response) => {
+  const customerId = process.env.CANARY_SUMIT_CUSTOMER_ID;
+  return {
+    configured: !!customerId,
+    customerId: customerId || null
+  };
+});
+
+/**
  * POST /api/payment-canary/setup-card
  * One-time setup: save the admin's credit card for canary tests
  * Body: { singleUseToken, name, email, phone }
@@ -55,10 +67,13 @@ export const setupCanaryCard = handleRequest(async (req: Request, res: Response)
     return { error: result.error };
   }
 
+  // Set at runtime so it works immediately without restart
+  process.env.CANARY_SUMIT_CUSTOMER_ID = result.customerId;
+
   return {
     success: true,
     customerId: result.customerId,
     lastFourDigits: result.lastFourDigits,
-    instructions: `Set CANARY_SUMIT_CUSTOMER_ID=${result.customerId} in your .env file and restart the server.`
+    instructions: `Card saved. Add CANARY_SUMIT_CUSTOMER_ID=${result.customerId} to your .env file for persistence across restarts.`
   };
 });

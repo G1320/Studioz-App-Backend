@@ -79,7 +79,10 @@ const userSchema = new Schema(
       tokenExpiry: { type: Date },
       calendarId: { type: String, default: 'primary' },
       lastSyncAt: { type: Date },
-      syncToken: { type: String }
+      syncToken: { type: String },
+      watchChannelId: { type: String },
+      watchResourceId: { type: String },
+      watchExpiration: { type: Date }
     },
     // Email notification preferences
     emailPreferences: {
