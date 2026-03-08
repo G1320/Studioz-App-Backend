@@ -46,6 +46,15 @@ export const getCanaryConfig = handleRequest(async (_req: Request, _res: Respons
 });
 
 /**
+ * DELETE /api/payment-canary/history
+ * Clear all canary test history (e.g. after setup/testing)
+ */
+export const clearCanaryHistory = handleRequest(async (_req: Request, _res: Response) => {
+  const deletedCount = await paymentCanaryService.clearHistory();
+  return { success: true, deletedCount };
+});
+
+/**
  * POST /api/payment-canary/setup-card
  * One-time setup: save the admin's credit card for canary tests.
  * Body: { singleUseToken, name, email, phone }

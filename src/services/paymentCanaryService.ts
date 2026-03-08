@@ -426,5 +426,10 @@ export const paymentCanaryService = {
       .sort({ timestamp: -1 })
       .limit(limit)
       .lean();
+  },
+
+  async clearHistory(): Promise<number> {
+    const result = await PaymentCanaryResultModel.deleteMany({});
+    return result.deletedCount;
   }
 };
