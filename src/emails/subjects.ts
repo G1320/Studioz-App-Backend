@@ -1,7 +1,7 @@
 import type { EmailTemplateName } from './types.js';
 
 export const EMAIL_SUBJECTS: Record<EmailTemplateName, string> = {
-  WELCOME: 'ברוכים הבאים ל-StudioZ!',
+  WELCOME: 'ברוכים הבאים ל-Studioz!',
   PASSWORD_RESET: 'איפוס סיסמה',
   EMAIL_VERIFICATION: 'אימות כתובת אימייל',
   ACCOUNT_DEACTIVATION: 'חשבונך בוטל',

@@ -40,7 +40,7 @@ export const TrialStartedEmail = ({
             fontFamily,
           }}
         >
-          ברוך הבא ל-StudioZ! תקופת הניסיון שלך לתוכנית{' '}
+          ברוך הבא ל-Studioz! תקופת הניסיון שלך לתוכנית{' '}
           <span style={{ fontWeight: 700, color: colors.brandGold }}>
             {planName}
           </span>{' '}

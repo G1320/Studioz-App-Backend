@@ -1,58 +1,54 @@
 import mongoose from 'mongoose';
 
-export type ServiceStatus = 'operational' | 'degraded' | 'down';
-
 export interface ServiceHealth {
-  status: ServiceStatus;
+  status: 'operational' | 'degraded' | 'down';
   latencyMs?: number;
   details?: Record<string, unknown>;
 }
 
-export interface HealthCheckResult {
-  server: ServiceHealth;
+export interface HealthReport {
+  server: ServiceHealth & { uptimeSeconds: number; memoryMb: number };
   database: ServiceHealth;
 }
 
-const DB_STATE_MAP: Record<number, ServiceStatus> = {
-  0: 'down',        // disconnected
-  1: 'operational',  // connected
-  2: 'degraded',     // connecting
-  3: 'down',         // disconnecting
-};
-
 export const healthCheckService = {
-  checkServer(): ServiceHealth {
-    const uptimeSeconds = process.uptime();
+  async getHealth(): Promise<HealthReport> {
+    const server = this.checkServer();
+    const database = await this.checkDatabase();
+    return { server, database };
+  },
+
+  checkServer(): HealthReport['server'] {
     const mem = process.memoryUsage();
+    const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
+    const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
+    const usageRatio = heapUsedMb / heapTotalMb;
 
     return {
-      status: 'operational',
-      details: {
-        uptimeSeconds: Math.floor(uptimeSeconds),
-        memoryUsage: {
-          heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
-          heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
-          rssMB: Math.round(mem.rss / 1024 / 1024),
-        },
-      },
+      status: usageRatio > 0.95 ? 'degraded' : 'operational',
+      uptimeSeconds: Math.floor(process.uptime()),
+      memoryMb: heapUsedMb,
+      details: { heapTotalMb, rss: Math.round(mem.rss / 1024 / 1024) }
     };
   },
 
-  checkDatabase(): ServiceHealth {
-    const readyState = mongoose.connection.readyState;
-    const status = DB_STATE_MAP[readyState] ?? 'down';
+  async checkDatabase(): Promise<ServiceHealth> {
+    const state = mongoose.connection.readyState;
+    // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    if (state !== 1) {
+      return { status: 'down' };
+    }
 
-    return { status };
-  },
-
-  async checkAll(): Promise<HealthCheckResult> {
     const start = Date.now();
-    const server = this.checkServer();
-    const database = this.checkDatabase();
-    const latencyMs = Date.now() - start;
-
-    server.latencyMs = latencyMs;
-
-    return { server, database };
-  },
+    try {
+      await mongoose.connection.db!.admin().ping();
+      const latencyMs = Date.now() - start;
+      return {
+        status: latencyMs > 2000 ? 'degraded' : 'operational',
+        latencyMs
+      };
+    } catch {
+      return { status: 'down' };
+    }
+  }
 };

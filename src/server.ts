@@ -33,6 +33,7 @@ import merchantRoutes from './api/routes/merchantRoutes.js';
 import metaRoutes from './api/routes/metaRoutes.js';
 import paymentCanaryRoutes from './api/routes/paymentCanaryRoutes.js';
 import statusRoutes from './api/routes/statusRoutes.js';
+import statusRoutes from './api/routes/statusRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -159,6 +160,7 @@ app.use('/api/studio-coupons', studioCouponRoutes);
 app.use('/api/merchant', merchantRoutes);
 app.use('/api/meta', metaRoutes);
 app.use('/api/payment-canary', paymentCanaryRoutes);
+app.use('/api/status', statusRoutes);
 app.use('/api/status', statusRoutes);
 
 // Debug route to test Sentry error tracking

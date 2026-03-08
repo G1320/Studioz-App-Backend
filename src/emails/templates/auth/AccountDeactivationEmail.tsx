@@ -35,7 +35,7 @@ export const AccountDeactivationEmail = ({
             fontFamily,
           }}
         >
-          חשבונך ב-StudioZ בוטל בהצלחה. אנחנו מצטערים לראות אותך עוזב.
+          חשבונך ב-Studioz בוטל בהצלחה. אנחנו מצטערים לראות אותך עוזב.
         </Text>
         <CTAButton
           href="https://studioz.co.il"

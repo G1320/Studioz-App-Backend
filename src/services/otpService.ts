@@ -24,7 +24,7 @@ export class OTPService {
 
       await sendSMS({
         phoneNumber,
-        message: `Your StudioZ verification code is: ${code}`
+        message: `Your Studioz verification code is: ${code}`
       });
 
       return true;

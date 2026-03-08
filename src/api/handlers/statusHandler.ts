@@ -1,81 +1,112 @@
 import { Request, Response } from 'express';
-import { healthCheckService, type ServiceStatus } from '../../services/healthCheckService.js';
+import { healthCheckService } from '../../services/healthCheckService.js';
 import { PaymentCanaryResultModel } from '../../models/paymentCanaryModel.js';
 import handleRequest from '../../utils/requestHandler.js';
 
-function resolveOverall(...statuses: ServiceStatus[]): 'operational' | 'degraded' | 'major_outage' {
-  if (statuses.every((s) => s === 'operational')) return 'operational';
-  if (statuses.some((s) => s === 'down')) return 'major_outage';
-  return 'degraded';
+interface DailyAggregate {
+  date: string;
+  total: number;
+  passed: number;
+  failed: number;
+  avgLatencyMs: number;
 }
 
-/**
- * GET /api/status
- * Public, no auth — returns sanitized service health data.
- */
-export const getStatus = handleRequest(async (_req: Request, _res: Response) => {
-  const health = await healthCheckService.checkAll();
+interface RecentCheck {
+  timestamp: string;
+  status: 'pass' | 'charge_failed';
+  latencyMs: number;
+}
 
-  // Last 24h canary results — only count tests that actually reached the
-  // payment gateway (chargeLatencyMs > 0). Config-level failures (missing
-  // card/credentials) have latency 0 and aren't real gateway issues.
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const canaryResults = await PaymentCanaryResultModel.find({
-    timestamp: { $gte: since },
-    chargeLatencyMs: { $gt: 0 },
-  })
-    .sort({ timestamp: -1 })
-    .select('status chargeLatencyMs timestamp')
-    .lean();
+export const getPublicStatus = handleRequest(async (_req: Request, _res: Response) => {
+  const health = await healthCheckService.getHealth();
 
-  const totalTests = canaryResults.length;
-  const passedTests = canaryResults.filter((r) => r.status === 'pass').length;
-  const uptimePercent = totalTests > 0 ? Math.round((passedTests / totalTests) * 10000) / 100 : 100;
-  const avgLatency =
-    passedTests > 0
-      ? Math.round(
-          canaryResults
-            .filter((r) => r.status === 'pass')
-            .reduce((sum, r) => sum + r.chargeLatencyMs, 0) / passedTests
-        )
-      : 0;
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  const lastCheck = canaryResults[0]?.timestamp || null;
+  const [dailyAgg, recentResults] = await Promise.all([
+    PaymentCanaryResultModel.aggregate<{
+      _id: string;
+      total: number;
+      passed: number;
+      failed: number;
+      avgLatencyMs: number;
+    }>([
+      { $match: { timestamp: { $gte: ninetyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp', timezone: 'Asia/Jerusalem' } },
+          total: { $sum: 1 },
+          passed: { $sum: { $cond: [{ $eq: ['$status', 'pass'] }, 1, 0] } },
+          failed: { $sum: { $cond: [{ $eq: ['$status', 'charge_failed'] }, 1, 0] } },
+          avgLatencyMs: { $avg: '$chargeLatencyMs' }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]),
 
-  // Determine payment status from the most recent 3 gateway-reaching tests.
-  // This avoids false alarms from intermittent canary failures (rate limits,
-  // token quirks) while still catching real outages.
-  const recent3 = canaryResults.slice(0, 3);
-  const recentPasses = recent3.filter((r) => r.status === 'pass').length;
+    PaymentCanaryResultModel.find()
+      .sort({ timestamp: -1 })
+      .limit(24)
+      .select('timestamp status chargeLatencyMs')
+      .lean()
+  ]);
 
-  let paymentStatus: ServiceStatus = 'operational';
-  if (recent3.length > 0) {
-    if (recentPasses === 0) paymentStatus = 'down';
-    else if (recent3[0]?.status === 'charge_failed') paymentStatus = 'degraded';
-  }
+  const dailyHistory: DailyAggregate[] = dailyAgg.map((d) => ({
+    date: d._id,
+    total: d.total,
+    passed: d.passed,
+    failed: d.failed,
+    avgLatencyMs: Math.round(d.avgLatencyMs)
+  }));
 
-  const overall = resolveOverall(health.server.status, health.database.status, paymentStatus);
+  const recent: RecentCheck[] = recentResults.map((r) => ({
+    timestamp: r.timestamp.toISOString(),
+    status: r.status,
+    latencyMs: r.chargeLatencyMs
+  }));
+
+  const totalChecks = dailyHistory.reduce((sum, d) => sum + d.total, 0);
+  const totalPassed = dailyHistory.reduce((sum, d) => sum + d.passed, 0);
+  const uptimePercent = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 10000) / 100 : null;
+
+  const latestCheck = recent[0] ?? null;
+  const paymentStatus = !latestCheck
+    ? 'operational'
+    : latestCheck.status === 'pass'
+      ? 'operational'
+      : 'degraded';
+
+  const overallStatus =
+    health.server.status === 'down' || health.database.status === 'down'
+      ? 'major_outage'
+      : health.server.status === 'degraded' || health.database.status === 'degraded' || paymentStatus === 'degraded'
+        ? 'degraded'
+        : 'operational';
 
   return {
-    overall,
+    overall: overallStatus,
     services: {
       server: {
         status: health.server.status,
-        uptimeSeconds: health.server.details?.uptimeSeconds,
-        latencyMs: health.server.latencyMs,
+        uptimeSeconds: health.server.uptimeSeconds,
+        memoryMb: health.server.memoryMb
       },
       database: {
         status: health.database.status,
+        latencyMs: health.database.latencyMs ?? null
       },
       payments: {
         status: paymentStatus,
         uptimePercent,
-        avgLatencyMs: avgLatency,
-        totalTests24h: totalTests,
-        passedTests24h: passedTests,
-        lastCheck,
-      },
+        latestCheck: latestCheck
+          ? { timestamp: latestCheck.timestamp, status: latestCheck.status, latencyMs: latestCheck.latencyMs }
+          : null
+      }
     },
-    timestamp: new Date().toISOString(),
+    paymentHistory: {
+      daily: dailyHistory,
+      recent
+    },
+    timestamp: new Date().toISOString()
   };
 });

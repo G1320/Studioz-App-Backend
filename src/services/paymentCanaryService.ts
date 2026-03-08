@@ -298,7 +298,7 @@ export const paymentCanaryService = {
 
     try {
       await sendHtmlEmail({
-        to: [{ email: alertEmail, name: 'StudioZ Admin' }],
+        to: [{ email: alertEmail, name: 'Studioz Admin' }],
         subject: `[ALERT] Payment Canary ${statusLabel}`,
         htmlContent: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
@@ -313,7 +313,7 @@ export const paymentCanaryService = {
               ${result.sumitPaymentId ? `<tr><td style="padding: 8px 0; color: #6b7280;">Payment ID</td><td style="padding: 8px 0; font-family: monospace;">${result.sumitPaymentId}</td></tr>` : ''}
               <tr><td style="padding: 8px 0; color: #6b7280;">Error</td><td style="padding: 8px 0; color: #dc2626; font-weight: 500;">${result.errorMessage}</td></tr>
             </table>
-            <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">This is an automated alert from StudioZ Payment Canary.</p>
+            <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">This is an automated alert from Studioz Payment Canary.</p>
           </div>
         `
       });

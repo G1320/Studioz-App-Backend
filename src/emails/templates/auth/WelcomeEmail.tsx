@@ -10,8 +10,8 @@ export const WelcomeEmail = ({ name, mode = 'dark' }: WelcomeEmailProps) => {
   const theme = getTheme(mode);
 
   return (
-    <EmailLayout preview="ברוכים הבאים ל-StudioZ!" mode={mode}>
-      <Header title="ברוכים הבאים ל-StudioZ!" icon="✨" mode={mode} />
+    <EmailLayout preview="ברוכים הבאים ל-Studioz!" mode={mode}>
+      <Header title="ברוכים הבאים ל-Studioz!" icon="✨" mode={mode} />
       <Section style={{ padding: '24px' }}>
         <Text
           style={{

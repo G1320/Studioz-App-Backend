@@ -29,7 +29,7 @@ export function Footer({ mode = 'dark' }: FooterProps) {
           <td align="center">
             <Img
               src="https://www.studioz.co.il/logo.png"
-              alt="StudioZ"
+              alt="Studioz"
               width={24}
               height={24}
               style={{
@@ -65,7 +65,7 @@ export function Footer({ mode = 'dark' }: FooterProps) {
                 fontFamily,
               }}
             >
-              &copy; {year} StudioZ &mdash; תודה שאתם חלק מהקהילה
+              &copy; {year} Studioz &mdash; תודה שאתם חלק מהקהילה
               היצירתית שלנו.
             </Text>
           </td>

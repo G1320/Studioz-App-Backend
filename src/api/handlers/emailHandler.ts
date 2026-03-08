@@ -8,7 +8,7 @@ const apiInstance = new TransactionalEmailsApi();
 apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
 const DEFAULT_SENDER = {
-  name: 'StudioZ',
+  name: 'Studioz',
   email: process.env.BREVO_SENDER_EMAIL || 'noreply@studioz.online',
 };
 

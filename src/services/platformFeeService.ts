@@ -244,7 +244,7 @@ export const platformFeeService = {
           },
           Items: [{
             Item: {
-              Name: `StudioZ Platform Fee - ${periodLabel}`
+              Name: `Studioz Platform Fee - ${periodLabel}`
             },
             Quantity: 1,
             UnitPrice: cycle.totalFeeAmount,
