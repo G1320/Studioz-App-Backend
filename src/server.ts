@@ -33,7 +33,6 @@ import merchantRoutes from './api/routes/merchantRoutes.js';
 import metaRoutes from './api/routes/metaRoutes.js';
 import paymentCanaryRoutes from './api/routes/paymentCanaryRoutes.js';
 import statusRoutes from './api/routes/statusRoutes.js';
-import statusRoutes from './api/routes/statusRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
