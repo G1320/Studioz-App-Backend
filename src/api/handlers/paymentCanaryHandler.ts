@@ -55,6 +55,15 @@ export const clearCanaryHistory = handleRequest(async (_req: Request, _res: Resp
 });
 
 /**
+ * DELETE /api/payment-canary/history/failed
+ * Clear only failed canary test results
+ */
+export const clearFailedCanaryHistory = handleRequest(async (_req: Request, _res: Response) => {
+  const deletedCount = await paymentCanaryService.clearFailedHistory();
+  return { success: true, deletedCount };
+});
+
+/**
  * POST /api/payment-canary/setup-card
  * One-time setup: save the admin's credit card for canary tests.
  * Body: { singleUseToken, name, email, phone }

@@ -431,5 +431,10 @@ export const paymentCanaryService = {
   async clearHistory(): Promise<number> {
     const result = await PaymentCanaryResultModel.deleteMany({});
     return result.deletedCount;
+  },
+
+  async clearFailedHistory(): Promise<number> {
+    const result = await PaymentCanaryResultModel.deleteMany({ status: 'charge_failed' });
+    return result.deletedCount;
   }
 };

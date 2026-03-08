@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { verifyTokenMw, verifyAdminMw } from '../../middleware/index.js';
-import { triggerCanaryTest, getCanaryHistory, clearCanaryHistory, getCanaryConfig, setupCanaryCard } from '../handlers/paymentCanaryHandler.js';
+import { triggerCanaryTest, getCanaryHistory, clearCanaryHistory, clearFailedCanaryHistory, getCanaryConfig, setupCanaryCard } from '../handlers/paymentCanaryHandler.js';
 
 const router = Router();
 
@@ -11,6 +11,7 @@ router.get('/config', getCanaryConfig);
 router.post('/run', triggerCanaryTest);
 router.get('/history', getCanaryHistory);
 router.delete('/history', clearCanaryHistory);
+router.delete('/history/failed', clearFailedCanaryHistory);
 router.post('/setup-card', setupCanaryCard);
 
 export default router;
