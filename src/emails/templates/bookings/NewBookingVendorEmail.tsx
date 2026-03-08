@@ -17,7 +17,7 @@ export const NewBookingVendorEmail = ({
   dateTime,
   duration,
   bookingUrl,
-  mode = 'dark',
+  mode = 'light',
 }: NewBookingVendorEmailProps) => {
   const theme = getTheme(mode);
 
@@ -45,7 +45,7 @@ export const NewBookingVendorEmail = ({
           }}
         >
           יש לך הזמנה חדשה בסטודיו{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {studioName}
           </span>
           .
@@ -101,5 +101,5 @@ NewBookingVendorEmail.PreviewProps = {
   serviceName: 'אולפן הקלטה מקצועי',
   dateTime: '15 ינואר 2026, 14:00',
   duration: '3 שעות',
-  mode: 'dark',
+  mode: 'light',
 } as NewBookingVendorEmailProps;

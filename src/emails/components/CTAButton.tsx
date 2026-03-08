@@ -36,12 +36,12 @@ export function CTAButton({
               textDecoration: 'none',
               textAlign: 'center',
               backgroundColor: isPrimary
-                ? colors.brandGold
+                ? colors.brandYellow
                 : colors.danger,
               color: isPrimary ? '#000000' : '#ffffff',
               boxShadow: `0 4px 12px ${
                 isPrimary
-                  ? colors.brandGoldShadow
+                  ? colors.brandYellowShadow
                   : colors.dangerShadow
               }`,
             }}

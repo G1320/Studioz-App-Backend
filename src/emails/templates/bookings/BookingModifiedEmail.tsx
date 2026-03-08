@@ -11,7 +11,7 @@ export const BookingModifiedEmail = ({
   customerName,
   reservationId,
   bookingUrl,
-  mode = 'dark',
+  mode = 'light',
 }: BookingModifiedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -60,5 +60,5 @@ export const BookingModifiedEmail = ({
 BookingModifiedEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   reservationId: 'BK-2026-0115',
-  mode: 'dark',
+  mode: 'light',
 } as BookingModifiedEmailProps;

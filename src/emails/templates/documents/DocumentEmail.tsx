@@ -11,7 +11,7 @@ export const DocumentEmail = ({
   customerName,
   documentName,
   documentUrl,
-  mode = 'dark',
+  mode = 'light',
 }: DocumentEmailProps) => {
   const theme = getTheme(mode);
 
@@ -61,5 +61,5 @@ DocumentEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   documentName: 'חשבונית מס #12345',
   documentUrl: 'https://studioz.co.il/document/test',
-  mode: 'dark',
+  mode: 'light',
 } as DocumentEmailProps;

@@ -13,7 +13,7 @@ export const TrialChargeFailedEmail = ({
   planName,
   price,
   failureReason,
-  mode = 'dark',
+  mode = 'light',
 }: TrialChargeFailedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -41,7 +41,7 @@ export const TrialChargeFailedEmail = ({
           }}
         >
           לא הצלחנו לעבד את התשלום עבור המינוי שלך לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>{' '}
           לאחר סיום תקופת הניסיון.
@@ -92,5 +92,5 @@ TrialChargeFailedEmail.PreviewProps = {
   planName: 'Pro',
   price: '₪149',
   failureReason: 'כרטיס האשראי נדחה - מסגרת אשראי לא מספיקה',
-  mode: 'dark',
+  mode: 'light',
 } as TrialChargeFailedEmailProps;

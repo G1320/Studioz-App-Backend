@@ -12,7 +12,7 @@ export const BookingReminderEmail = ({
   studioName,
   dateTime,
   bookingUrl,
-  mode = 'dark',
+  mode = 'light',
 }: BookingReminderEmailProps) => {
   const theme = getTheme(mode);
 
@@ -63,5 +63,5 @@ BookingReminderEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   studioName: 'Sonic Haven TLV',
   dateTime: '15 ינואר 2026, 14:00',
-  mode: 'dark',
+  mode: 'light',
 } as BookingReminderEmailProps;

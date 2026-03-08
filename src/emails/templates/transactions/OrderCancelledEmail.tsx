@@ -11,7 +11,7 @@ export const OrderCancelledEmail = ({
   customerName,
   orderId,
   studioName,
-  mode = 'dark',
+  mode = 'light',
 }: OrderCancelledEmailProps) => {
   const theme = getTheme(mode);
 
@@ -66,5 +66,5 @@ OrderCancelledEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   orderId: 'ORD-2024-007',
   studioName: 'סטודיו הקלטות TLV',
-  mode: 'dark',
+  mode: 'light',
 } as OrderCancelledEmailProps;

@@ -10,7 +10,7 @@ import type { SubscriptionExpiringEmailProps } from '../../types.js';
 export const SubscriptionExpiringEmail = ({
   customerName,
   nextBillingDate,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionExpiringEmailProps) => {
   const theme = getTheme(mode);
 
@@ -66,5 +66,5 @@ export const SubscriptionExpiringEmail = ({
 SubscriptionExpiringEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   nextBillingDate: '15 פברואר 2026',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionExpiringEmailProps;

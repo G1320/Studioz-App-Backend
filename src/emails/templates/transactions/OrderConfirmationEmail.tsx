@@ -12,7 +12,7 @@ export const OrderConfirmationEmail = ({
   orderId,
   total,
   invoiceUrl,
-  mode = 'dark',
+  mode = 'light',
 }: OrderConfirmationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -63,5 +63,5 @@ OrderConfirmationEmail.PreviewProps = {
   orderDate: '2024-01-15',
   total: '₪350.00',
   invoiceUrl: 'https://studioz.co.il/orders/ORD-2024-001',
-  mode: 'dark',
+  mode: 'light',
 } as OrderConfirmationEmailProps;

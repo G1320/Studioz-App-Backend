@@ -6,7 +6,7 @@ import { CTAButton } from '../../components/CTAButton.js';
 import { fontFamily, getTheme } from '../../components/theme.js';
 import type { WelcomeEmailProps } from '../../types.js';
 
-export const WelcomeEmail = ({ name, mode = 'dark' }: WelcomeEmailProps) => {
+export const WelcomeEmail = ({ name, mode = 'light' }: WelcomeEmailProps) => {
   const theme = getTheme(mode);
 
   return (
@@ -43,5 +43,5 @@ export const WelcomeEmail = ({ name, mode = 'dark' }: WelcomeEmailProps) => {
 
 WelcomeEmail.PreviewProps = {
   name: 'יוסי כהן',
-  mode: 'dark',
+  mode: 'light',
 } as WelcomeEmailProps;

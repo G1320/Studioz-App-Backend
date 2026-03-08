@@ -5,7 +5,7 @@ interface FooterProps {
   mode?: ThemeMode;
 }
 
-export function Footer({ mode = 'dark' }: FooterProps) {
+export function Footer({ mode = 'light' }: FooterProps) {
   const theme = getTheme(mode);
   const year = new Date().getFullYear();
 

@@ -16,7 +16,7 @@ export const BookingConfirmedCustomerEmail = ({
   location,
   totalPaid,
   bookingUrl,
-  mode = 'dark',
+  mode = 'light',
 }: BookingConfirmedCustomerEmailProps) => {
   const theme = getTheme(mode);
 
@@ -44,7 +44,7 @@ export const BookingConfirmedCustomerEmail = ({
           }}
         >
           הזמנתך לסטודיו{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {studioName}
           </span>{' '}
           אושרה.
@@ -95,5 +95,5 @@ BookingConfirmedCustomerEmail.PreviewProps = {
   duration: '3 שעות',
   location: 'דיזנגוף 50, תל אביב',
   totalPaid: '₪450',
-  mode: 'dark',
+  mode: 'light',
 } as BookingConfirmedCustomerEmailProps;

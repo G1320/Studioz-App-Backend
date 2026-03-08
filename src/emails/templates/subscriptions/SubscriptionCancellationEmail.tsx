@@ -8,7 +8,7 @@ import type { SubscriptionCancellationEmailProps } from '../../types.js';
 
 export const SubscriptionCancellationEmail = ({
   customerName,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionCancellationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -51,5 +51,5 @@ export const SubscriptionCancellationEmail = ({
 
 SubscriptionCancellationEmail.PreviewProps = {
   customerName: 'יוסי כהן',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionCancellationEmailProps;

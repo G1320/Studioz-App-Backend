@@ -10,7 +10,7 @@ export const BookingExpiredCustomerEmail = ({
   customerName,
   serviceName,
   studioName,
-  mode = 'dark',
+  mode = 'light',
 }: BookingExpiredCustomerEmailProps) => {
   const theme = getTheme(mode);
 
@@ -57,5 +57,5 @@ BookingExpiredCustomerEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   serviceName: 'אולפן הקלטה',
   studioName: 'Sonic Haven TLV',
-  mode: 'dark',
+  mode: 'light',
 } as BookingExpiredCustomerEmailProps;

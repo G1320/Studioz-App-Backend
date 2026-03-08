@@ -12,7 +12,7 @@ export function HighlightCard({
   title,
   subtitle,
   icon,
-  mode = 'dark',
+  mode = 'light',
 }: HighlightCardProps) {
   const theme = getTheme(mode);
 
@@ -21,8 +21,8 @@ export function HighlightCard({
       style={{
         borderRadius: '16px',
         padding: '32px',
-        backgroundColor: colors.brandGoldLight,
-        border: `1px solid ${colors.brandGoldBorder}`,
+        backgroundColor: colors.brandYellowLight,
+        border: `1px solid ${colors.brandYellowBorder}`,
         textAlign: 'center',
       }}
     >
@@ -40,7 +40,7 @@ export function HighlightCard({
                 style={{
                   width: '64px',
                   height: '64px',
-                  backgroundColor: colors.brandGold,
+                  backgroundColor: colors.brandYellow,
                   borderRadius: '50%',
                   textAlign: 'center',
                   lineHeight: '64px',

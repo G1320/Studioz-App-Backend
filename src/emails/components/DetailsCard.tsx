@@ -12,7 +12,7 @@ interface DetailsCardProps {
   mode?: ThemeMode;
 }
 
-export function DetailsCard({ rows, mode = 'dark' }: DetailsCardProps) {
+export function DetailsCard({ rows, mode = 'light' }: DetailsCardProps) {
   const theme = getTheme(mode);
 
   return (

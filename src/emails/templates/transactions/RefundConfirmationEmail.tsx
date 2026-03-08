@@ -10,7 +10,7 @@ import type { RefundConfirmationEmailProps } from '../../types.js';
 export const RefundConfirmationEmail = ({
   customerName,
   refundAmount,
-  mode = 'dark',
+  mode = 'light',
 }: RefundConfirmationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -59,5 +59,5 @@ RefundConfirmationEmail.PreviewProps = {
   refundAmount: '₪150.00',
   orderId: 'ORD-2024-003',
   refundDate: '2024-01-18',
-  mode: 'dark',
+  mode: 'light',
 } as RefundConfirmationEmailProps;

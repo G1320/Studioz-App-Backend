@@ -11,7 +11,7 @@ export const SubscriptionPaymentEmail = ({
   customerName,
   price,
   nextBillingDate,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionPaymentEmailProps) => {
   const theme = getTheme(mode);
 
@@ -66,5 +66,5 @@ SubscriptionPaymentEmail.PreviewProps = {
   planName: 'Pro',
   price: '₪149',
   nextBillingDate: '1 פברואר 2026',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionPaymentEmailProps;

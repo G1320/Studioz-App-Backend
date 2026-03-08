@@ -15,7 +15,7 @@ export const PlatformFeeFailedEmail = ({
   failureReason,
   retryCount,
   maxRetries,
-  mode = 'dark',
+  mode = 'light',
 }: PlatformFeeFailedEmailProps) => {
   const theme = getTheme(mode);
   const isLastAttempt = retryCount >= maxRetries;
@@ -81,5 +81,5 @@ PlatformFeeFailedEmail.PreviewProps = {
   failureReason: 'כרטיס האשראי נדחה',
   retryCount: 1,
   maxRetries: 3,
-  mode: 'dark',
+  mode: 'light',
 } as PlatformFeeFailedEmailProps;

@@ -18,7 +18,7 @@ interface EmailLayoutProps {
 export function EmailLayout({
   children,
   preview,
-  mode = 'dark',
+  mode = 'light',
 }: EmailLayoutProps) {
   const theme = getTheme(mode);
 

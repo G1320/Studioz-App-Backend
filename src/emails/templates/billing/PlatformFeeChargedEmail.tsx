@@ -15,7 +15,7 @@ export const PlatformFeeChargedEmail = ({
   feeCount,
   feePercentage,
   invoiceUrl,
-  mode = 'dark',
+  mode = 'light',
 }: PlatformFeeChargedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -84,5 +84,5 @@ PlatformFeeChargedEmail.PreviewProps = {
   feeCount: 23,
   feePercentage: 0.09,
   invoiceUrl: 'https://example.com/invoice',
-  mode: 'dark',
+  mode: 'light',
 } as PlatformFeeChargedEmailProps;

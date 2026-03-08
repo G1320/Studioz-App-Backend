@@ -11,7 +11,7 @@ export const EmailVerificationEmail = ({
   customerName,
   verificationLink,
   verificationCode,
-  mode = 'dark',
+  mode = 'light',
 }: EmailVerificationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -65,5 +65,5 @@ EmailVerificationEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   verificationLink: 'https://studioz.co.il/verify?token=abc123',
   verificationCode: '123456',
-  mode: 'dark',
+  mode: 'light',
 } as EmailVerificationEmailProps;

@@ -10,7 +10,7 @@ import type { SubscriptionDowngradedEmailProps } from '../../types.js';
 export const SubscriptionDowngradedEmail = ({
   customerName,
   planName,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionDowngradedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -38,7 +38,7 @@ export const SubscriptionDowngradedEmail = ({
           }}
         >
           המינוי שלך שונה לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>
           .
@@ -64,5 +64,5 @@ export const SubscriptionDowngradedEmail = ({
 SubscriptionDowngradedEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   planName: 'Starter',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionDowngradedEmailProps;

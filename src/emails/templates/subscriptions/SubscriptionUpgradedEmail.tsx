@@ -10,7 +10,7 @@ import type { SubscriptionUpgradedEmailProps } from '../../types.js';
 export const SubscriptionUpgradedEmail = ({
   customerName,
   planName,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionUpgradedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -38,7 +38,7 @@ export const SubscriptionUpgradedEmail = ({
           }}
         >
           שדרגת בהצלחה לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>
           .
@@ -64,5 +64,5 @@ export const SubscriptionUpgradedEmail = ({
 SubscriptionUpgradedEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   planName: 'Pro',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionUpgradedEmailProps;

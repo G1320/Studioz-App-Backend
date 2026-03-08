@@ -9,7 +9,7 @@ import type { PasswordResetEmailProps } from '../../types.js';
 export const PasswordResetEmail = ({
   customerName,
   resetLink,
-  mode = 'dark',
+  mode = 'light',
 }: PasswordResetEmailProps) => {
   const theme = getTheme(mode);
 
@@ -60,5 +60,5 @@ export const PasswordResetEmail = ({
 PasswordResetEmail.PreviewProps = {
   customerName: 'יוסי כהן',
   resetLink: 'https://studioz.co.il/reset-password?token=abc123',
-  mode: 'dark',
+  mode: 'light',
 } as PasswordResetEmailProps;

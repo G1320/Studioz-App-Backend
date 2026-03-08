@@ -13,7 +13,7 @@ export const TrialStartedEmail = ({
   planName,
   price,
   trialEndDate,
-  mode = 'dark',
+  mode = 'light',
 }: TrialStartedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -41,7 +41,7 @@ export const TrialStartedEmail = ({
           }}
         >
           ברוך הבא ל-Studioz! תקופת הניסיון שלך לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>{' '}
           הופעלה בהצלחה. עכשיו זה הזמן להפיח חיים ביצירה שלך.
@@ -85,5 +85,5 @@ TrialStartedEmail.PreviewProps = {
   planName: 'Starter',
   price: '79',
   trialEndDate: '1 פברואר 2026',
-  mode: 'dark',
+  mode: 'light',
 } as TrialStartedEmailProps;

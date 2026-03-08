@@ -14,7 +14,7 @@ export const TrialEndingEmail = ({
   price,
   daysRemaining,
   trialEndDate,
-  mode = 'dark',
+  mode = 'light',
 }: TrialEndingEmailProps) => {
   const theme = getTheme(mode);
 
@@ -46,7 +46,7 @@ export const TrialEndingEmail = ({
           }}
         >
           רצינו להזכיר שתקופת הניסיון שלך לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>{' '}
           מסתיימת בעוד{' '}
@@ -105,5 +105,5 @@ TrialEndingEmail.PreviewProps = {
   price: '149',
   daysRemaining: 3,
   trialEndDate: '18 ינואר 2026',
-  mode: 'dark',
+  mode: 'light',
 } as TrialEndingEmailProps;

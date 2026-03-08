@@ -12,7 +12,7 @@ export const SubscriptionConfirmationEmail = ({
   customerName,
   planName,
   startDate,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionConfirmationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -40,7 +40,7 @@ export const SubscriptionConfirmationEmail = ({
           }}
         >
           ברוכים הבאים לתוכנית{' '}
-          <span style={{ fontWeight: 700, color: colors.brandGold }}>
+          <span style={{ fontWeight: 700, color: colors.brandYellow }}>
             {planName}
           </span>
           !
@@ -73,5 +73,5 @@ SubscriptionConfirmationEmail.PreviewProps = {
   customerName: 'שרה לוי',
   planName: 'Pro',
   startDate: '1 ינואר 2026',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionConfirmationEmailProps;

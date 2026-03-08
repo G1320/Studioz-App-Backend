@@ -10,7 +10,7 @@ interface AlertBoxProps {
 export function AlertBox({
   children,
   type,
-  mode = 'dark',
+  mode = 'light',
 }: AlertBoxProps) {
   const theme = getTheme(mode);
   const isWarning = type === 'warning';

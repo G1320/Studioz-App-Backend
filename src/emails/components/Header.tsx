@@ -7,7 +7,7 @@ interface HeaderProps {
   mode?: ThemeMode;
 }
 
-export function Header({ title, icon, mode = 'dark' }: HeaderProps) {
+export function Header({ title, icon, mode = 'light' }: HeaderProps) {
   const theme = getTheme(mode);
 
   return (
@@ -52,13 +52,13 @@ export function Header({ title, icon, mode = 'dark' }: HeaderProps) {
               style={{
                 width: '48px',
                 height: '48px',
-                backgroundColor: colors.brandGold,
+                backgroundColor: colors.brandYellow,
                 borderRadius: '12px',
                 textAlign: 'center',
                 lineHeight: '48px',
                 fontSize: '24px',
                 color: '#000000',
-                boxShadow: `0 4px 12px ${colors.brandGoldShadow}`,
+                boxShadow: `0 4px 12px ${colors.brandYellowShadow}`,
               }}
             >
               {icon}

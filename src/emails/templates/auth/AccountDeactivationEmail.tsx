@@ -8,7 +8,7 @@ import type { AccountDeactivationEmailProps } from '../../types.js';
 
 export const AccountDeactivationEmail = ({
   customerName,
-  mode = 'dark',
+  mode = 'light',
 }: AccountDeactivationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -62,5 +62,5 @@ export const AccountDeactivationEmail = ({
 
 AccountDeactivationEmail.PreviewProps = {
   customerName: 'יוסי כהן',
-  mode: 'dark',
+  mode: 'light',
 } as AccountDeactivationEmailProps;

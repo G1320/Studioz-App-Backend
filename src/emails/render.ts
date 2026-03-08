@@ -70,7 +70,7 @@ const TEMPLATE_MAP: Record<EmailTemplateName, (props: any) => React.JSX.Element>
 export async function renderEmail(
   templateName: EmailTemplateName,
   props: Record<string, any>,
-  mode: ThemeMode = 'dark'
+  mode: ThemeMode = 'light'
 ): Promise<{ html: string; subject: string }> {
   const factory = TEMPLATE_MAP[templateName];
   if (!factory) {

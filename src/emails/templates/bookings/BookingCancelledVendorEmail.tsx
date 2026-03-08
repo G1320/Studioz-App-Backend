@@ -8,7 +8,7 @@ import type { BookingCancelledVendorEmailProps } from '../../types.js';
 
 export const BookingCancelledVendorEmail = ({
   ownerName,
-  mode = 'dark',
+  mode = 'light',
 }: BookingCancelledVendorEmailProps) => {
   const theme = getTheme(mode);
 
@@ -52,5 +52,5 @@ export const BookingCancelledVendorEmail = ({
 
 BookingCancelledVendorEmail.PreviewProps = {
   ownerName: 'אלון מזרחי',
-  mode: 'dark',
+  mode: 'light',
 } as BookingCancelledVendorEmailProps;

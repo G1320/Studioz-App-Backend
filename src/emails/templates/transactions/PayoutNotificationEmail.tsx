@@ -11,7 +11,7 @@ export const PayoutNotificationEmail = ({
   ownerName,
   amount,
   invoiceUrl,
-  mode = 'dark',
+  mode = 'light',
 }: PayoutNotificationEmailProps) => {
   const theme = getTheme(mode);
 
@@ -61,5 +61,5 @@ PayoutNotificationEmail.PreviewProps = {
   orderId: 'ORD-2024-005',
   date: '2024-01-20',
   invoiceUrl: 'https://studioz.co.il/payouts/PO-2024-001',
-  mode: 'dark',
+  mode: 'light',
 } as PayoutNotificationEmailProps;

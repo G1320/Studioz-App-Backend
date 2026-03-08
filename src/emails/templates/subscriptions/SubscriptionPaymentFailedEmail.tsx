@@ -13,7 +13,7 @@ export const SubscriptionPaymentFailedEmail = ({
   planName,
   price,
   failureReason,
-  mode = 'dark',
+  mode = 'light',
 }: SubscriptionPaymentFailedEmailProps) => {
   const theme = getTheme(mode);
 
@@ -77,5 +77,5 @@ SubscriptionPaymentFailedEmail.PreviewProps = {
   planName: 'Pro',
   price: '₪149',
   failureReason: 'כרטיס האשראי נדחה',
-  mode: 'dark',
+  mode: 'light',
 } as SubscriptionPaymentFailedEmailProps;

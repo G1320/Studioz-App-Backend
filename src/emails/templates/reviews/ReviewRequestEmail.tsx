@@ -9,7 +9,7 @@ import type { ReviewRequestEmailProps } from '../../types.js';
 export const ReviewRequestEmail = ({
   customerName,
   reviewUrl,
-  mode = 'dark',
+  mode = 'light',
 }: ReviewRequestEmailProps) => {
   const theme = getTheme(mode);
 
@@ -49,5 +49,5 @@ export const ReviewRequestEmail = ({
 
 ReviewRequestEmail.PreviewProps = {
   customerName: 'יוסי כהן',
-  mode: 'dark',
+  mode: 'light',
 } as ReviewRequestEmailProps;
