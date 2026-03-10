@@ -19,7 +19,7 @@ export interface PaymentDetails {
 
 export default interface Reservation {
 _id: string;
-itemId: string;
+itemId?: string;
 userId: string;
 bookingDate: string;
 studioId: string;

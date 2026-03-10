@@ -32,12 +32,14 @@ import { usageService } from '../../services/usageService.js';
 
 
 export const releaseReservationTimeSlots = async (reservation: Reservation) => {
-    // Release time slots for the main item
-    await releaseItemSlots(
-        reservation.itemId.toString(),
-        reservation.bookingDate,
-        reservation.timeSlots
-    );
+    // Release time slots for the main item (if not a custom service)
+    if (reservation.itemId) {
+        await releaseItemSlots(
+            reservation.itemId.toString(),
+            reservation.bookingDate,
+            reservation.timeSlots
+        );
+    }
 
     // Release time slots for all other items in the studio
     if (reservation.studioId && reservation.timeSlots) {
@@ -45,7 +47,7 @@ export const releaseReservationTimeSlots = async (reservation: Reservation) => {
             reservation.studioId.toString(),
             reservation.bookingDate,
             reservation.timeSlots,
-            reservation.itemId.toString() // exclude the main item
+            reservation.itemId?.toString()
         );
     }
 };
@@ -97,61 +99,90 @@ const reserveStudioTimeSlots = handleRequest(async (req: Request) => {
 const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     const { 
         itemId, bookingDate, startTime, hours, customerId, customerName, customerPhone, comment, addOnIds,
+        studioId: bodyStudioId, name: bodyName, studioName: bodyStudioName, price: bodyPrice,
         // Optional payment fields - only used when vendor accepts payments
         singleUseToken, customerEmail, useSavedCard, sumitCustomerId 
     } = req.body;
 
-    const item = await ItemModel.findOne({ _id: itemId });
-    if (!item) throw new ExpressError('Item not found', 404);
+    const isCustomService = itemId === 'custom';
+    let item: any = null;
+    let studio: any = null;
+    let studioAddress = '';
+    let studioImgUrl = '';
+    let itemPrice = 0;
+    let itemName = { en: '', he: '' };
+    let studioName: any = '';
+    let resolvedStudioId = bodyStudioId;
+    let isInstantBook = true;
 
-    // Check if item is active (not disabled)
-    if (item.active === false) {
-        throw new ExpressError('This service is currently unavailable', 400);
-    }
+    if (isCustomService) {
+        if (!bodyStudioId) throw new ExpressError('Studio ID is required for custom services', 400);
 
-    // Get studio address and cover image for the reservation
-    const studio = await StudioModel.findById(item.studioId);
-    const studioAddress = studio?.address || '';
-    const studioImgUrl = studio?.coverImage || '';
+        studio = await StudioModel.findById(bodyStudioId);
+        if (!studio) throw new ExpressError('Studio not found', 404);
+        if (studio.active === false) throw new ExpressError('This studio is currently unavailable', 400);
 
-    // Check if studio is active (not disabled)
-    if (studio && studio.active === false) {
-        throw new ExpressError('This studio is currently unavailable', 400);
+        studioAddress = studio.address || '';
+        studioImgUrl = studio.coverImage || '';
+        itemPrice = bodyPrice || 0;
+        itemName = bodyName || { en: 'Custom Service', he: 'שירות מותאם' };
+        studioName = bodyStudioName || studio.name;
+        resolvedStudioId = bodyStudioId;
+    } else {
+        item = await ItemModel.findOne({ _id: itemId });
+        if (!item) throw new ExpressError('Item not found', 404);
+
+        if (item.active === false) {
+            throw new ExpressError('This service is currently unavailable', 400);
+        }
+
+        studio = await StudioModel.findById(item.studioId);
+        studioAddress = studio?.address || '';
+        studioImgUrl = studio?.coverImage || '';
+
+        if (studio && studio.active === false) {
+            throw new ExpressError('This studio is currently unavailable', 400);
+        }
+
+        itemPrice = item.price || 0;
+        itemName = { en: item.name?.en, he: item.name?.he };
+        studioName = item.studioName;
+        resolvedStudioId = item.studioId;
+        isInstantBook = !!item.instantBook;
     }
 
     const user = await UserModel.findById(customerId);
-    // Initialize availability
-    item.availability = initializeAvailability(item.availability) ;
-        
-    // Find or create availability entry for the booking date
-    const dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
 
     // Generate array of consecutive time slots needed
     const timeSlots = generateTimeSlots(startTime, hours);
 
-    // Verify all needed time slots are available
-    if (!areAllSlotsAvailable(timeSlots, dateAvailability.times)) {
-        throw new ExpressError('One or more requested time slots are not available', 400);
+    // For existing items, check and update item-level availability
+    let dateAvailability: any = null;
+    if (item) {
+        item.availability = initializeAvailability(item.availability);
+        dateAvailability = findOrCreateDateAvailability(item.availability, bookingDate, defaultHours);
+
+        if (!areAllSlotsAvailable(timeSlots, dateAvailability.times)) {
+            throw new ExpressError('One or more requested time slots are not available', 400);
+        }
     }
+
     const expiration = new Date(Date.now() + 60 * 60 * 1000); // 60-minute hold
     
-    // Set status based on instantBook: CONFIRMED if true, PENDING if false
-    const reservationStatus = item.instantBook 
+    // Custom services created by studio owner are always CONFIRMED
+    const reservationStatus = isCustomService || isInstantBook
         ? RESERVATION_STATUS.CONFIRMED 
         : RESERVATION_STATUS.PENDING;
 
     const reservation = new ReservationModel({
-        itemId,
-        itemName:{
-            en: item.name?.en,
-            he: item.name?.he
-        },
-        studioName: item.studioName,
+        itemId: isCustomService ? undefined : itemId,
+        itemName,
+        studioName,
         bookingDate,
         timeSlots,
         expiration,
-        itemPrice: item.price||0,
-        studioId: item.studioId,
+        itemPrice,
+        studioId: resolvedStudioId,
         customerId,
         customerName,
         customerPhone,
@@ -164,34 +195,35 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         // totalPrice will be calculated by the pre-save hook
     });
     
-    // Remove all selected time slots
-    dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
-    
-    // Update item.availability with the modified dateAvailability
-    item.availability = item.availability.map(avail =>
-        avail.date === bookingDate ? dateAvailability : avail
+    // Update item availability if we have an item
+    if (item && dateAvailability) {
+        dateAvailability.times = removeTimeSlots(dateAvailability.times, timeSlots);
+        item.availability = item.availability.map((avail: any) =>
+            avail.date === bookingDate ? dateAvailability : avail
         );
+    }
 
     user?.reservations?.push(reservation._id);
         
     await reservation.save();
-    await item.save();
+    if (item) await item.save();
     await user?.save();
-    emitAvailabilityUpdate(itemId);
+    if (!isCustomService) emitAvailabilityUpdate(itemId);
 
     // Update time slots for all other items in the studio (studio will be busy during this session)
-    if (item.studioId) {
-        const studioItems = await ItemModel.find({ studioId: item.studioId, _id: { $ne: itemId } });
-        // Prepare all updates first
+    if (resolvedStudioId) {
+        const studioItemFilter = isCustomService
+            ? { studioId: resolvedStudioId }
+            : { studioId: resolvedStudioId, _id: { $ne: itemId } };
+        const studioItems = await ItemModel.find(studioItemFilter);
         for (const studioItem of studioItems) {
             studioItem.availability = initializeAvailability(studioItem.availability);
             const studioItemDateAvailability = findOrCreateDateAvailability(studioItem.availability, bookingDate, defaultHours);
             studioItemDateAvailability.times = removeTimeSlots(studioItemDateAvailability.times, timeSlots);
-            studioItem.availability = studioItem.availability.map(avail =>
+            studioItem.availability = studioItem.availability.map((avail: any) =>
                 avail.date === bookingDate ? studioItemDateAvailability : avail
             );
         }
-        // Save all in parallel (fixes N+1 query pattern)
         await Promise.all(studioItems.map(si => si.save()));
         studioItems.forEach(si => emitAvailabilityUpdate(si._id));
     }
@@ -205,7 +237,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       await notifyVendorNewReservation(
         reservation._id.toString(),
         reservation.studioId.toString(),
-        itemId.toString(),
+        isCustomService ? 'custom' : itemId.toString(),
         customerName || user?.name
       );
     }
@@ -232,23 +264,22 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       await syncReservationToCalendar(reservation);
     } catch (error) {
       console.error('Error syncing reservation to Google Calendar:', error);
-      // Don't fail the reservation creation if calendar sync fails
     }
 
     // Check if the day is nearly fully booked (<=2 slots remaining) and notify vendor
-    if (studio?.createdBy && dateAvailability.times.length <= 2) {
+    if (studio?.createdBy && dateAvailability && dateAvailability.times.length <= 2) {
       try {
         const { createAndEmitNotification } = await import('../../utils/notificationUtils.js');
-        const itemName = item.name?.en || item.name?.he || 'your service';
+        const displayName = itemName.en || itemName.he || 'your service';
         const slotsLeft = dateAvailability.times.length;
         await createAndEmitNotification(
           studio.createdBy.toString(),
           'availability_alert',
           slotsLeft === 0 ? `${bookingDate} is fully booked` : `${bookingDate} nearly full`,
           slotsLeft === 0
-            ? `${itemName} is fully booked on ${bookingDate}.`
-            : `Only ${slotsLeft} slot${slotsLeft > 1 ? 's' : ''} remaining for ${itemName} on ${bookingDate}.`,
-          { itemId: itemId.toString(), studioId: studio._id.toString(), date: bookingDate, slotsRemaining: slotsLeft },
+            ? `${displayName} is fully booked on ${bookingDate}.`
+            : `Only ${slotsLeft} slot${slotsLeft > 1 ? 's' : ''} remaining for ${displayName} on ${bookingDate}.`,
+          { itemId: isCustomService ? 'custom' : itemId.toString(), studioId: studio._id.toString(), date: bookingDate, slotsRemaining: slotsLeft },
           `/dashboard`
         );
       } catch (notifErr) {
@@ -270,7 +301,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
       hasSingleUseToken: !!singleUseToken,
       sumitCustomerId,
       totalPrice: reservation.totalPrice,
-      instantBook: item.instantBook
+      instantBook: isInstantBook
     });
 
     if (hasPaymentInfo && canProcessPayment) {
@@ -289,10 +320,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
             vendorId: studio.createdBy.toString(),
             userId: customerId,
             amount: reservation.totalPrice || 0,
-            itemName: item.name?.en || 'Reservation',
-            instantCharge: !!item.instantBook,
+            itemName: itemName.en || 'Reservation',
+            instantCharge: isInstantBook,
             reservationId: reservation._id?.toString(),
-            studioId: item.studioId?.toString()
+            studioId: resolvedStudioId?.toString()
           });
         }
         // Option 2: Saved card payment
@@ -316,9 +347,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
           } else {
             const paymentAmount = reservation.totalPrice || 0;
             
-            // If instant book, charge immediately
-            if (item.instantBook) {
-              // Get vendor credentials for charging
+            if (isInstantBook) {
               const vendorCredentials = await paymentService.getVendorCredentials(studio.createdBy.toString());
               
               if (!vendorCredentials) {
@@ -337,7 +366,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
                 const chargeResult = await paymentService.chargeSavedCard(
                   resolvedSumitCustomerId,
                   paymentAmount,
-                  `Booking: ${item.name?.en || 'Reservation'}`,
+                  `Booking: ${itemName.en || 'Reservation'}`,
                   vendorCredentials
                 );
                 
@@ -352,7 +381,7 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
                     transactionAmount: paymentAmount,
                     transactionType: 'reservation',
                     reservationId: reservation._id?.toString(),
-                    studioId: item.studioId?.toString(),
+                    studioId: resolvedStudioId?.toString(),
                     sumitPaymentId: chargeResult.paymentId
                   });
 
@@ -381,7 +410,6 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
                 }
               }
             } else {
-              // Not instant book - just mark card as ready, charge on approval
               paymentResult = {
                 paymentStatus: 'card_saved' as const,
                 paymentDetails: {
@@ -415,13 +443,10 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
           
           await reservation.save();
         }
-        // If paymentResult is null, vendor doesn't accept payments - reservation continues without payment
       } catch (paymentError: any) {
-        // If it's our ExpressError, rethrow it
         if (paymentError instanceof ExpressError) {
           throw paymentError;
         }
-        // Unexpected payment error - log and throw
         console.error('Payment processing error:', paymentError);
         throw new ExpressError('Payment processing failed. Please try again.', 500);
       }
@@ -683,7 +708,7 @@ const confirmBooking = handleRequest(async (req: Request) => {
   
     // Emit socket events for each updated item
     confirmedReservations.forEach(reservation => {
-        emitAvailabilityUpdate(reservation.itemId);
+        if (reservation.itemId) emitAvailabilityUpdate(reservation.itemId);
         emitReservationUpdate(
           [reservation._id.toString()],
           reservation.customerId?.toString() || reservation.userId?.toString() || ''

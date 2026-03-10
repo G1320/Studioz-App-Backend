@@ -25,7 +25,7 @@ const paymentDetailsSchema = new mongoose.Schema({
 const ReservationSchema = new mongoose.Schema({
   
     itemName: { type: translationSchema, required: false },
-    itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
+    itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: false },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     bookingDate: { type: String, required: true },
     timeSlots: [{ type: String, required: true }],

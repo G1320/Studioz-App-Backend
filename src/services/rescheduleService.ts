@@ -110,10 +110,10 @@ export const checkRescheduleAvailability = async (
       return { available: true };
     }
 
-    const available = await checkSlotsAvailable(
-      reservation.itemId.toString(),
-      newDate,
-      nonOverlappingSlots
+  const available = await checkSlotsAvailable(
+    reservation.itemId?.toString() || '',
+    newDate,
+    nonOverlappingSlots
     );
 
     if (!available) {
@@ -124,7 +124,7 @@ export const checkRescheduleAvailability = async (
 
   // Different date - check full availability
   const available = await checkSlotsAvailable(
-    reservation.itemId.toString(),
+    reservation.itemId?.toString() || '',
     newDate,
     newTimeSlots
   );
@@ -200,7 +200,7 @@ export const rescheduleReservation = async (
 
   // Check availability and update
   const availabilityResult = await updateReservationAvailability(
-    reservation.itemId.toString(),
+    reservation.itemId?.toString() || '',
     reservation.studioId?.toString(),
     previousDate,
     previousSlots,

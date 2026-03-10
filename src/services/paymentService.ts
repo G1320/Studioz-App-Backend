@@ -557,7 +557,7 @@ export const paymentService = {
   async chargeReservation(reservation: {
     _id: any;
     totalPrice?: number;
-    itemId: any;
+    itemId?: any;
     studioId?: any;
     userId?: any;
     customerEmail?: string;

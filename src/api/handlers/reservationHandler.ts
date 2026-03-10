@@ -186,7 +186,7 @@ const updateReservationById = handleRequest(async (req: Request) => {
     const actualNewSlots = newTimeSlots || previousTimeSlots;
 
     const result = await updateReservationAvailability(
-      reservation.itemId.toString(),
+      reservation.itemId?.toString() || '',
       reservation.studioId?.toString(),
       previousBookingDate,
       previousTimeSlots,
@@ -360,7 +360,7 @@ const cancelReservationById = handleRequest(async (req: Request) => {
     await notifyVendorReservationCancelled(
       cancelledReservation._id.toString(),
       cancelledReservation.studioId.toString(),
-      cancelledReservation.itemId.toString(),
+      cancelledReservation.itemId?.toString() || '',
       cancelledReservation.customerName
     );
   }

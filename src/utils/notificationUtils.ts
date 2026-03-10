@@ -208,7 +208,7 @@ export const notifyCustomerReservationConfirmed = async (
       message,
       {
         reservationId,
-        itemId: reservation.itemId.toString(),
+        itemId: reservation.itemId?.toString(),
         studioId: reservation.studioId.toString()
       },
       actionUrl
@@ -268,7 +268,7 @@ export const notifyBookerReservationCancelled = async (
       message,
       {
         reservationId,
-        itemId: reservation.itemId.toString(),
+        itemId: reservation.itemId?.toString(),
         studioId: reservation.studioId.toString()
       },
       actionUrl
@@ -306,7 +306,7 @@ export const notifyCustomerReservationExpired = async (
       message,
       {
         reservationId,
-        itemId: reservation.itemId.toString(),
+        itemId: reservation.itemId?.toString(),
         studioId: reservation.studioId.toString()
       },
       actionUrl
@@ -342,7 +342,7 @@ export const notifyCustomerReservationModified = async (
       'reservation_modified',
       title,
       message,
-      { reservationId, itemId: reservation.itemId.toString(), studioId: reservation.studioId?.toString() },
+      { reservationId, itemId: reservation.itemId?.toString(), studioId: reservation.studioId?.toString() },
       actionUrl
     );
   } catch (error) {
@@ -380,7 +380,7 @@ export const notifyVendorReservationModified = async (
       'reservation_modified',
       title,
       message,
-      { reservationId, itemId: reservation?.itemId.toString(), studioId },
+      { reservationId, itemId: reservation?.itemId?.toString(), studioId },
       actionUrl
     );
   } catch (error) {
