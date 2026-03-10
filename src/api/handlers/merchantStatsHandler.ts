@@ -243,7 +243,7 @@ export const getMerchantStats = handleRequest(async (req: Request): Promise<Merc
     const studioItemIds = studio.items?.map(i => i.itemId.toString()) || [];
     const studioRes = thisMonthReservations.filter(r =>
       r.studioId?.toString() === studio._id.toString() ||
-      studioItemIds.includes(r.itemId?.toString())
+      (r.itemId && studioItemIds.includes(r.itemId.toString()))
     );
     const studioDuration = studioRes.reduce((acc, r) => acc + (r.timeSlots?.length || 0), 0);
 
@@ -884,12 +884,12 @@ export const getStudioAnalytics = handleRequest(async (req: Request): Promise<{ 
 
     const currentRes = allReservations.filter(r => {
       const ts = r.createdAt ? new Date(r.createdAt) : parseBookingDate(r.bookingDate);
-      const inStudio = r.studioId?.toString() === sid || studioItemIds.includes(r.itemId?.toString());
+      const inStudio = r.studioId?.toString() === sid || (r.itemId && studioItemIds.includes(r.itemId.toString()));
       return inStudio && ts >= currentPeriodStart && ts <= currentPeriodEnd;
     });
     const prevRes = allReservations.filter(r => {
       const ts = r.createdAt ? new Date(r.createdAt) : parseBookingDate(r.bookingDate);
-      const inStudio = r.studioId?.toString() === sid || studioItemIds.includes(r.itemId?.toString());
+      const inStudio = r.studioId?.toString() === sid || (r.itemId && studioItemIds.includes(r.itemId.toString()));
       return inStudio && ts >= prevPeriodStart && ts <= prevPeriodEnd;
     });
 
