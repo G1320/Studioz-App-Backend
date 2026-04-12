@@ -7,6 +7,10 @@ import { ProjectFileModel } from '../../models/projectFileModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 
+interface AuthRequest extends Request {
+  decodedJwt?: { _id?: string; userId?: string };
+}
+
 // Project status constants
 export const PROJECT_STATUS = {
   REQUESTED: 'requested',
@@ -427,6 +431,72 @@ const cancelProject = handleRequest(async (req: Request) => {
   return project;
 });
 
+const TERMINAL_STATUSES = [
+  PROJECT_STATUS.COMPLETED,
+  PROJECT_STATUS.CANCELLED,
+  PROJECT_STATUS.DECLINED,
+] as const;
+
+const MAX_TITLE_LENGTH = 200;
+const MAX_REFERENCE_LINKS = 5;
+const URL_PATTERN = /^https?:\/\/.+/i;
+
+/**
+ * Update project metadata (vendor action)
+ * PATCH /api/remote-projects/:projectId
+ */
+const updateProject = handleRequest(async (req: AuthRequest) => {
+  const { projectId } = req.params;
+  const userId = req.decodedJwt?._id || req.decodedJwt?.userId;
+
+  if (!userId) throw new ExpressError('Authentication required', 401);
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+
+  if (project.vendorId.toString() !== userId) {
+    throw new ExpressError('Only the project vendor can update project details', 403);
+  }
+
+  if (TERMINAL_STATUSES.some((s) => s === project.status)) {
+    throw new ExpressError(
+      `Cannot update project with status: ${project.status}`,
+      400
+    );
+  }
+
+  const { title, referenceLinks } = req.body;
+
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      throw new ExpressError('Title must be a non-empty string', 400);
+    }
+    if (title.trim().length > MAX_TITLE_LENGTH) {
+      throw new ExpressError(`Title must be at most ${MAX_TITLE_LENGTH} characters`, 400);
+    }
+    project.title = title.trim();
+  }
+
+  if (referenceLinks !== undefined) {
+    if (!Array.isArray(referenceLinks)) {
+      throw new ExpressError('referenceLinks must be an array', 400);
+    }
+    if (referenceLinks.length > MAX_REFERENCE_LINKS) {
+      throw new ExpressError(`referenceLinks may contain at most ${MAX_REFERENCE_LINKS} items`, 400);
+    }
+    for (const link of referenceLinks) {
+      if (typeof link !== 'string' || !URL_PATTERN.test(link)) {
+        throw new ExpressError(`Invalid URL: ${link}`, 400);
+      }
+    }
+    project.referenceLinks = referenceLinks;
+  }
+
+  await project.save();
+
+  return project;
+});
+
 export default {
   createProject,
   getProjects,
@@ -438,4 +508,5 @@ export default {
   requestRevision,
   completeProject,
   cancelProject,
+  updateProject,
 };

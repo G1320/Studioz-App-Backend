@@ -13,6 +13,7 @@ router.use(verifyTokenMw);
 router.post('/', remoteProjectHandler.createProject);
 router.get('/', remoteProjectHandler.getProjects);
 router.get('/:projectId', remoteProjectHandler.getProjectById);
+router.patch('/:projectId', remoteProjectHandler.updateProject);
 
 // Project Workflow Actions
 router.patch('/:projectId/accept', remoteProjectHandler.acceptProject);
