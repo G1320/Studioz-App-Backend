@@ -4,6 +4,7 @@ import { ProjectMessageModel } from '../../models/projectMessageModel.js';
 import { RemoteProjectModel } from '../../models/remoteProjectModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { emitProjectMessageUpdate } from '../../webSockets/socket.js';
 
 /**
  * Get messages for a project
@@ -17,13 +18,15 @@ const getMessages = handleRequest(async (req: Request) => {
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
 
+  const projectObjectId = new mongoose.Types.ObjectId(projectId);
+
   // Pagination
   const page = Math.max(1, parseInt(pageStr as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 50));
   const skip = (page - 1) * limit;
 
-  // Build filter
-  const filter: Record<string, unknown> = { projectId };
+  // Build filter (ObjectId ensures consistent matching with stored documents)
+  const filter: Record<string, unknown> = { projectId: projectObjectId };
 
   // Optionally filter messages since a timestamp (for polling)
   if (since) {
@@ -39,6 +42,8 @@ const getMessages = handleRequest(async (req: Request) => {
       .populate('attachmentIds', 'fileName fileSize mimeType'),
     ProjectMessageModel.countDocuments(filter),
   ]);
+
+  console.log('[getMessages] projectId:', projectId, 'found:', messages.length, 'total:', total);
 
   return {
     messages,
@@ -87,9 +92,11 @@ const sendMessage = handleRequest(async (req: Request) => {
     }
   }
 
+  const projectObjectId = new mongoose.Types.ObjectId(projectId);
+
   // Create message
   const projectMessage = new ProjectMessageModel({
-    projectId,
+    projectId: projectObjectId,
     senderId,
     senderRole,
     message: message.trim(),
@@ -101,8 +108,11 @@ const sendMessage = handleRequest(async (req: Request) => {
   // Populate sender info for response
   await projectMessage.populate('senderId', 'name imgUrl');
 
-  // TODO: Send notification to the other party about new message
-  // TODO: Emit WebSocket event for real-time updates
+  emitProjectMessageUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId
+  );
 
   return projectMessage;
 });
@@ -121,6 +131,8 @@ const markAsRead = handleRequest(async (req: Request) => {
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
 
+  const projectObjectId = new mongoose.Types.ObjectId(projectId);
+
   // Determine user role to know which messages to mark as read
   let userRole: 'customer' | 'vendor';
   if (userId === project.customerId.toString()) {
@@ -135,7 +147,7 @@ const markAsRead = handleRequest(async (req: Request) => {
   const oppositeRole = userRole === 'customer' ? 'vendor' : 'customer';
 
   const filter: Record<string, unknown> = {
-    projectId,
+    projectId: projectObjectId,
     senderRole: oppositeRole,
     readAt: null, // Only unread messages
   };
@@ -166,7 +178,7 @@ export async function getUnreadCount(
   const oppositeRole = userRole === 'customer' ? 'vendor' : 'customer';
 
   return ProjectMessageModel.countDocuments({
-    projectId,
+    projectId: new mongoose.Types.ObjectId(projectId),
     senderRole: oppositeRole,
     readAt: null,
   });

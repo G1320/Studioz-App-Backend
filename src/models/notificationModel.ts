@@ -25,6 +25,7 @@ const NOTIFICATION_TYPES: NotificationType[] = [
   'system_alert',
   // Activity
   'customer_message',
+  'new_remote_project',
   'availability_alert',
 ];
 

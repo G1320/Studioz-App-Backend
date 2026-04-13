@@ -21,6 +21,7 @@ export type NotificationType =
   | 'weekly_summary'
   // Activity
   | 'customer_message'
+  | 'new_remote_project'
   | 'availability_alert'
   // Legacy (kept for backwards compatibility)
   | 'system_alert';
@@ -52,12 +53,14 @@ export const NOTIFICATION_TYPE_CATEGORY: Record<NotificationType, NotificationCa
   platform_announcement: 'system',
   weekly_summary: 'system',
   customer_message: 'activity',
+  new_remote_project: 'activity',
   availability_alert: 'activity',
   system_alert: 'system',
 };
 
 export const NOTIFICATION_TYPE_PRIORITY: Partial<Record<NotificationType, NotificationPriority>> = {
   new_reservation: 'high',
+  new_remote_project: 'high',
   reservation_confirmed: 'high',
   payout_failed: 'high',
   subscription_payment_failed: 'high',

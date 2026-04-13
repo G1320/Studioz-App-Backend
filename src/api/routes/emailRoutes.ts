@@ -621,7 +621,12 @@ function generateSampleParams(templateType: string): Record<string, any> {
     reason: 'לפי בקשת הלקוח',
     changes: 'שעת ההזמנה שונתה מ-14:00 ל-16:00',
     cancelledBy: 'הלקוח',
-    hoursUntil: 24
+    hoursUntil: 24,
+    customerEmail: 'guest@example.com',
+    customerPhone: '050-1234567',
+    projectTitle: 'דוגמה לכותרת פרויקט',
+    projectBrief: 'תיאור קצר של הפרויקט והדרישות.',
+    projectUrl: 'https://studioz.co.il/projects/test',
   };
 
   return baseParams;
@@ -654,7 +659,7 @@ router.get('/template-types', (_req, res) => {
   const types: EmailTemplateName[] = [
     'WELCOME', 'PASSWORD_RESET', 'EMAIL_VERIFICATION', 'ACCOUNT_DEACTIVATION',
     'ORDER_CONFIRMATION', 'PAYOUT_NOTIFICATION', 'REFUND_CONFIRMATION', 'ORDER_CANCELLED',
-    'NEW_BOOKING_VENDOR', 'BOOKING_CONFIRMED_CUSTOMER', 'BOOKING_REMINDER',
+    'NEW_BOOKING_VENDOR', 'NEW_PROJECT_VENDOR', 'BOOKING_CONFIRMED_CUSTOMER', 'BOOKING_REMINDER',
     'BOOKING_CANCELLED_CUSTOMER', 'BOOKING_CANCELLED_VENDOR', 'BOOKING_MODIFIED',
     'REVIEW_REQUEST',
     'SUBSCRIPTION_CONFIRMATION', 'SUBSCRIPTION_PAYMENT', 'SUBSCRIPTION_CANCELLATION',

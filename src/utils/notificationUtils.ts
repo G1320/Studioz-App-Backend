@@ -9,6 +9,7 @@ import { renderEmail } from '../emails/render.js';
 import Notification, { NotificationType, NOTIFICATION_TYPE_CATEGORY } from '../types/notification.js';
 import { getEffectiveChannels, isInQuietHours } from '../services/notificationPreferencesService.js';
 import { enqueuePush } from '../services/notificationQueueService.js';
+import { FRONTEND_URL } from '../config/index.js';
 
 interface NotificationData {
   reservationId?: string;
@@ -171,6 +172,92 @@ export const notifyVendorNewReservation = async (
     }
   } catch (error) {
     notifLog.error('vendor_new_reservation', { reservationId, studioId, itemId }, error);
+  }
+};
+
+/** Mongoose doc or lean object with ObjectId-like refs */
+type NotifyRemoteProjectDoc = {
+  _id: { toString(): string };
+  vendorId: { toString(): string };
+  studioId: { toString(): string };
+  itemId: { toString(): string };
+  title: string;
+  brief: string;
+  price: number;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  studioName?: { en?: string; he?: string };
+  itemName?: { en?: string; he?: string };
+};
+
+/**
+ * Notify vendor when a new remote project request is created
+ */
+export const notifyVendorNewProject = async (project: NotifyRemoteProjectDoc): Promise<void> => {
+  try {
+    const vendorUser = await UserModel.findById(project.vendorId);
+    if (!vendorUser) {
+      notifLog.warn('missing_entity', { vendorId: project.vendorId?.toString() }, 'Vendor user not found');
+      return;
+    }
+
+    const projectId = project._id.toString();
+    const customerDisplayName = project.customerName || 'A customer';
+    const itemLabel =
+      project.itemName?.en || project.itemName?.he || 'Remote project';
+    const studioLabel =
+      project.studioName?.en || project.studioName?.he || 'Your studio';
+
+    const title = 'New project request';
+    const message = `${customerDisplayName} requested "${project.title}" (${itemLabel})`;
+    const actionUrl = `/projects/${projectId}`;
+
+    await createAndEmitNotification(
+      project.vendorId.toString(),
+      'new_remote_project',
+      title,
+      message,
+      {
+        projectId,
+        itemId: project.itemId.toString(),
+        studioId: project.studioId.toString(),
+      },
+      actionUrl
+    );
+
+    if (vendorUser.email) {
+      const briefSnippet =
+        project.brief.length > 200 ? `${project.brief.slice(0, 200)}…` : project.brief;
+      const projectUrl = `${FRONTEND_URL.replace(/\/$/, '')}/projects/${projectId}`;
+
+      const { html, subject } = await renderEmail('NEW_PROJECT_VENDOR', {
+        ownerName: vendorUser.name || 'Studio owner',
+        studioName: studioLabel,
+        customerName: customerDisplayName,
+        customerEmail: project.customerEmail || '',
+        customerPhone: project.customerPhone || '',
+        projectTitle: project.title,
+        projectBrief: briefSnippet,
+        price: project.price,
+        serviceName: itemLabel,
+        projectUrl,
+      });
+
+      await sendHtmlEmail({
+        to: [{ email: vendorUser.email, name: vendorUser.name }],
+        subject,
+        htmlContent: html,
+      });
+    } else {
+      notifLog.info(
+        'skip_email',
+        { vendorId: project.vendorId?.toString(), projectId },
+        'No email on vendor'
+      );
+    }
+  } catch (error) {
+    notifLog.error('vendor_new_remote_project', { projectId: project._id?.toString() }, error);
   }
 };
 

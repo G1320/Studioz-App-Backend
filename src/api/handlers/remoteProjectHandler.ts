@@ -9,6 +9,7 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { paymentService } from '../../services/paymentService.js';
 import { platformFeeService } from '../../services/platformFeeService.js';
+import { notifyVendorNewProject } from '../../utils/notificationUtils.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -154,7 +155,7 @@ const createProject = handleRequest(async (req: Request) => {
 
   await project.save();
 
-  // TODO: Send notification to vendor about new project request
+  await notifyVendorNewProject(project);
 
   return project;
 });

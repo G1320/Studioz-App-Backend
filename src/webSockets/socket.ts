@@ -138,7 +138,20 @@ export const emitNotificationCount = (userId: string, count: number) => {
     // Emit unread count update to specific user
     io.to(`user:${userId}`).emit('notification:count', { count });
   }
-}
+};
+
+/** Notify customer and vendor to refresh project chat (multi-tab safe). */
+export const emitProjectMessageUpdate = (
+  customerId: string,
+  vendorId: string,
+  projectId: string
+) => {
+  if (io) {
+    const payload = { projectId };
+    io.to(`user:${customerId}`).emit('project:message', payload);
+    io.to(`user:${vendorId}`).emit('project:message', payload);
+  }
+};
 
 // Helper to handle user socket connections
 export const handleUserConnection = (socket: any, userId: string) => {

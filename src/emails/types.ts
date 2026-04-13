@@ -27,7 +27,8 @@ export type EmailTemplateName =
   | 'SUBSCRIPTION_DOWNGRADED'
   | 'DOCUMENT_EMAIL'
   | 'PLATFORM_FEE_CHARGED'
-  | 'PLATFORM_FEE_FAILED';
+  | 'PLATFORM_FEE_FAILED'
+  | 'NEW_PROJECT_VENDOR';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -43,6 +44,19 @@ export interface RefundConfirmationEmailProps { customerName: string; refundAmou
 export interface OrderCancelledEmailProps { customerName: string; orderId: string; studioName?: string; mode?: ThemeMode; }
 
 export interface NewBookingVendorEmailProps { ownerName: string; studioName: string; customerName: string; guestEmail: string; guestPhone: string; serviceName: string; dateTime: string; duration: string; bookingUrl?: string; mode?: ThemeMode; }
+export interface NewProjectVendorEmailProps {
+  ownerName: string;
+  studioName: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  projectTitle: string;
+  projectBrief: string;
+  price: number;
+  serviceName: string;
+  projectUrl?: string;
+  mode?: ThemeMode;
+}
 export interface BookingConfirmedCustomerEmailProps { customerName: string; studioName: string; serviceName: string; dateTime: string; duration: string; location: string; totalPaid: string; invoiceUrl?: string; bookingUrl?: string; mode?: ThemeMode; }
 export interface BookingReminderEmailProps { customerName: string; studioName: string; dateTime: string; bookingUrl?: string; mode?: ThemeMode; }
 export interface BookingCancelledCustomerEmailProps { customerName: string; studioName?: string; mode?: ThemeMode; }

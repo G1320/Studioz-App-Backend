@@ -30,4 +30,5 @@ export const EMAIL_SUBJECTS: Record<EmailTemplateName, string> = {
   DOCUMENT_EMAIL: 'מסמך חדש נשלח אליך',
   PLATFORM_FEE_CHARGED: 'עמלת פלטפורמה חודשית חויבה',
   PLATFORM_FEE_FAILED: 'חיוב עמלת פלטפורמה נכשל - נדרשת פעולה',
+  NEW_PROJECT_VENDOR: 'בקשת פרויקט חדשה התקבלה',
 };
