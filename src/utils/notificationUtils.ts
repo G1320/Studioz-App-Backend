@@ -222,6 +222,9 @@ export const notifyVendorNewProject = async (project: NotifyRemoteProjectDoc): P
         projectId,
         itemId: project.itemId.toString(),
         studioId: project.studioId.toString(),
+        customerName: customerDisplayName,
+        projectTitle: project.title,
+        itemName: itemLabel,
       },
       actionUrl
     );
