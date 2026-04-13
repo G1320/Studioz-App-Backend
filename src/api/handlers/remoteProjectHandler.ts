@@ -165,9 +165,14 @@ const createProject = handleRequest(async (req: Request) => {
  * GET /api/remote-projects
  */
 const getProjects = handleRequest(async (req: Request) => {
+  const authReq = req as AuthRequest;
+  const jwtPayload = authReq.decodedJwt as { _id?: string; userId?: string; sub?: string } | undefined;
+  const authUserId = jwtPayload?.userId || jwtPayload?._id || jwtPayload?.sub;
+
   const {
     customerId,
     vendorId,
+    participantId,
     studioId,
     status,
     page: pageStr,
@@ -181,8 +186,16 @@ const getProjects = handleRequest(async (req: Request) => {
 
   // Build filter
   const filter: Record<string, unknown> = {};
-  if (customerId) filter.customerId = customerId;
-  if (vendorId) filter.vendorId = vendorId;
+  if (participantId) {
+    if (!authUserId || String(participantId) !== String(authUserId)) {
+      throw new ExpressError('Forbidden', 403);
+    }
+    // Projects where user is customer OR vendor (e.g. "My projects" list)
+    filter.$or = [{ customerId: participantId }, { vendorId: participantId }];
+  } else {
+    if (customerId) filter.customerId = customerId;
+    if (vendorId) filter.vendorId = vendorId;
+  }
   if (studioId) filter.studioId = studioId;
   if (status) filter.status = status;
 
