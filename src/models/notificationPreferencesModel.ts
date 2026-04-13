@@ -18,6 +18,7 @@ export interface NotificationPreferencesDoc {
     payments: ChannelPreferences;
     reviews: ChannelPreferences;
     billing: ChannelPreferences;
+    projects: ChannelPreferences;
     system: ChannelPreferences;
     activity: ChannelPreferences;
   };
@@ -53,6 +54,7 @@ const NotificationPreferencesSchema = new Schema({
     payments: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: true, push: true }) },
     reviews: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: true, push: false }) },
     billing: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: true, push: true }) },
+    projects: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: true, push: true }) },
     system: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: false, push: false }) },
     activity: { type: channelPreferencesSchema, default: () => ({ inApp: true, email: false, push: false }) },
   },

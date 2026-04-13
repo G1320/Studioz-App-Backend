@@ -34,6 +34,7 @@ const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   'payments',
   'reviews',
   'billing',
+  'projects',
   'system',
   'activity',
 ];

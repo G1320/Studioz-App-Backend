@@ -31,6 +31,7 @@ export type NotificationCategory =
   | 'payments'
   | 'reviews'
   | 'billing'
+  | 'projects'
   | 'system'
   | 'activity';
 
@@ -53,7 +54,7 @@ export const NOTIFICATION_TYPE_CATEGORY: Record<NotificationType, NotificationCa
   platform_announcement: 'system',
   weekly_summary: 'system',
   customer_message: 'activity',
-  new_remote_project: 'activity',
+  new_remote_project: 'projects',
   availability_alert: 'activity',
   system_alert: 'system',
 };
