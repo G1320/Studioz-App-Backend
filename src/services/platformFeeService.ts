@@ -34,7 +34,7 @@ const getPreviousPeriod = (): string => {
 interface RecordFeeParams {
   vendorId: string;
   transactionAmount: number;
-  transactionType: 'reservation' | 'quick_charge' | 'multivendor';
+  transactionType: 'reservation' | 'quick_charge' | 'multivendor' | 'remote_project';
   reservationId?: string;
   studioId?: string;
   sumitPaymentId?: string;
@@ -90,10 +90,14 @@ export const platformFeeService = {
   /**
    * Credit (reverse) a fee when a reservation is refunded.
    */
-  async creditFee(reservationId: string, reason?: string): Promise<void> {
+  async creditFee(transactionId: string, reason?: string): Promise<void> {
     try {
+      // Look up by reservationId first, then fall back to sumitPaymentId
       const fee = await PlatformFeeModel.findOne({
-        reservationId,
+        $or: [
+          { reservationId: transactionId },
+          { sumitPaymentId: transactionId },
+        ],
         status: { $in: ['pending', 'billed'] }
       });
 
@@ -101,10 +105,10 @@ export const platformFeeService = {
 
       fee.status = 'credited';
       fee.creditedAt = new Date();
-      fee.creditReason = reason || 'Reservation refunded';
+      fee.creditReason = reason || 'Transaction refunded';
       await fee.save();
 
-      console.log(`[PlatformFee] Credited fee ${fee._id} (${fee.feeAmount} ILS) for reservation ${reservationId}`);
+      console.log(`[PlatformFee] Credited fee ${fee._id} (${fee.feeAmount} ILS) for transaction ${transactionId}`);
     } catch (error) {
       console.error('[PlatformFee] Failed to credit fee:', error);
     }

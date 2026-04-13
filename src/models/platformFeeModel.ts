@@ -20,7 +20,7 @@ const platformFeeSchema = new Schema({
   },
   transactionType: {
     type: String,
-    enum: ['reservation', 'quick_charge', 'multivendor'],
+    enum: ['reservation', 'quick_charge', 'multivendor', 'remote_project'],
     required: true
   },
   transactionAmount: {

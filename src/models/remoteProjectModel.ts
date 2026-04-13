@@ -97,7 +97,7 @@ const RemoteProjectSchema = new mongoose.Schema(
     // Payment (reuse existing structure from reservations)
     paymentStatus: {
       type: String,
-      enum: ['pending', 'deposit_paid', 'fully_paid', 'refunded'],
+      enum: ['pending', 'card_saved', 'deposit_paid', 'fully_paid', 'refunded'],
       required: false,
     },
     paymentDetails: { type: paymentDetailsSchema, required: false },

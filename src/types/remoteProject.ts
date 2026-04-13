@@ -12,6 +12,7 @@ export type RemoteProjectStatus =
 
 export type RemoteProjectPaymentStatus =
   | 'pending'
+  | 'card_saved'
   | 'deposit_paid'
   | 'fully_paid'
   | 'refunded';

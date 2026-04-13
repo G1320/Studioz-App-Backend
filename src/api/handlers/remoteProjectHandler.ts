@@ -4,8 +4,11 @@ import { RemoteProjectModel } from '../../models/remoteProjectModel.js';
 import { ItemModel } from '../../models/itemModel.js';
 import { StudioModel } from '../../models/studioModel.js';
 import { ProjectFileModel } from '../../models/projectFileModel.js';
+import { UserModel } from '../../models/userModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { paymentService } from '../../services/paymentService.js';
+import { platformFeeService } from '../../services/platformFeeService.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -37,6 +40,9 @@ const createProject = handleRequest(async (req: Request) => {
     customerName,
     customerEmail,
     customerPhone,
+    singleUseToken,
+    useSavedCard,
+    sumitCustomerId,
   } = req.body;
 
   if (!itemId) throw new ExpressError('Item ID is required', 400);
@@ -69,12 +75,14 @@ const createProject = handleRequest(async (req: Request) => {
     ? (projectPricing.basePrice * projectPricing.depositPercentage) / 100
     : undefined;
 
+  const vendorId = item.sellerId || studio.createdBy;
+
   // Create the project
   const project = new RemoteProjectModel({
     itemId: item._id,
     studioId: studio._id,
     customerId,
-    vendorId: item.sellerId || studio.createdBy,
+    vendorId,
 
     title,
     brief,
@@ -106,6 +114,43 @@ const createProject = handleRequest(async (req: Request) => {
     customerEmail,
     customerPhone,
   });
+
+  // Handle payment: save card for later charging on vendor accept
+  const hasPaymentInfo = singleUseToken || useSavedCard;
+  const hasPrice = projectPricing.basePrice > 0;
+
+  if (hasPaymentInfo && hasPrice && vendorId) {
+    if (singleUseToken) {
+      const paymentResult = await paymentService.handleReservationPayment({
+        singleUseToken,
+        customerInfo: {
+          name: customerName || 'Customer',
+          email: customerEmail || '',
+          phone: customerPhone || '',
+        },
+        vendorId: vendorId.toString(),
+        userId: customerId,
+        amount: depositAmount || projectPricing.basePrice,
+        itemName: title,
+        instantCharge: false,
+        studioId: studio._id?.toString(),
+      });
+
+      if (paymentResult) {
+        project.paymentStatus = paymentResult.paymentStatus === 'card_saved' ? 'card_saved' : 'pending';
+        project.paymentDetails = paymentResult.paymentDetails;
+      }
+    } else if (useSavedCard && sumitCustomerId) {
+      // Reuse a previously saved card — just store the reference
+      project.paymentStatus = 'card_saved';
+      project.paymentDetails = {
+        sumitCustomerId,
+        amount: depositAmount || projectPricing.basePrice,
+        currency: 'ILS',
+        vendorId: vendorId.toString(),
+      };
+    }
+  }
 
   await project.save();
 
@@ -219,6 +264,56 @@ const acceptProject = handleRequest(async (req: Request) => {
     );
   }
 
+  // Charge deposit if card was saved and there's an amount to charge
+  const chargeAmount = project.depositAmount || project.price;
+  if (
+    project.paymentStatus === 'card_saved' &&
+    project.paymentDetails?.sumitCustomerId &&
+    chargeAmount > 0
+  ) {
+    const credentials = await paymentService.getVendorCredentials(project.vendorId.toString());
+    if (!credentials) {
+      throw new ExpressError('Vendor payment credentials not configured', 402);
+    }
+
+    const customer = await UserModel.findById(project.customerId);
+    const chargeResult = await paymentService.chargeSavedCard(
+      project.paymentDetails.sumitCustomerId,
+      chargeAmount,
+      `Project deposit: ${project.title}`,
+      credentials,
+      {
+        email: project.customerEmail || customer?.email,
+        name: project.customerName || customer?.name,
+        phone: project.customerPhone || (customer as any)?.phone,
+      }
+    );
+
+    if (!chargeResult.success) {
+      throw new ExpressError(
+        `Deposit charge failed: ${chargeResult.error || 'Payment declined'}`,
+        402
+      );
+    }
+
+    project.paymentStatus = 'deposit_paid';
+    project.depositPaid = true;
+    project.paymentDetails = {
+      ...project.paymentDetails,
+      sumitPaymentId: chargeResult.paymentId,
+      chargedAt: new Date(),
+      amount: chargeAmount,
+    } as any;
+
+    platformFeeService.recordFee({
+      vendorId: project.vendorId.toString(),
+      transactionAmount: chargeAmount,
+      transactionType: 'remote_project',
+      studioId: project.studioId?.toString(),
+      sumitPaymentId: chargeResult.paymentId,
+    });
+  }
+
   // Set deadline based on estimated delivery days
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + project.estimatedDeliveryDays);
@@ -251,11 +346,41 @@ const declineProject = handleRequest(async (req: Request) => {
     );
   }
 
+  // Refund deposit if it was charged
+  if (
+    project.paymentStatus === 'deposit_paid' &&
+    project.paymentDetails?.sumitPaymentId &&
+    project.paymentDetails?.vendorId
+  ) {
+    const credentials = await paymentService.getVendorCredentials(
+      project.paymentDetails.vendorId.toString()
+    );
+    if (credentials) {
+      const refundResult = await paymentService.refundPayment(
+        project.paymentDetails.sumitPaymentId,
+        project.paymentDetails.amount || project.depositAmount || 0,
+        credentials
+      );
+      if (refundResult.success) {
+        project.paymentStatus = 'refunded';
+        project.depositPaid = false;
+        project.paymentDetails = {
+          ...project.paymentDetails,
+          refundId: refundResult.refundId,
+          refundedAt: new Date(),
+        } as any;
+
+        if (project.paymentDetails?.sumitPaymentId) {
+          platformFeeService.creditFee(project.paymentDetails.sumitPaymentId, 'Project declined — deposit refunded');
+        }
+      }
+    }
+  }
+
   project.status = PROJECT_STATUS.DECLINED;
   await project.save();
 
   // TODO: Send notification to customer that project was declined (with reason)
-  // TODO: If deposit was paid, process refund
 
   return project;
 });
@@ -385,13 +510,64 @@ const completeProject = handleRequest(async (req: Request) => {
     );
   }
 
+  // Charge the remaining balance if deposit was already paid
+  if (
+    project.paymentStatus === 'deposit_paid' &&
+    project.paymentDetails?.sumitCustomerId
+  ) {
+    const balance = project.price - (project.depositAmount || 0);
+
+    if (balance > 0) {
+      const credentials = await paymentService.getVendorCredentials(project.vendorId.toString());
+      if (!credentials) {
+        throw new ExpressError('Vendor payment credentials not configured', 402);
+      }
+
+      const customer = await UserModel.findById(project.customerId);
+      const chargeResult = await paymentService.chargeSavedCard(
+        project.paymentDetails.sumitCustomerId,
+        balance,
+        `Project balance: ${project.title}`,
+        credentials,
+        {
+          email: project.customerEmail || customer?.email,
+          name: project.customerName || customer?.name,
+          phone: project.customerPhone || (customer as any)?.phone,
+        }
+      );
+
+      if (!chargeResult.success) {
+        throw new ExpressError(
+          `Balance charge failed: ${chargeResult.error || 'Payment declined'}`,
+          402
+        );
+      }
+
+      project.paymentStatus = 'fully_paid';
+      project.finalPaid = true;
+
+      platformFeeService.recordFee({
+        vendorId: project.vendorId.toString(),
+        transactionAmount: balance,
+        transactionType: 'remote_project',
+        studioId: project.studioId?.toString(),
+        sumitPaymentId: chargeResult.paymentId,
+      });
+    } else {
+      // Deposit covered the full price
+      project.paymentStatus = 'fully_paid';
+      project.finalPaid = true;
+    }
+  } else if (!project.paymentDetails?.sumitCustomerId) {
+    // No payment was set up (free project or studio without payment)
+    project.finalPaid = true;
+  }
+
   project.status = PROJECT_STATUS.COMPLETED;
   project.completedAt = new Date();
-  project.finalPaid = true; // TODO: Integrate with actual payment
   await project.save();
 
   // TODO: Send notification to vendor that project is completed
-  // TODO: Process final payment if not already done
 
   return project;
 });
@@ -420,13 +596,39 @@ const cancelProject = handleRequest(async (req: Request) => {
     );
   }
 
+  // Refund deposit if it was charged
+  if (
+    project.paymentStatus === 'deposit_paid' &&
+    project.paymentDetails?.sumitPaymentId &&
+    project.paymentDetails?.vendorId
+  ) {
+    const credentials = await paymentService.getVendorCredentials(
+      project.paymentDetails.vendorId.toString()
+    );
+    if (credentials) {
+      const refundResult = await paymentService.refundPayment(
+        project.paymentDetails.sumitPaymentId,
+        project.paymentDetails.amount || project.depositAmount || 0,
+        credentials
+      );
+      if (refundResult.success) {
+        project.paymentStatus = 'refunded';
+        project.depositPaid = false;
+        project.paymentDetails = {
+          ...project.paymentDetails,
+          refundId: refundResult.refundId,
+          refundedAt: new Date(),
+        } as any;
+
+        if (project.paymentDetails?.sumitPaymentId) {
+          platformFeeService.creditFee(project.paymentDetails.sumitPaymentId, 'Project cancelled — deposit refunded');
+        }
+      }
+    }
+  }
+
   project.status = PROJECT_STATUS.CANCELLED;
   await project.save();
-
-  // TODO: Handle refund logic based on project stage
-  // - If requested but not accepted: full refund
-  // - If accepted but no work done: partial refund
-  // - If work in progress: negotiate or no refund
 
   return project;
 });
