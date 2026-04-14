@@ -10,6 +10,7 @@ import handleRequest from '../../utils/requestHandler.js';
 import { paymentService } from '../../services/paymentService.js';
 import { platformFeeService } from '../../services/platformFeeService.js';
 import { notifyVendorNewProject } from '../../utils/notificationUtils.js';
+import { emitProjectStatusUpdate } from '../../webSockets/socket.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -337,7 +338,12 @@ const acceptProject = handleRequest(async (req: Request) => {
   project.deadline = deadline;
   await project.save();
 
-  // TODO: Send notification to customer that project was accepted
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -394,7 +400,12 @@ const declineProject = handleRequest(async (req: Request) => {
   project.status = PROJECT_STATUS.DECLINED;
   await project.save();
 
-  // TODO: Send notification to customer that project was declined (with reason)
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -418,6 +429,13 @@ const startProject = handleRequest(async (req: Request) => {
 
   project.status = PROJECT_STATUS.IN_PROGRESS;
   await project.save();
+
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -463,7 +481,12 @@ const deliverProject = handleRequest(async (req: Request) => {
   project.deliveredAt = new Date();
   await project.save();
 
-  // TODO: Send notification to customer that deliverables are ready
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -501,8 +524,12 @@ const requestRevision = handleRequest(async (req: Request) => {
   project.revisionsUsed += 1;
   await project.save();
 
-  // TODO: Send notification to vendor about revision request with feedback
-  // TODO: Create a ProjectMessage with the revision feedback
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -581,7 +608,12 @@ const completeProject = handleRequest(async (req: Request) => {
   project.completedAt = new Date();
   await project.save();
 
-  // TODO: Send notification to vendor that project is completed
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });
@@ -643,6 +675,13 @@ const cancelProject = handleRequest(async (req: Request) => {
 
   project.status = PROJECT_STATUS.CANCELLED;
   await project.save();
+
+  emitProjectStatusUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId,
+    project.status
+  );
 
   return project;
 });

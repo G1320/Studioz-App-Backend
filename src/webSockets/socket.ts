@@ -153,6 +153,20 @@ export const emitProjectMessageUpdate = (
   }
 };
 
+/** Notify customer and vendor that the project status changed. */
+export const emitProjectStatusUpdate = (
+  customerId: string,
+  vendorId: string,
+  projectId: string,
+  status: string
+) => {
+  if (io) {
+    const payload = { projectId, status };
+    io.to(`user:${customerId}`).emit('project:status', payload);
+    io.to(`user:${vendorId}`).emit('project:status', payload);
+  }
+};
+
 /** Notify customer and vendor to refresh project file list. */
 export const emitProjectFileUpdate = (
   customerId: string,
