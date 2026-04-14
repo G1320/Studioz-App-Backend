@@ -522,7 +522,11 @@ const requestRevision = handleRequest(async (req: Request) => {
       throw new ExpressError('No free revisions remaining and no revision price configured', 400);
     }
 
-    if (!project.paymentDetails?.sumitCustomerId) {
+    const customer = await UserModel.findById(project.customerId);
+    const sumitCustomerId =
+      project.paymentDetails?.sumitCustomerId || customer?.sumitCustomerId;
+
+    if (!sumitCustomerId) {
       throw new ExpressError('No payment method on file for paid revision', 402);
     }
 
@@ -531,9 +535,8 @@ const requestRevision = handleRequest(async (req: Request) => {
       throw new ExpressError('Vendor payment credentials not configured', 402);
     }
 
-    const customer = await UserModel.findById(project.customerId);
     const chargeResult = await paymentService.chargeSavedCard(
-      project.paymentDetails.sumitCustomerId,
+      sumitCustomerId,
       revisionPrice,
       `Paid revision: ${project.title}`,
       credentials,
