@@ -12,6 +12,7 @@ import {
   deleteFile as deleteStorageFile,
   isStorageConfigured,
 } from '../../services/storageService.js';
+import { emitProjectFileUpdate } from '../../webSockets/socket.js';
 
 // Default file constraints
 const DEFAULT_MAX_FILE_SIZE = 500; // MB
@@ -130,7 +131,11 @@ const registerFile = handleRequest(async (req: Request) => {
 
   await file.save();
 
-  // TODO: Send notification about new file upload
+  emitProjectFileUpdate(
+    project.customerId.toString(),
+    project.vendorId.toString(),
+    projectId
+  );
 
   return file;
 });
@@ -218,6 +223,15 @@ const deleteFile = handleRequest(async (req: Request) => {
 
   // Delete from database
   await ProjectFileModel.deleteOne({ _id: fileId });
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (project) {
+    emitProjectFileUpdate(
+      project.customerId.toString(),
+      project.vendorId.toString(),
+      projectId
+    );
+  }
 
   return null; // Returns 204 No Content
 });

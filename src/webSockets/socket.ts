@@ -153,6 +153,19 @@ export const emitProjectMessageUpdate = (
   }
 };
 
+/** Notify customer and vendor to refresh project file list. */
+export const emitProjectFileUpdate = (
+  customerId: string,
+  vendorId: string,
+  projectId: string
+) => {
+  if (io) {
+    const payload = { projectId };
+    io.to(`user:${customerId}`).emit('project:files', payload);
+    io.to(`user:${vendorId}`).emit('project:files', payload);
+  }
+};
+
 // Helper to handle user socket connections
 export const handleUserConnection = (socket: any, userId: string) => {
   // Join user-specific room for targeted notifications
