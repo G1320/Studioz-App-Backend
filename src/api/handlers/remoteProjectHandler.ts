@@ -513,11 +513,51 @@ const requestRevision = handleRequest(async (req: Request) => {
     );
   }
 
-  // Check revision limits
-  if (project.revisionsUsed >= project.revisionsIncluded) {
-    // Customer would need to pay for additional revision
-    // For now, we'll allow it but could add payment logic here
-    // throw new ExpressError('No free revisions remaining. Additional revision fee applies.', 402);
+  // Paid revision: charge if free revisions are exhausted
+  const isPaidRevision = project.revisionsUsed >= project.revisionsIncluded;
+
+  if (isPaidRevision) {
+    const revisionPrice = project.revisionPrice;
+    if (!revisionPrice || revisionPrice <= 0) {
+      throw new ExpressError('No free revisions remaining and no revision price configured', 400);
+    }
+
+    if (!project.paymentDetails?.sumitCustomerId) {
+      throw new ExpressError('No payment method on file for paid revision', 402);
+    }
+
+    const credentials = await paymentService.getVendorCredentials(project.vendorId.toString());
+    if (!credentials) {
+      throw new ExpressError('Vendor payment credentials not configured', 402);
+    }
+
+    const customer = await UserModel.findById(project.customerId);
+    const chargeResult = await paymentService.chargeSavedCard(
+      project.paymentDetails.sumitCustomerId,
+      revisionPrice,
+      `Paid revision: ${project.title}`,
+      credentials,
+      {
+        email: project.customerEmail || customer?.email,
+        name: project.customerName || customer?.name,
+        phone: project.customerPhone || (customer as any)?.phone,
+      }
+    );
+
+    if (!chargeResult.success) {
+      throw new ExpressError(
+        `Revision payment failed: ${chargeResult.error || 'Payment declined'}`,
+        402
+      );
+    }
+
+    platformFeeService.recordFee({
+      vendorId: project.vendorId.toString(),
+      transactionAmount: revisionPrice,
+      transactionType: 'remote_project',
+      studioId: project.studioId?.toString(),
+      sumitPaymentId: chargeResult.paymentId,
+    });
   }
 
   project.status = PROJECT_STATUS.REVISION_REQUESTED;
