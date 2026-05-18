@@ -15,9 +15,11 @@ router.delete('/:id', verifyTokenMw, userHandler.deleteUser);
 router.post('/:id/add-studio/:studioId', verifyTokenMw, userHandler.addStudioToUser);
 router.post('/:id/remove-studio/:studioId', verifyTokenMw, userHandler.removeStudioFromUser);
 
-// Saved cards
+// Saved cards (multi-card)
 router.get('/:id/saved-cards', verifyTokenMw, userHandler.getSavedCards);
-router.delete('/:id/saved-cards', verifyTokenMw, userHandler.removeSavedCard);
+router.delete('/:id/saved-cards/:cardId', verifyTokenMw, userHandler.removeSavedCard);
+router.delete('/:id/saved-cards', verifyTokenMw, userHandler.removeSavedCard); // legacy: remove all
+router.patch('/:id/saved-cards/:cardId/default', verifyTokenMw, userHandler.setDefaultCard);
 
 // Email preferences
 router.get('/:id/email-preferences', verifyTokenMw, userHandler.getEmailPreferences);

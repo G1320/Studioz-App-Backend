@@ -29,7 +29,7 @@ export function DetailsCard({ rows, mode = 'light' }: DetailsCardProps) {
         cellPadding={0}
         cellSpacing={0}
         role="presentation"
-        style={{ borderCollapse: 'collapse' }}
+        style={{ borderCollapse: 'collapse', direction: 'rtl' as const }}
       >
         {rows.map((row, index) => {
           const isLast = index === rows.length - 1;

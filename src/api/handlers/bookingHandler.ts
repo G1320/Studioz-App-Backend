@@ -27,6 +27,7 @@ import {
     getStudioOperatingHours
 } from '../../services/availabilityService.js';
 import { paymentService } from '../../services/paymentService.js';
+import { PaymentMethodModel } from '../../models/paymentMethodModel.js';
 import { platformFeeService } from '../../services/platformFeeService.js';
 import { usageService } from '../../services/usageService.js';
 
@@ -330,7 +331,16 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         // Support both logged-in users (via user.sumitCustomerId) and 
         // incognito users (via sumitCustomerId from request body, looked up by phone)
         else if (useSavedCard) {
-          const resolvedSumitCustomerId = user?.sumitCustomerId || sumitCustomerId;
+          // Resolve Sumit customer ID: cardId may be a PaymentMethod _id or a raw Sumit customer ID
+          let resolvedSumitCustomerId: string | undefined;
+          if (sumitCustomerId) {
+            const pm = await PaymentMethodModel.findById(sumitCustomerId).catch(() => null);
+            resolvedSumitCustomerId = pm?.sumitCustomerId || sumitCustomerId;
+          }
+          if (!resolvedSumitCustomerId && user?._id) {
+            const defaultPm = await paymentService.getDefaultPaymentMethod(user._id.toString());
+            resolvedSumitCustomerId = defaultPm?.sumitCustomerId || user?.sumitCustomerId;
+          }
           
           if (!resolvedSumitCustomerId) {
             console.error('[Payment] useSavedCard=true but no Sumit customer ID available');

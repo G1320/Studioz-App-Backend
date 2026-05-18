@@ -25,6 +25,9 @@ export function EmailLayout({
   return (
     <Html dir="rtl" lang="he">
       <Head>
+        <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="color-scheme" content="light only" />
+        <meta name="supported-color-schemes" content="light only" />
         <Font
           fontFamily="DM Sans"
           fallbackFontFamily={['Arial', 'Helvetica', 'sans-serif']}
@@ -43,6 +46,8 @@ export function EmailLayout({
           padding: '20px',
           backgroundColor: theme.bg,
           fontFamily,
+          direction: 'rtl' as const,
+          textAlign: 'right' as const,
         }}
       >
         <Container

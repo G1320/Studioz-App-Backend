@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { UserModel } from '../models/userModel.js';
 import { ItemModel } from '../models/itemModel.js';
+import { PaymentMethodModel, type PaymentMethodDoc } from '../models/paymentMethodModel.js';
 import { saveSumitInvoice } from '../utils/sumitUtils.js';
 import { usageService } from './usageService.js';
 import { platformFeeService } from './platformFeeService.js';
@@ -467,17 +468,17 @@ export const paymentService = {
       };
     }
 
-    // Save the Sumit customer ID on the user for future payments
+    // Store as a PaymentMethod document (multi-card support)
     if (params.userId && saveResult.customerId) {
       try {
-        await UserModel.findByIdAndUpdate(params.userId, {
-          sumitCustomerId: saveResult.customerId,
-          savedCardLastFour: saveResult.lastFourDigits,
-          savedCardBrand: this.detectCardBrand(saveResult.lastFourDigits)
-        });
+        await this.addPaymentMethod(
+          params.userId,
+          saveResult.customerId,
+          saveResult.creditCardToken || '',
+          saveResult.lastFourDigits || ''
+        );
       } catch (error) {
-        console.error('Failed to save card info on user:', error);
-        // Don't fail the payment, just log the error
+        console.error('Failed to save card info:', error);
       }
     }
 
@@ -751,21 +752,216 @@ export const paymentService = {
     }
   },
 
-  /**
-   * Detect card brand from last 4 digits or BIN
-   * This is a simple heuristic - in production you'd get this from Sumit
-   */
-  detectCardBrand(lastFourDigits?: string): string {
-    // Default to visa if we can't detect
+  detectCardBrand(_lastFourDigits?: string): string {
     return 'visa';
   },
 
+  // ================================================================
+  // Multi-card payment method management
+  // ================================================================
+
   /**
-   * Get user's saved card info
-   * First checks local database, then optionally verifies with Sumit
-   * Returns null if user has no saved card
+   * Add a new payment method for a user.
+   * If the user has no existing cards, this becomes the default.
+   * Also backfills the legacy User fields for backward compatibility.
    */
-  async getUserSavedCard(userId: string, verifyWithSumit: boolean = false): Promise<{
+  async addPaymentMethod(
+    userId: string,
+    sumitCustomerId: string,
+    cardToken: string,
+    lastFour: string,
+    extra?: { expirationMonth?: number; expirationYear?: number; cardMask?: string; brand?: string }
+  ): Promise<PaymentMethodDoc> {
+    const existingCount = await PaymentMethodModel.countDocuments({ userId });
+    const isDefault = existingCount === 0;
+
+    // Try to fetch full details from Sumit if we don't have them
+    let expirationMonth = extra?.expirationMonth;
+    let expirationYear = extra?.expirationYear;
+    let cardMask = extra?.cardMask;
+    let resolvedToken = cardToken;
+
+    if ((!expirationMonth || !resolvedToken) && sumitCustomerId) {
+      try {
+        const sumitResult = await this.getSavedPaymentMethods(sumitCustomerId);
+        if (sumitResult.success && sumitResult.paymentMethod) {
+          expirationMonth = expirationMonth || sumitResult.paymentMethod.expirationMonth;
+          expirationYear = expirationYear || sumitResult.paymentMethod.expirationYear;
+          cardMask = cardMask || sumitResult.paymentMethod.cardMask;
+          resolvedToken = resolvedToken || sumitResult.paymentMethod.token;
+        }
+      } catch (err) {
+        console.warn('[PaymentMethod] Could not fetch details from Sumit:', err);
+      }
+    }
+
+    const pm = await PaymentMethodModel.create({
+      userId,
+      sumitCustomerId,
+      cardToken: resolvedToken,
+      lastFour,
+      brand: extra?.brand || this.detectCardBrand(lastFour),
+      expirationMonth,
+      expirationYear,
+      cardMask,
+      isDefault,
+    });
+
+    // Keep legacy User fields in sync with the latest card
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        sumitCustomerId,
+        savedCardLastFour: lastFour,
+        savedCardBrand: pm.brand,
+      });
+    } catch (err) {
+      console.warn('[PaymentMethod] Failed to sync legacy User fields:', err);
+    }
+
+    return pm;
+  },
+
+  /**
+   * Get all payment methods for a user.
+   * Performs lazy migration: if user has legacy fields but no PaymentMethod docs,
+   * creates one from the legacy data.
+   */
+  async getUserPaymentMethods(userId: string): Promise<PaymentMethodDoc[]> {
+    let methods = await PaymentMethodModel.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
+
+    if (methods.length === 0) {
+      // Lazy migration from legacy single-card fields
+      const user = await UserModel.findById(userId);
+      if (user?.sumitCustomerId && user.savedCardLastFour) {
+        try {
+          const migrated = await this.addPaymentMethod(
+            userId,
+            user.sumitCustomerId,
+            '', // token will be fetched from Sumit inside addPaymentMethod
+            user.savedCardLastFour,
+            { brand: user.savedCardBrand || 'visa' }
+          );
+          methods = [migrated];
+        } catch (err) {
+          console.error('[PaymentMethod] Lazy migration failed:', err);
+        }
+      }
+    }
+
+    return methods;
+  },
+
+  /**
+   * Get a single payment method by its _id (our DB id, not Sumit's).
+   */
+  async getPaymentMethodById(paymentMethodId: string): Promise<PaymentMethodDoc | null> {
+    return PaymentMethodModel.findById(paymentMethodId);
+  },
+
+  /**
+   * Get the user's default payment method, or the most recent one.
+   */
+  async getDefaultPaymentMethod(userId: string): Promise<PaymentMethodDoc | null> {
+    const defaultCard = await PaymentMethodModel.findOne({ userId, isDefault: true });
+    if (defaultCard) return defaultCard;
+    return PaymentMethodModel.findOne({ userId }).sort({ createdAt: -1 });
+  },
+
+  /**
+   * Set a specific card as the user's default.
+   */
+  async setDefaultPaymentMethod(userId: string, paymentMethodId: string): Promise<boolean> {
+    const card = await PaymentMethodModel.findOne({ _id: paymentMethodId, userId });
+    if (!card) return false;
+
+    await PaymentMethodModel.updateMany({ userId }, { isDefault: false });
+    card.isDefault = true;
+    await card.save();
+
+    // Sync legacy fields
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        sumitCustomerId: card.sumitCustomerId,
+        savedCardLastFour: card.lastFour,
+        savedCardBrand: card.brand,
+      });
+    } catch (err) {
+      console.warn('[PaymentMethod] Failed to sync legacy fields on default change:', err);
+    }
+
+    return true;
+  },
+
+  /**
+   * Remove a specific payment method by _id.
+   */
+  async removePaymentMethod(userId: string, paymentMethodId: string): Promise<boolean> {
+    const card = await PaymentMethodModel.findOne({ _id: paymentMethodId, userId });
+    if (!card) return false;
+
+    // Try to remove from Sumit
+    if (card.sumitCustomerId) {
+      const sumitResult = await this.removeSavedPaymentMethodFromSumit(card.sumitCustomerId);
+      if (!sumitResult.success) {
+        console.warn('[PaymentMethod] Failed to remove from Sumit:', sumitResult.error);
+      }
+    }
+
+    const wasDefault = card.isDefault;
+    await PaymentMethodModel.deleteOne({ _id: paymentMethodId });
+
+    // If we removed the default, promote the next card
+    if (wasDefault) {
+      const next = await PaymentMethodModel.findOne({ userId }).sort({ createdAt: -1 });
+      if (next) {
+        next.isDefault = true;
+        await next.save();
+        await UserModel.findByIdAndUpdate(userId, {
+          sumitCustomerId: next.sumitCustomerId,
+          savedCardLastFour: next.lastFour,
+          savedCardBrand: next.brand,
+        });
+      } else {
+        // No cards left — clear legacy fields
+        await UserModel.findByIdAndUpdate(userId, {
+          $unset: { sumitCustomerId: 1, savedCardLastFour: 1, savedCardBrand: 1 },
+        });
+      }
+    }
+
+    return true;
+  },
+
+  /**
+   * Charge using a stored PaymentMethod document.
+   * Passes the stored token directly to multivendorcharge.
+   */
+  async chargeWithPaymentMethod(
+    paymentMethodId: string,
+    amount: number,
+    description: string,
+    credentials: VendorCredentials,
+    customerInfo?: { email?: string; name?: string; phone?: string }
+  ): Promise<ChargeResult> {
+    const pm = await PaymentMethodModel.findById(paymentMethodId);
+    if (!pm) {
+      return { success: false, error: 'Payment method not found' };
+    }
+
+    return this.chargeSavedCard(
+      pm.sumitCustomerId,
+      amount,
+      description,
+      credentials,
+      customerInfo
+    );
+  },
+
+  /**
+   * Legacy helper — kept for backward compat.
+   * Prefers PaymentMethod collection, falls back to User fields.
+   */
+  async getUserSavedCard(userId: string, _verifyWithSumit: boolean = false): Promise<{
     id: string;
     last4: string;
     brand: string;
@@ -773,178 +969,119 @@ export const paymentService = {
     expirationMonth?: number;
     expirationYear?: number;
   } | null> {
-    const user = await UserModel.findById(userId);
-    
-    if (!user?.sumitCustomerId) {
-      return null;
-    }
-
-    // If we have local data and don't need to verify, return cached data
-    if (!verifyWithSumit && user.savedCardLastFour) {
+    const defaultPm = await this.getDefaultPaymentMethod(userId);
+    if (defaultPm) {
       return {
-        id: user.sumitCustomerId,
-        last4: user.savedCardLastFour,
-        brand: user.savedCardBrand || 'visa',
-        sumitCustomerId: user.sumitCustomerId
+        id: defaultPm._id.toString(),
+        last4: defaultPm.lastFour,
+        brand: defaultPm.brand,
+        sumitCustomerId: defaultPm.sumitCustomerId,
+        expirationMonth: defaultPm.expirationMonth,
+        expirationYear: defaultPm.expirationYear,
       };
     }
 
-    // Fetch fresh data from Sumit
-    const sumitResult = await this.getSavedPaymentMethods(user.sumitCustomerId);
-    
-    if (!sumitResult.success || !sumitResult.paymentMethod) {
-      // Card might have been removed from Sumit - clear local data
-      if (user.savedCardLastFour) {
-        await UserModel.findByIdAndUpdate(userId, {
-          $unset: { savedCardLastFour: 1, savedCardBrand: 1 }
-        });
-      }
-      return null;
-    }
-
-    const pm = sumitResult.paymentMethod;
-    
-    // Update local cache with fresh data
-    const brand = this.detectCardBrand(pm.lastFourDigits);
-    await UserModel.findByIdAndUpdate(userId, {
-      savedCardLastFour: pm.lastFourDigits,
-      savedCardBrand: brand
-    });
+    // Legacy fallback
+    const user = await UserModel.findById(userId);
+    if (!user?.sumitCustomerId) return null;
 
     return {
       id: user.sumitCustomerId,
-      last4: pm.lastFourDigits,
-      brand: brand,
+      last4: user.savedCardLastFour || '****',
+      brand: user.savedCardBrand || 'visa',
       sumitCustomerId: user.sumitCustomerId,
-      expirationMonth: pm.expirationMonth,
-      expirationYear: pm.expirationYear
     };
   },
 
   /**
-   * Charge using a user's saved card (by Sumit customer ID)
-   * Used when user selects a previously saved card
+   * Charge using a user's saved card (by Sumit customer ID).
+   * Prefers PaymentMethod collection for lookup.
    */
   async chargeWithSavedCard(params: {
     userId: string;
     vendorId: string;
     amount: number;
     description: string;
-  }): Promise<{
-    success: boolean;
-    paymentId?: string;
-    error?: string;
-  }> {
-    // Get user's saved card
-    const user = await UserModel.findById(params.userId);
-    if (!user?.sumitCustomerId) {
+  }): Promise<{ success: boolean; paymentId?: string; error?: string }> {
+    const defaultPm = await this.getDefaultPaymentMethod(params.userId);
+    const sumitCustomerId = defaultPm?.sumitCustomerId
+      || (await UserModel.findById(params.userId))?.sumitCustomerId;
+
+    if (!sumitCustomerId) {
       return { success: false, error: 'User has no saved card' };
     }
 
-    // Get vendor credentials
     const credentials = await this.getVendorCredentials(params.vendorId);
     if (!credentials) {
       return { success: false, error: 'Vendor not set up for payments' };
     }
 
+    const user = await UserModel.findById(params.userId);
     return this.chargeSavedCard(
-      user.sumitCustomerId,
+      sumitCustomerId,
       params.amount,
       params.description,
       credentials,
-      { email: user.email, name: user.name, phone: user.phone }
+      { email: user?.email, name: user?.name, phone: user?.phone }
     );
   },
 
   /**
-   * Remove saved payment method from Sumit
-   * Uses /billing/paymentmethods/remove/ endpoint
-   * See: https://api.sumit.co.il/billing/paymentmethods/remove/
+   * Remove saved payment method from Sumit.
    */
   async removeSavedPaymentMethodFromSumit(sumitCustomerId: string): Promise<{
     success: boolean;
     error?: string;
   }> {
     try {
-      console.log('[Payment Debug] Removing payment method from Sumit for customer:', sumitCustomerId);
-      
       const response = await axios.post(
         `${SUMIT_API_URL}/billing/paymentmethods/remove/`,
         {
           Credentials: {
             CompanyID: PLATFORM_COMPANY_ID,
-            APIKey: PLATFORM_API_KEY
+            APIKey: PLATFORM_API_KEY,
           },
           Customer: {
             ID: parseInt(sumitCustomerId),
-            SearchMode: 1 // Search by ID (exact match)
-          }
+            SearchMode: 1,
+          },
         }
       );
 
-      console.log('[Payment Debug] Sumit remove payment method response:', {
-        status: response.data?.Status,
-        success: response.data?.Status === 0 || response.data?.Data?.Status === 0
-      });
-
-      // Sumit returns Status: 0 for success
       const isSuccess = response.data?.Status === 0 || response.data?.Data?.Status === 0;
-      
-      if (isSuccess) {
-        return { success: true };
-      }
+      if (isSuccess) return { success: true };
 
       return {
         success: false,
-        error: response.data?.UserErrorMessage || response.data?.Data?.UserErrorMessage || 'Failed to remove payment method from Sumit'
+        error: response.data?.UserErrorMessage || response.data?.Data?.UserErrorMessage || 'Failed to remove payment method from Sumit',
       };
     } catch (error: any) {
       console.error('Remove payment method from Sumit error:', error.response?.data || error);
       return {
         success: false,
-        error: error.response?.data?.UserErrorMessage || 'Failed to remove payment method from Sumit'
+        error: error.response?.data?.UserErrorMessage || 'Failed to remove payment method from Sumit',
       };
     }
   },
 
   /**
-   * Remove user's saved card
-   * First removes from Sumit, then from local database
+   * Remove all saved cards for a user (legacy method kept for backward compat).
    */
   async removeUserSavedCard(userId: string): Promise<boolean> {
     try {
-      // Get user to find their Sumit customer ID
-      const user = await UserModel.findById(userId);
-      
-      if (!user) {
-        console.error('User not found for card removal:', userId);
-        return false;
-      }
-
-      // If user has a Sumit customer ID, try to remove from Sumit first
-      if (user.sumitCustomerId) {
-        const sumitResult = await this.removeSavedPaymentMethodFromSumit(user.sumitCustomerId);
-        
-        if (!sumitResult.success) {
-          // Log the error but continue with local removal
-          // The card might already be removed from Sumit or the customer might not exist
-          console.warn('[Payment Warning] Failed to remove card from Sumit:', sumitResult.error);
+      const methods = await PaymentMethodModel.find({ userId });
+      for (const pm of methods) {
+        if (pm.sumitCustomerId) {
+          await this.removeSavedPaymentMethodFromSumit(pm.sumitCustomerId).catch(() => {});
         }
       }
-
-      // Remove from local database regardless of Sumit result
-      // This ensures the user can always "remove" their card from our system
+      await PaymentMethodModel.deleteMany({ userId });
       await UserModel.findByIdAndUpdate(userId, {
-        $unset: {
-          sumitCustomerId: 1,
-          savedCardLastFour: 1,
-          savedCardBrand: 1
-        }
+        $unset: { sumitCustomerId: 1, savedCardLastFour: 1, savedCardBrand: 1 },
       });
-      
       return true;
     } catch (error) {
-      console.error('Failed to remove saved card:', error);
+      console.error('Failed to remove saved cards:', error);
       return false;
     }
   }

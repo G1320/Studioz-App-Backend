@@ -23,7 +23,7 @@ export function Footer({ mode = 'light' }: FooterProps) {
         cellPadding={0}
         cellSpacing={0}
         role="presentation"
-        style={{ borderCollapse: 'collapse' }}
+        style={{ borderCollapse: 'collapse', direction: 'ltr' as const }}
       >
         <tr>
           <td align="center">

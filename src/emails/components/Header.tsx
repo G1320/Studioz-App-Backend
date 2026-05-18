@@ -23,7 +23,7 @@ export function Header({ title, icon, mode = 'light' }: HeaderProps) {
         cellPadding={0}
         cellSpacing={0}
         role="presentation"
-        style={{ borderCollapse: 'collapse' }}
+        style={{ borderCollapse: 'collapse', direction: 'rtl' as const }}
       >
         <tr>
           <td

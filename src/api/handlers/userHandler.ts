@@ -128,30 +128,64 @@ const deleteUser = handleRequest(async (req: Request) => {
 });
 
 /**
- * Get user's saved cards
- * Returns an array with 0 or 1 cards (we only support one saved card per user currently)
+ * Get all saved payment methods for a user
+ * GET /api/users/:id/saved-cards
  */
 const getSavedCards = handleRequest(async (req: Request) => {
   const userId = req.params.id;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
-  const savedCard = await paymentService.getUserSavedCard(userId);
-  
-  // Return as array for future multi-card support
-  return savedCard ? [savedCard] : [];
+  const methods = await paymentService.getUserPaymentMethods(userId);
+
+  return methods.map((pm) => ({
+    id: pm._id.toString(),
+    last4: pm.lastFour,
+    brand: pm.brand,
+    sumitCustomerId: pm.sumitCustomerId,
+    expirationMonth: pm.expirationMonth,
+    expirationYear: pm.expirationYear,
+    isDefault: pm.isDefault,
+    label: pm.label,
+  }));
 });
 
 /**
- * Remove user's saved card
+ * Remove a specific saved card
+ * DELETE /api/users/:id/saved-cards/:cardId
+ * Also supports legacy DELETE /api/users/:id/saved-cards (removes all)
  */
 const removeSavedCard = handleRequest(async (req: Request) => {
   const userId = req.params.id;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
-  const success = await paymentService.removeUserSavedCard(userId);
+  const cardId = req.params.cardId;
+
+  let success: boolean;
+  if (cardId) {
+    success = await paymentService.removePaymentMethod(userId, cardId);
+  } else {
+    success = await paymentService.removeUserSavedCard(userId);
+  }
 
   if (!success) {
     throw new ExpressError('Failed to remove saved card', 500);
+  }
+
+  return { success: true };
+});
+
+/**
+ * Set a card as the user's default payment method
+ * PATCH /api/users/:id/saved-cards/:cardId/default
+ */
+const setDefaultCard = handleRequest(async (req: Request) => {
+  const userId = req.params.id;
+  const cardId = req.params.cardId;
+  if (!userId || !cardId) throw new ExpressError('User ID and card ID are required', 400);
+
+  const success = await paymentService.setDefaultPaymentMethod(userId, cardId);
+  if (!success) {
+    throw new ExpressError('Card not found', 404);
   }
 
   return { success: true };
@@ -238,6 +272,7 @@ export default {
   deleteUser,
   getSavedCards,
   removeSavedCard,
+  setDefaultCard,
   getEmailPreferences,
   updateEmailPreferences,
   getUsageStats

@@ -143,10 +143,14 @@ const createProject = handleRequest(async (req: Request) => {
         project.paymentDetails = paymentResult.paymentDetails;
       }
     } else if (useSavedCard && sumitCustomerId) {
-      // Reuse a previously saved card — just store the reference
+      // sumitCustomerId may be a PaymentMethod _id — resolve the real Sumit ID
+      const { PaymentMethodModel } = await import('../../models/paymentMethodModel.js');
+      const pm = await PaymentMethodModel.findById(sumitCustomerId).catch(() => null);
+      const resolvedSumitId = pm?.sumitCustomerId || sumitCustomerId;
+
       project.paymentStatus = 'card_saved';
       project.paymentDetails = {
-        sumitCustomerId,
+        sumitCustomerId: resolvedSumitId,
         amount: depositAmount || projectPricing.basePrice,
         currency: 'ILS',
         vendorId: vendorId.toString(),
@@ -523,8 +527,12 @@ const requestRevision = handleRequest(async (req: Request) => {
     }
 
     const customer = await UserModel.findById(project.customerId);
-    const sumitCustomerId =
-      project.paymentDetails?.sumitCustomerId || customer?.sumitCustomerId;
+    // Resolve Sumit customer ID: check PaymentMethod collection first, then legacy fields
+    let sumitCustomerId = project.paymentDetails?.sumitCustomerId;
+    if (!sumitCustomerId && customer) {
+      const defaultPm = await paymentService.getDefaultPaymentMethod(customer._id.toString());
+      sumitCustomerId = defaultPm?.sumitCustomerId || customer.sumitCustomerId;
+    }
 
     if (!sumitCustomerId) {
       throw new ExpressError('No payment method on file for paid revision', 402);

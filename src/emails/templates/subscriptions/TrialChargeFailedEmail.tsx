@@ -73,7 +73,7 @@ export const TrialChargeFailedEmail = ({
         <Text
           style={{
             fontSize: '12px',
-            color: '#71717a',
+            color: theme.textMuted,
             marginTop: '16px',
             textAlign: 'center',
             fontFamily,
