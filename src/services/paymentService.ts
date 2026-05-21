@@ -841,7 +841,7 @@ export const paymentService = {
             user.savedCardLastFour,
             { brand: user.savedCardBrand || 'visa' }
           );
-          methods = [migrated];
+          methods = [migrated] as typeof methods;
         } catch (err) {
           console.error('[PaymentMethod] Lazy migration failed:', err);
         }
