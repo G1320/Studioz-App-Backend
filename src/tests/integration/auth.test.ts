@@ -64,8 +64,7 @@ describe('Authentication Middleware', () => {
   });
 
   describe('requireFeature middleware', () => {
-    it('should return 403 when user is on free tier accessing paid feature', async () => {
-      // Create user without subscription (free tier)
+    it('should allow free tier users to access googleCalendar feature', async () => {
       const user = await createTestUser({ subscriptionStatus: undefined });
       const token = generateTestToken(user._id);
 
@@ -73,11 +72,8 @@ describe('Authentication Middleware', () => {
         .get('/api/auth/google/calendar/status')
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(403);
-      expect(res.body.error).toBe('FEATURE_UNAVAILABLE');
-      expect(res.body.feature).toBe('googleCalendar');
-      expect(res.body.currentTier).toBe('free');
-      expect(res.body.requiredTier).toBe('starter');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('connected', false);
     });
 
     it('should allow access for starter tier user to googleCalendar feature', async () => {

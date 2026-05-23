@@ -240,16 +240,6 @@ export const getConnectionStatus = async (userId: string): Promise<{
   } catch (error) {
     // Catch-all for any unexpected errors - NEVER throw from this function
     console.error('[GoogleCalendar] Unexpected error in getConnectionStatus:', error);
-    
-    // Attempt to clear connection if possible (fire and forget)
-    try {
-      if (userId) {
-        await clearGoogleCalendarConnection(userId);
-      }
-    } catch (clearError) {
-      console.error('[GoogleCalendar] Failed to clear connection after error:', clearError);
-    }
-    
     return { connected: false };
   }
 };

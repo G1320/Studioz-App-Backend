@@ -13,8 +13,12 @@ const oauth2Client = new google.auth.OAuth2(
  * @param lang - Optional language code (e.g. 'he', 'en') for callback redirect
  * @returns The authorization URL
  */
-export const generateAuthUrl = (userId: string, lang?: string): string => {
-  const state = Buffer.from(JSON.stringify({ userId, lang: lang || 'en' })).toString('base64');
+export const generateAuthUrl = (userId: string, lang?: string, returnTo?: string): string => {
+  const normalizedLang = (lang || 'en').split('-')[0];
+  const safeReturnTo = returnTo === 'profile' ? 'profile' : 'dashboard';
+  const state = Buffer.from(
+    JSON.stringify({ userId, lang: normalizedLang, returnTo: safeReturnTo })
+  ).toString('base64');
   
   return oauth2Client.generateAuthUrl({
     access_type: 'offline', // Required to get refresh token
@@ -147,8 +151,8 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{
  * @returns True if token is expired or expiring soon
  */
 export const isTokenExpired = (expiryDate: Date | null | undefined): boolean => {
-  if (!expiryDate) return true;
-  
+  if (!expiryDate) return false;
+
   const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
   return expiryDate <= fiveMinutesFromNow;
 };

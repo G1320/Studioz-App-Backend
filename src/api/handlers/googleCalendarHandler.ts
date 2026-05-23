@@ -30,7 +30,8 @@ const getAuthUrl = handleRequest(async (req: CustomRequest) => {
   }
 
   const lang = typeof req.query.lang === 'string' ? req.query.lang : undefined;
-  const authUrl = generateAuthUrl(userId.toString(), lang);
+  const returnTo = typeof req.query.returnTo === 'string' ? req.query.returnTo : undefined;
+  const authUrl = generateAuthUrl(userId.toString(), lang, returnTo);
   return { authUrl };
 });
 
@@ -54,10 +55,12 @@ const handleCallback = async (req: Request, res: Response, next: Function) => {
     // Decode state to get userId and optional lang
     let userId: string;
     let lang: string = 'en';
+    let returnTo: string = 'dashboard';
     try {
       const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
       userId = decodedState.userId;
       if (decodedState.lang) lang = decodedState.lang;
+      if (decodedState.returnTo === 'profile') returnTo = 'profile';
     } catch (error) {
       throw new ExpressError('Invalid state parameter', 400);
     }
@@ -68,7 +71,7 @@ const handleCallback = async (req: Request, res: Response, next: Function) => {
     // Redirect to frontend success page (preserve language path)
     const { FRONTEND_URL } = await import('../../config/index.js');
     const baseUrl = FRONTEND_URL || 'https://studioz.co.il';
-    const path = `/${lang}/dashboard?calendar=connected`;
+    const path = `/${lang}/${returnTo}?calendar=connected`;
     const redirectUrl = `${baseUrl}${path}`;
     console.log('Redirecting to:', redirectUrl);
     res.redirect(redirectUrl);
