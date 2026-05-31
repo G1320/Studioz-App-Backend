@@ -13,11 +13,11 @@ import {
   isStorageConfigured,
 } from '../../services/storageService.js';
 import { emitProjectFileUpdate } from '../../webSockets/socket.js';
-
-// Default file constraints
-const DEFAULT_MAX_FILE_SIZE = 500; // MB
-const DEFAULT_MAX_FILES_PER_PROJECT = 50;
-const DEFAULT_ACCEPTED_TYPES = ['.wav', '.aif', '.aiff', '.mp3', '.flac', '.ogg', '.m4a', '.zip'];
+import {
+  REMOTE_PROJECT_ACCEPTED_FILE_TYPES,
+  REMOTE_PROJECT_MAX_FILE_SIZE_MB,
+  REMOTE_PROJECT_MAX_FILES_PER_PROJECT
+} from '../../constants/remoteProjectFileLimits.js';
 
 /**
  * Get a presigned URL for uploading a file
@@ -44,14 +44,14 @@ const getUploadUrl = handleRequest(async (req: Request) => {
 
   // Get file constraints from item or use defaults
   const item = await ItemModel.findById(project.itemId);
-  const maxFileSize = (item?.maxFileSize || DEFAULT_MAX_FILE_SIZE) * 1024 * 1024; // Convert MB to bytes
-  const maxFilesPerProject = item?.maxFilesPerProject || DEFAULT_MAX_FILES_PER_PROJECT;
-  const acceptedFileTypes = item?.acceptedFileTypes || DEFAULT_ACCEPTED_TYPES;
+  const maxFileSize = (item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB) * 1024 * 1024;
+  const maxFilesPerProject = item?.maxFilesPerProject || REMOTE_PROJECT_MAX_FILES_PER_PROJECT;
+  const acceptedFileTypes = item?.acceptedFileTypes || [...REMOTE_PROJECT_ACCEPTED_FILE_TYPES];
 
   // Validate file size
   if (fileSize > maxFileSize) {
     throw new ExpressError(
-      `File size exceeds maximum allowed (${item?.maxFileSize || DEFAULT_MAX_FILE_SIZE}MB)`,
+      `File size exceeds maximum allowed (${item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB}MB)`,
       400
     );
   }
