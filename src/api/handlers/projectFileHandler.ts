@@ -12,6 +12,7 @@ import {
   deleteFile as deleteStorageFile,
   isStorageConfigured,
 } from '../../services/storageService.js';
+import { parseAudioMetaFromStorage } from '../../services/audioMetaService.js';
 import { emitProjectFileUpdate } from '../../webSockets/socket.js';
 import {
   REMOTE_PROJECT_ACCEPTED_FILE_TYPES,
@@ -197,6 +198,44 @@ const getDownloadUrl = handleRequest(async (req: Request) => {
 });
 
 /**
+ * Get audio fidelity metadata (sample rate, bit depth, channels, duration)
+ * GET /api/remote-projects/:projectId/files/:fileId/audio-meta
+ */
+const getAudioMeta = handleRequest(async (req: Request) => {
+  const { projectId, fileId } = req.params;
+
+  if (!isStorageConfigured()) {
+    throw new ExpressError('File storage is not configured', 503);
+  }
+
+  const file = await ProjectFileModel.findOne({
+    _id: fileId,
+    projectId,
+  });
+
+  if (!file) throw new ExpressError('File not found', 404);
+
+  const meta = await parseAudioMetaFromStorage(
+    file.storageKey,
+    file.fileName,
+    file.mimeType,
+    file.fileSize
+  );
+
+  if (!meta) {
+    throw new ExpressError('Audio metadata is not available for this file type', 422);
+  }
+
+  return {
+    fileId: file._id,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    fileSize: file.fileSize,
+    ...meta,
+  };
+});
+
+/**
  * Delete a file
  * DELETE /api/remote-projects/:projectId/files/:fileId
  */
@@ -241,5 +280,6 @@ export default {
   registerFile,
   getProjectFiles,
   getDownloadUrl,
+  getAudioMeta,
   deleteFile,
 };

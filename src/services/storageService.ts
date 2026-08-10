@@ -207,5 +207,32 @@ export async function getFileMetadata(
   }
 }
 
+/**
+ * Fetch a byte range from an R2 object (for audio header / metadata parsing).
+ */
+export async function getObjectByteRange(
+  storageKey: string,
+  start: number,
+  end: number
+): Promise<Buffer> {
+  if (!isStorageConfigured()) {
+    throw new Error('R2 storage is not configured');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: storageKey,
+    Range: `bytes=${start}-${end}`,
+  });
+
+  const response = await r2Client.send(command);
+  if (!response.Body) {
+    throw new Error('Empty object body from R2');
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return Buffer.from(bytes);
+}
+
 // Export for use in tests
 export { r2Client, R2_BUCKET_NAME };

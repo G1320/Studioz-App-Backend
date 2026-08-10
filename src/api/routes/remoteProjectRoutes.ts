@@ -29,6 +29,7 @@ router.post('/:projectId/files/upload-url', projectFileHandler.getUploadUrl);
 router.post('/:projectId/files', projectFileHandler.registerFile);
 router.get('/:projectId/files', projectFileHandler.getProjectFiles);
 router.get('/:projectId/files/:fileId/download', projectFileHandler.getDownloadUrl);
+router.get('/:projectId/files/:fileId/audio-meta', projectFileHandler.getAudioMeta);
 router.delete('/:projectId/files/:fileId', projectFileHandler.deleteFile);
 
 // Project Messages
