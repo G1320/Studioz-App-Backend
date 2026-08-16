@@ -14,6 +14,8 @@ router.get('/:studioId/files/:fileId/download', studioFileHandler.getDownloadUrl
 router.get('/:studioId/files/:fileId/audio-meta', studioFileHandler.getAudioMeta);
 router.post('/:studioId/files/upload-url', verifyTokenMw, studioFileHandler.getUploadUrl);
 router.post('/:studioId/files', verifyTokenMw, studioFileHandler.registerFile);
+router.post('/:studioId/files/:fileId/cover/upload-url', verifyTokenMw, studioFileHandler.getCoverUploadUrl);
+router.post('/:studioId/files/:fileId/extract-cover', verifyTokenMw, studioFileHandler.extractCover);
 router.patch('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.updateFile);
 router.delete('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.deleteFile);
 

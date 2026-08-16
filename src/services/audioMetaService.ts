@@ -1,8 +1,11 @@
 import { parseBuffer } from 'music-metadata';
-import { getObjectByteRange } from './storageService.js';
+import { getObjectByteRange, putObject, generateStudioPortfolioCoverKey } from './storageService.js';
 
 /** First ~256KB is enough for WAV/FLAC/AIFF/MP3 headers + duration estimates. */
 const HEADER_BYTE_RANGE_END = 262143;
+
+/** Embedded artwork often lives in early ID3/FLAC blocks; 4MB covers typical APIC sizes. */
+const COVER_BYTE_RANGE_END = 4 * 1024 * 1024 - 1;
 
 export interface AudioFileMeta {
   codec: string | null;
@@ -62,4 +65,48 @@ export async function parseAudioMetaFromStorage(
         : null,
     container: metadata.format.container ?? null,
   };
+}
+
+function coverExtension(mimeType: string): string {
+  if (mimeType.includes('png')) return 'png';
+  if (mimeType.includes('webp')) return 'webp';
+  return 'jpg';
+}
+
+/**
+ * Read embedded album art from an audio object in R2 and store it as a cover image.
+ */
+export async function extractAndStoreCoverFromAudio(params: {
+  studioId: string;
+  fileId: string;
+  storageKey: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+}): Promise<string | null> {
+  if (!isLikelyAudio(params.fileName, params.mimeType)) {
+    return null;
+  }
+
+  const end = Math.min(COVER_BYTE_RANGE_END, Math.max(0, params.fileSize - 1));
+  const buffer = await getObjectByteRange(params.storageKey, 0, end);
+  const metadata = await parseBuffer(
+    buffer,
+    {
+      mimeType: params.mimeType || undefined,
+      size: params.fileSize,
+    },
+    { skipCovers: false, duration: false }
+  );
+
+  const picture = metadata.common.picture?.[0];
+  if (!picture?.data?.length) {
+    return null;
+  }
+
+  const mimeType = picture.format || 'image/jpeg';
+  const ext = coverExtension(mimeType);
+  const coverKey = generateStudioPortfolioCoverKey(params.studioId, params.fileId, ext);
+  await putObject(coverKey, Buffer.from(picture.data), mimeType);
+  return coverKey;
 }

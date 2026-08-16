@@ -22,6 +22,7 @@ const StudioFileSchema = new mongoose.Schema(
       enum: ['mixed', 'mastered', 'recorded', 'produced'],
       required: false,
     },
+    coverStorageKey: { type: String, required: false },
   },
   { timestamps: true }
 );

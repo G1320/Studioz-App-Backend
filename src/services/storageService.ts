@@ -71,6 +71,15 @@ export function generateStudioPortfolioStorageKey(
   return `studios/${studioId}/portfolio/${fileId}-${sanitizedName}`;
 }
 
+export function generateStudioPortfolioCoverKey(
+  studioId: string,
+  fileId: string,
+  extension: string
+): string {
+  const ext = extension.replace(/^\./, '').toLowerCase() || 'jpg';
+  return `studios/${studioId}/portfolio/${fileId}-cover.${ext}`;
+}
+
 /**
  * Generate a presigned URL for uploading a file directly to R2
  * Client can use this URL to upload the file via PUT request
@@ -154,6 +163,25 @@ export async function deleteFile(storageKey: string): Promise<void> {
   const command = new DeleteObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
+  });
+
+  await r2Client.send(command);
+}
+
+export async function putObject(
+  storageKey: string,
+  body: Buffer,
+  contentType: string
+): Promise<void> {
+  if (!isStorageConfigured()) {
+    throw new Error('R2 storage is not configured');
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: storageKey,
+    Body: body,
+    ContentType: contentType,
   });
 
   await r2Client.send(command);

@@ -9,6 +9,7 @@ export interface StudioFile {
   mimeType: string;
   storageKey: string;
   role?: StudioPortfolioRole;
+  coverStorageKey?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

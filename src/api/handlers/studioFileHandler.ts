@@ -6,17 +6,23 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import {
   generateStudioPortfolioStorageKey,
+  generateStudioPortfolioCoverKey,
   getUploadUrl as getStorageUploadUrl,
   getDownloadUrl as getStorageDownloadUrl,
   deleteFile as deleteStorageFile,
   isStorageConfigured,
 } from '../../services/storageService.js';
-import { parseAudioMetaFromStorage } from '../../services/audioMetaService.js';
+import {
+  parseAudioMetaFromStorage,
+  extractAndStoreCoverFromAudio,
+} from '../../services/audioMetaService.js';
 import {
   STUDIO_PORTFOLIO_ACCEPTED_FILE_TYPES,
   STUDIO_PORTFOLIO_MAX_FILE_SIZE_MB,
   STUDIO_PORTFOLIO_MAX_FILES,
   STUDIO_PORTFOLIO_ROLES,
+  STUDIO_PORTFOLIO_COVER_MAX_FILE_SIZE_MB,
+  STUDIO_PORTFOLIO_COVER_TYPES,
   type StudioPortfolioRole,
 } from '../../constants/studioPortfolioFileLimits.js';
 
@@ -57,6 +63,45 @@ function parseRole(value: unknown): StudioPortfolioRole | undefined {
     );
   }
   return value as StudioPortfolioRole;
+}
+
+function assertAcceptedCoverExtension(fileName: string) {
+  const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase();
+  if (!(STUDIO_PORTFOLIO_COVER_TYPES as readonly string[]).includes(fileExtension)) {
+    throw new ExpressError(
+      `Cover type not allowed. Accepted types: ${STUDIO_PORTFOLIO_COVER_TYPES.join(', ')}`,
+      400
+    );
+  }
+}
+
+async function attachCoverUrl(file: { coverStorageKey?: string; toObject?: () => Record<string, unknown> }) {
+  const payload = (
+    typeof file.toObject === 'function' ? file.toObject() : { ...file }
+  ) as Record<string, unknown> & { coverStorageKey?: string; coverUrl?: string };
+  if (payload.coverStorageKey && isStorageConfigured()) {
+    try {
+      payload.coverUrl = await getStorageDownloadUrl(payload.coverStorageKey);
+    } catch (error) {
+      console.error('Failed to sign studio cover URL:', error);
+    }
+  }
+  return payload;
+}
+
+async function replaceCoverKey(
+  file: { coverStorageKey?: string; save: () => Promise<unknown> },
+  nextKey: string
+) {
+  if (file.coverStorageKey && file.coverStorageKey !== nextKey && isStorageConfigured()) {
+    try {
+      await deleteStorageFile(file.coverStorageKey);
+    } catch (error) {
+      console.error('Failed to delete previous studio cover:', error);
+    }
+  }
+  file.coverStorageKey = nextKey;
+  await file.save();
 }
 
 function assertAcceptedExtension(fileName: string) {
@@ -149,7 +194,27 @@ const registerFile = handleRequest(async (req: AuthRequest) => {
   });
 
   await file.save();
-  return file;
+
+  if (isStorageConfigured()) {
+    try {
+      const coverStorageKey = await extractAndStoreCoverFromAudio({
+        studioId,
+        fileId: file._id.toString(),
+        storageKey,
+        fileName,
+        mimeType,
+        fileSize,
+      });
+      if (coverStorageKey) {
+        file.coverStorageKey = coverStorageKey;
+        await file.save();
+      }
+    } catch (error) {
+      console.error('Failed to extract studio portfolio cover:', error);
+    }
+  }
+
+  return attachCoverUrl(file);
 });
 
 /**
@@ -160,7 +225,7 @@ const getStudioFiles = handleRequest(async (req: Request) => {
   await requireStudio(studioId);
 
   const files = await StudioFileModel.find({ studioId }).sort({ createdAt: -1 });
-  return { files };
+  return { files: await Promise.all(files.map((file) => attachCoverUrl(file))) };
 });
 
 /**
@@ -235,6 +300,9 @@ const deleteFile = handleRequest(async (req: AuthRequest) => {
   if (isStorageConfigured()) {
     try {
       await deleteStorageFile(file.storageKey);
+      if (file.coverStorageKey) {
+        await deleteStorageFile(file.coverStorageKey);
+      }
     } catch (error) {
       console.error('Error deleting studio portfolio file from R2:', error);
     }
@@ -260,8 +328,89 @@ const updateFile = handleRequest(async (req: AuthRequest) => {
     file.role = parseRole(req.body.role);
   }
 
+  if (req.body.coverStorageKey) {
+    const coverKey = String(req.body.coverStorageKey);
+    const expectedPrefix = `studios/${studioId}/portfolio/${fileId}-cover.`;
+    if (!coverKey.startsWith(expectedPrefix)) {
+      throw new ExpressError('Invalid cover storage key', 400);
+    }
+    await replaceCoverKey(file, coverKey);
+  }
+
   await file.save();
-  return file;
+  return attachCoverUrl(file);
+});
+
+/**
+ * POST /api/studios/:studioId/files/:fileId/cover/upload-url
+ */
+const getCoverUploadUrl = handleRequest(async (req: AuthRequest) => {
+  const { studioId, fileId } = req.params;
+  const { fileName, fileSize, mimeType } = req.body;
+  const userId = getAuthUserId(req);
+
+  if (!isStorageConfigured()) {
+    throw new ExpressError('File storage is not configured', 503);
+  }
+  if (!fileName) throw new ExpressError('File name is required', 400);
+  if (!fileSize) throw new ExpressError('File size is required', 400);
+  if (!mimeType) throw new ExpressError('MIME type is required', 400);
+
+  await requireStudioOwner(studioId, userId);
+  const file = await StudioFileModel.findOne({ _id: fileId, studioId });
+  if (!file) throw new ExpressError('File not found', 404);
+
+  assertAcceptedCoverExtension(fileName);
+  const maxBytes = STUDIO_PORTFOLIO_COVER_MAX_FILE_SIZE_MB * 1024 * 1024;
+  if (fileSize > maxBytes) {
+    throw new ExpressError(
+      `Cover size exceeds maximum allowed (${STUDIO_PORTFOLIO_COVER_MAX_FILE_SIZE_MB}MB)`,
+      400
+    );
+  }
+
+  const ext = '.' + fileName.split('.').pop()?.toLowerCase();
+  const storageKey = generateStudioPortfolioCoverKey(studioId, fileId, ext);
+  const { uploadUrl } = await getStorageUploadUrl(storageKey, mimeType, fileSize);
+
+  return {
+    uploadUrl,
+    storageKey,
+    fileId,
+    expiresIn: 3600,
+  };
+});
+
+/**
+ * POST /api/studios/:studioId/files/:fileId/extract-cover
+ */
+const extractCover = handleRequest(async (req: AuthRequest) => {
+  const { studioId, fileId } = req.params;
+  const userId = getAuthUserId(req);
+
+  if (!isStorageConfigured()) {
+    throw new ExpressError('File storage is not configured', 503);
+  }
+
+  await requireStudioOwner(studioId, userId);
+  const file = await StudioFileModel.findOne({ _id: fileId, studioId });
+  if (!file) throw new ExpressError('File not found', 404);
+
+  const coverStorageKey = await extractAndStoreCoverFromAudio({
+    studioId,
+    fileId: file._id.toString(),
+    storageKey: file.storageKey,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    fileSize: file.fileSize,
+  });
+
+  if (!coverStorageKey) {
+    throw new ExpressError('No artwork was found in this audio file', 422);
+  }
+
+  await replaceCoverKey(file, coverStorageKey);
+  return attachCoverUrl(file);
 });
 
 export default {
@@ -272,4 +421,6 @@ export default {
   getAudioMeta,
   deleteFile,
   updateFile,
+  getCoverUploadUrl,
+  extractCover,
 };
