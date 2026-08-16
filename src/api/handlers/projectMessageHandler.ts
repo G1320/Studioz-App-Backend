@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import mongoose from 'mongoose';
 import { ProjectMessageModel } from '../../models/projectMessageModel.js';
+import { ProjectFileModel } from '../../models/projectFileModel.js';
 import { RemoteProjectModel } from '../../models/remoteProjectModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
@@ -39,7 +40,8 @@ const getMessages = handleRequest(async (req: Request) => {
       .skip(skip)
       .limit(limit)
       .populate('senderId', 'name imgUrl')
-      .populate('attachmentIds', 'fileName fileSize mimeType'),
+      .populate('attachmentIds', 'fileName fileSize mimeType')
+      .populate('fileId', 'fileName fileSize mimeType'),
     ProjectMessageModel.countDocuments(filter),
   ]);
 
@@ -62,11 +64,27 @@ const getMessages = handleRequest(async (req: Request) => {
  */
 const sendMessage = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { senderId, message, attachmentIds } = req.body;
+  const { senderId, message, attachmentIds, fileId, offsetSeconds } = req.body;
 
   if (!senderId) throw new ExpressError('Sender ID is required', 400);
   if (!message || message.trim() === '') {
     throw new ExpressError('Message content is required', 400);
+  }
+
+  const hasCue =
+    fileId !== undefined && fileId !== null && fileId !== '' &&
+    offsetSeconds !== undefined && offsetSeconds !== null;
+
+  if (hasCue) {
+    if (!mongoose.Types.ObjectId.isValid(fileId)) {
+      throw new ExpressError('Invalid file ID', 400);
+    }
+    const offset = Number(offsetSeconds);
+    if (!Number.isFinite(offset) || offset < 0) {
+      throw new ExpressError('offsetSeconds must be a non-negative number', 400);
+    }
+  } else if (fileId || offsetSeconds !== undefined) {
+    throw new ExpressError('Time-coded comments require both fileId and offsetSeconds', 400);
   }
 
   // Validate project exists
@@ -94,6 +112,14 @@ const sendMessage = handleRequest(async (req: Request) => {
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
 
+  if (hasCue) {
+    const file = await ProjectFileModel.findOne({
+      _id: fileId,
+      projectId: projectObjectId,
+    });
+    if (!file) throw new ExpressError('File not found on this project', 404);
+  }
+
   // Create message
   const projectMessage = new ProjectMessageModel({
     projectId: projectObjectId,
@@ -101,12 +127,18 @@ const sendMessage = handleRequest(async (req: Request) => {
     senderRole,
     message: message.trim(),
     attachmentIds: attachmentIds || [],
+    ...(hasCue
+      ? { fileId, offsetSeconds: Number(offsetSeconds) }
+      : {}),
   });
 
   await projectMessage.save();
 
   // Populate sender info for response
   await projectMessage.populate('senderId', 'name imgUrl');
+  if (hasCue) {
+    await projectMessage.populate('fileId', 'fileName fileSize mimeType');
+  }
 
   emitProjectMessageUpdate(
     project.customerId.toString(),

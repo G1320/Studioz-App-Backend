@@ -26,6 +26,12 @@ const ProjectMessageSchema = new mongoose.Schema(
         ref: 'ProjectFile',
       },
     ],
+    fileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ProjectFile',
+      required: false,
+    },
+    offsetSeconds: { type: Number, required: false, min: 0 },
 
     readAt: { type: Date, required: false },
   },
@@ -36,6 +42,7 @@ const ProjectMessageSchema = new mongoose.Schema(
 ProjectMessageSchema.index({ projectId: 1 });
 ProjectMessageSchema.index({ senderId: 1 });
 ProjectMessageSchema.index({ projectId: 1, createdAt: 1 });
+ProjectMessageSchema.index({ projectId: 1, fileId: 1, createdAt: 1 });
 
 const ProjectMessageModel: Model<ProjectMessage & Document> =
   mongoose.models.ProjectMessage ||

@@ -107,6 +107,11 @@ export interface ProjectMessage {
   message: string;
   attachmentIds?: string[];
 
+  /** Project file this cue refers to (time-coded comment). */
+  fileId?: string;
+  /** Playback offset in seconds. */
+  offsetSeconds?: number;
+
   readAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
