@@ -60,6 +60,18 @@ export function generateStorageKey(
 }
 
 /**
+ * Storage key for a public studio portfolio exhibit file.
+ */
+export function generateStudioPortfolioStorageKey(
+  studioId: string,
+  fileName: string,
+  fileId: string
+): string {
+  const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  return `studios/${studioId}/portfolio/${fileId}-${sanitizedName}`;
+}
+
+/**
  * Generate a presigned URL for uploading a file directly to R2
  * Client can use this URL to upload the file via PUT request
  *
