@@ -17,6 +17,11 @@ const StudioFileSchema = new mongoose.Schema(
     fileSize: { type: Number, required: true },
     mimeType: { type: String, required: true },
     storageKey: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ['mixed', 'mastered', 'recorded', 'produced'],
+      required: false,
+    },
   },
   { timestamps: true }
 );

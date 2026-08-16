@@ -12,3 +12,13 @@ export const STUDIO_PORTFOLIO_ACCEPTED_FILE_TYPES = [
   '.aiff',
   '.flac',
 ] as const;
+
+/** Skill tags owners can use now; later these map to playlists/categories. */
+export const STUDIO_PORTFOLIO_ROLES = [
+  'mixed',
+  'mastered',
+  'recorded',
+  'produced',
+] as const;
+
+export type StudioPortfolioRole = (typeof STUDIO_PORTFOLIO_ROLES)[number];

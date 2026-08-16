@@ -16,6 +16,8 @@ import {
   STUDIO_PORTFOLIO_ACCEPTED_FILE_TYPES,
   STUDIO_PORTFOLIO_MAX_FILE_SIZE_MB,
   STUDIO_PORTFOLIO_MAX_FILES,
+  STUDIO_PORTFOLIO_ROLES,
+  type StudioPortfolioRole,
 } from '../../constants/studioPortfolioFileLimits.js';
 
 interface AuthRequest extends Request {
@@ -44,6 +46,17 @@ async function requireStudioOwner(studioId: string, userId: string) {
     throw new ExpressError('You do not have permission to manage this studio portfolio', 403);
   }
   return studio;
+}
+
+function parseRole(value: unknown): StudioPortfolioRole | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string' || !(STUDIO_PORTFOLIO_ROLES as readonly string[]).includes(value)) {
+    throw new ExpressError(
+      `Invalid role. Accepted: ${STUDIO_PORTFOLIO_ROLES.join(', ')}`,
+      400
+    );
+  }
+  return value as StudioPortfolioRole;
 }
 
 function assertAcceptedExtension(fileName: string) {
@@ -108,7 +121,7 @@ const getUploadUrl = handleRequest(async (req: AuthRequest) => {
  */
 const registerFile = handleRequest(async (req: AuthRequest) => {
   const { studioId } = req.params;
-  const { fileId, fileName, fileSize, mimeType, storageKey } = req.body;
+  const { fileId, fileName, fileSize, mimeType, storageKey, role } = req.body;
   const userId = getAuthUserId(req);
 
   if (!fileName) throw new ExpressError('File name is required', 400);
@@ -132,6 +145,7 @@ const registerFile = handleRequest(async (req: AuthRequest) => {
     fileSize,
     mimeType,
     storageKey,
+    role: parseRole(role),
   });
 
   await file.save();
@@ -230,6 +244,26 @@ const deleteFile = handleRequest(async (req: AuthRequest) => {
   return null;
 });
 
+/**
+ * PATCH /api/studios/:studioId/files/:fileId
+ */
+const updateFile = handleRequest(async (req: AuthRequest) => {
+  const { studioId, fileId } = req.params;
+  const userId = getAuthUserId(req);
+
+  await requireStudioOwner(studioId, userId);
+
+  const file = await StudioFileModel.findOne({ _id: fileId, studioId });
+  if (!file) throw new ExpressError('File not found', 404);
+
+  if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
+    file.role = parseRole(req.body.role);
+  }
+
+  await file.save();
+  return file;
+});
+
 export default {
   getUploadUrl,
   registerFile,
@@ -237,4 +271,5 @@ export default {
   getDownloadUrl,
   getAudioMeta,
   deleteFile,
+  updateFile,
 };

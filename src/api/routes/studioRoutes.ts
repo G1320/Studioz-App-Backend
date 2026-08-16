@@ -14,6 +14,7 @@ router.get('/:studioId/files/:fileId/download', studioFileHandler.getDownloadUrl
 router.get('/:studioId/files/:fileId/audio-meta', studioFileHandler.getAudioMeta);
 router.post('/:studioId/files/upload-url', verifyTokenMw, studioFileHandler.getUploadUrl);
 router.post('/:studioId/files', verifyTokenMw, studioFileHandler.registerFile);
+router.patch('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.updateFile);
 router.delete('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.deleteFile);
 
 router.get('/:studioId', studioHandler.getStudioById);
