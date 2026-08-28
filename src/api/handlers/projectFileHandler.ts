@@ -10,7 +10,7 @@ import {
   getUploadUrl as getStorageUploadUrl,
   getDownloadUrl as getStorageDownloadUrl,
   deleteFile as deleteStorageFile,
-  isStorageConfigured,
+  isStorageConfigured
 } from '../../services/storageService.js';
 import { parseAudioMetaFromStorage } from '../../services/audioMetaService.js';
 import { emitProjectFileUpdate } from '../../webSockets/socket.js';
@@ -19,14 +19,20 @@ import {
   REMOTE_PROJECT_MAX_FILE_SIZE_MB,
   REMOTE_PROJECT_MAX_FILES_PER_PROJECT
 } from '../../constants/remoteProjectFileLimits.js';
+import {
+  assertProjectAccess,
+  getAuthUserId,
+  getProjectParticipantIds
+} from '../../services/projectAccessService.js';
 
-/**
- * Get a presigned URL for uploading a file
- * POST /api/remote-projects/:projectId/files/upload-url
- */
+interface AuthRequest extends Request {
+  decodedJwt?: { _id?: string; userId?: string };
+}
+
 const getUploadUrl = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { fileName, fileSize, mimeType, type, description } = req.body;
+  const { fileName, fileSize, mimeType, type } = req.body;
+  const userId = getAuthUserId(req as AuthRequest);
 
   if (!isStorageConfigured()) {
     throw new ExpressError('File storage is not configured', 503);
@@ -39,17 +45,15 @@ const getUploadUrl = handleRequest(async (req: Request) => {
     throw new ExpressError('Valid file type (source, deliverable, revision) is required', 400);
   }
 
-  // Validate project exists and is in valid state
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'files');
 
-  // Get file constraints from item or use defaults
   const item = await ItemModel.findById(project.itemId);
   const maxFileSize = (item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB) * 1024 * 1024;
   const maxFilesPerProject = item?.maxFilesPerProject || REMOTE_PROJECT_MAX_FILES_PER_PROJECT;
   const acceptedFileTypes = item?.acceptedFileTypes || [...REMOTE_PROJECT_ACCEPTED_FILE_TYPES];
 
-  // Validate file size
   if (fileSize > maxFileSize) {
     throw new ExpressError(
       `File size exceeds maximum allowed (${item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB}MB)`,
@@ -57,7 +61,6 @@ const getUploadUrl = handleRequest(async (req: Request) => {
     );
   }
 
-  // Validate file extension
   const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase();
   if (!acceptedFileTypes.includes(fileExtension)) {
     throw new ExpressError(
@@ -66,39 +69,27 @@ const getUploadUrl = handleRequest(async (req: Request) => {
     );
   }
 
-  // Check file count limit
   const currentFileCount = await ProjectFileModel.countDocuments({ projectId });
   if (currentFileCount >= maxFilesPerProject) {
-    throw new ExpressError(
-      `Maximum file limit reached (${maxFilesPerProject} files)`,
-      400
-    );
+    throw new ExpressError(`Maximum file limit reached (${maxFilesPerProject} files)`, 400);
   }
 
-  // Generate a unique file ID
   const fileId = new mongoose.Types.ObjectId().toString();
-
-  // Generate storage key
   const storageKey = generateStorageKey(projectId, type, fileName, fileId);
-
-  // Get presigned upload URL from R2
   const { uploadUrl } = await getStorageUploadUrl(storageKey, mimeType, fileSize);
 
   return {
     uploadUrl,
     storageKey,
     fileId,
-    expiresIn: 3600, // 1 hour
+    expiresIn: 3600
   };
 });
 
-/**
- * Register a file after successful upload
- * POST /api/remote-projects/:projectId/files
- */
 const registerFile = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
   const { fileId, fileName, fileSize, mimeType, storageKey, type, description, revisionNumber } = req.body;
+  const userId = getAuthUserId(req as AuthRequest);
 
   if (!fileName) throw new ExpressError('File name is required', 400);
   if (!fileSize) throw new ExpressError('File size is required', 400);
@@ -108,84 +99,64 @@ const registerFile = handleRequest(async (req: Request) => {
     throw new ExpressError('Valid file type is required', 400);
   }
 
-  // Validate project exists
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'files');
 
-  // Determine uploadedBy based on file type
-  // source files = customer, deliverable/revision = vendor
-  const uploadedBy = type === 'source' ? project.customerId : project.vendorId;
-
-  // Create file record
   const file = new ProjectFileModel({
     _id: fileId ? new mongoose.Types.ObjectId(fileId) : new mongoose.Types.ObjectId(),
     projectId,
-    uploadedBy,
+    uploadedBy: userId,
     type,
     fileName,
     fileSize,
     mimeType,
     storageKey,
     description,
-    revisionNumber: type === 'revision' ? revisionNumber || project.revisionsUsed : undefined,
+    revisionNumber: type === 'revision' ? revisionNumber || project.revisionsUsed : undefined
   });
 
   await file.save();
 
-  emitProjectFileUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId
-  );
+  emitProjectFileUpdate(getProjectParticipantIds(project), projectId);
 
   return file;
 });
 
-/**
- * Get all files for a project
- * GET /api/remote-projects/:projectId/files
- */
 const getProjectFiles = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
   const { type } = req.query;
+  const userId = getAuthUserId(req as AuthRequest);
 
-  // Validate project exists
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'view');
 
-  // Build filter
   const filter: Record<string, unknown> = { projectId };
   if (type && ['source', 'deliverable', 'revision'].includes(type as string)) {
     filter.type = type;
   }
 
-  const files = await ProjectFileModel.find(filter)
-    .sort({ createdAt: -1 })
-    .populate('uploadedBy', 'name');
+  const files = await ProjectFileModel.find(filter).sort({ createdAt: -1 }).populate('uploadedBy', 'name');
 
   return { files };
 });
 
-/**
- * Get a presigned download URL for a file
- * GET /api/remote-projects/:projectId/files/:fileId/download
- */
 const getDownloadUrl = handleRequest(async (req: Request) => {
   const { projectId, fileId } = req.params;
+  const userId = getAuthUserId(req as AuthRequest);
 
   if (!isStorageConfigured()) {
     throw new ExpressError('File storage is not configured', 503);
   }
 
-  // Validate file exists and belongs to project
-  const file = await ProjectFileModel.findOne({
-    _id: fileId,
-    projectId,
-  });
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'files');
 
+  const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
 
-  // Generate presigned download URL
   const downloadUrl = await getStorageDownloadUrl(file.storageKey);
 
   return {
@@ -193,26 +164,23 @@ const getDownloadUrl = handleRequest(async (req: Request) => {
     fileName: file.fileName,
     fileSize: file.fileSize,
     mimeType: file.mimeType,
-    expiresIn: 86400, // 24 hours
+    expiresIn: 86400
   };
 });
 
-/**
- * Get audio fidelity metadata (sample rate, bit depth, channels, duration)
- * GET /api/remote-projects/:projectId/files/:fileId/audio-meta
- */
 const getAudioMeta = handleRequest(async (req: Request) => {
   const { projectId, fileId } = req.params;
+  const userId = getAuthUserId(req as AuthRequest);
 
   if (!isStorageConfigured()) {
     throw new ExpressError('File storage is not configured', 503);
   }
 
-  const file = await ProjectFileModel.findOne({
-    _id: fileId,
-    projectId,
-  });
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'view');
 
+  const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
 
   const meta = await parseAudioMetaFromStorage(
@@ -231,48 +199,34 @@ const getAudioMeta = handleRequest(async (req: Request) => {
     fileName: file.fileName,
     mimeType: file.mimeType,
     fileSize: file.fileSize,
-    ...meta,
+    ...meta
   };
 });
 
-/**
- * Delete a file
- * DELETE /api/remote-projects/:projectId/files/:fileId
- */
 const deleteFile = handleRequest(async (req: Request) => {
   const { projectId, fileId } = req.params;
+  const userId = getAuthUserId(req as AuthRequest);
 
-  // Validate file exists and belongs to project
-  const file = await ProjectFileModel.findOne({
-    _id: fileId,
-    projectId,
-  });
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'files');
 
+  const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
 
-  // Delete from R2 storage
   if (isStorageConfigured()) {
     try {
       await deleteStorageFile(file.storageKey);
     } catch (error) {
       console.error('Error deleting file from R2:', error);
-      // Continue with database deletion even if R2 deletion fails
     }
   }
 
-  // Delete from database
   await ProjectFileModel.deleteOne({ _id: fileId });
 
-  const project = await RemoteProjectModel.findById(projectId);
-  if (project) {
-    emitProjectFileUpdate(
-      project.customerId.toString(),
-      project.vendorId.toString(),
-      projectId
-    );
-  }
+  emitProjectFileUpdate(getProjectParticipantIds(project), projectId);
 
-  return null; // Returns 204 No Content
+  return null;
 });
 
 export default {
@@ -281,5 +235,5 @@ export default {
   getProjectFiles,
   getDownloadUrl,
   getAudioMeta,
-  deleteFile,
+  deleteFile
 };

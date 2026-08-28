@@ -140,43 +140,43 @@ export const emitNotificationCount = (userId: string, count: number) => {
   }
 };
 
-/** Notify customer and vendor to refresh project chat (multi-tab safe). */
+/** Notify project participants to refresh project chat (multi-tab safe). */
 export const emitProjectMessageUpdate = (
-  customerId: string,
-  vendorId: string,
+  participantIds: string[],
   projectId: string
 ) => {
   if (io) {
     const payload = { projectId };
-    io.to(`user:${customerId}`).emit('project:message', payload);
-    io.to(`user:${vendorId}`).emit('project:message', payload);
+    for (const userId of participantIds) {
+      io.to(`user:${userId}`).emit('project:message', payload);
+    }
   }
 };
 
-/** Notify customer and vendor that the project status changed. */
+/** Notify project participants that the project status changed. */
 export const emitProjectStatusUpdate = (
-  customerId: string,
-  vendorId: string,
+  participantIds: string[],
   projectId: string,
   status: string
 ) => {
   if (io) {
     const payload = { projectId, status };
-    io.to(`user:${customerId}`).emit('project:status', payload);
-    io.to(`user:${vendorId}`).emit('project:status', payload);
+    for (const userId of participantIds) {
+      io.to(`user:${userId}`).emit('project:status', payload);
+    }
   }
 };
 
-/** Notify customer and vendor to refresh project file list. */
+/** Notify project participants to refresh project file list. */
 export const emitProjectFileUpdate = (
-  customerId: string,
-  vendorId: string,
+  participantIds: string[],
   projectId: string
 ) => {
   if (io) {
     const payload = { projectId };
-    io.to(`user:${customerId}`).emit('project:files', payload);
-    io.to(`user:${vendorId}`).emit('project:files', payload);
+    for (const userId of participantIds) {
+      io.to(`user:${userId}`).emit('project:files', payload);
+    }
   }
 };
 

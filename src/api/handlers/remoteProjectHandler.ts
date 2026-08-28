@@ -11,6 +11,11 @@ import { paymentService } from '../../services/paymentService.js';
 import { platformFeeService } from '../../services/platformFeeService.js';
 import { notifyVendorNewProject } from '../../utils/notificationUtils.js';
 import { emitProjectStatusUpdate } from '../../webSockets/socket.js';
+import {
+  assertProjectAccess,
+  getAuthUserId,
+  getProjectParticipantIds,
+} from '../../services/projectAccessService.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -33,6 +38,8 @@ export const PROJECT_STATUS = {
  * POST /api/remote-projects
  */
 const createProject = handleRequest(async (req: Request) => {
+  const authReq = req as AuthRequest;
+  const authUserId = getAuthUserId(authReq);
   const {
     itemId,
     customerId,
@@ -49,6 +56,9 @@ const createProject = handleRequest(async (req: Request) => {
 
   if (!itemId) throw new ExpressError('Item ID is required', 400);
   if (!customerId) throw new ExpressError('Customer ID is required', 400);
+  if (String(customerId) !== String(authUserId)) {
+    throw new ExpressError('Forbidden', 403);
+  }
   if (!title) throw new ExpressError('Project title is required', 400);
   if (!brief) throw new ExpressError('Project brief is required', 400);
 
@@ -196,10 +206,29 @@ const getProjects = handleRequest(async (req: Request) => {
       throw new ExpressError('Forbidden', 403);
     }
     // Projects where user is customer OR vendor (e.g. "My projects" list)
-    filter.$or = [{ customerId: participantId }, { vendorId: participantId }];
+    filter.$or = [
+      { customerId: participantId },
+      { vendorId: participantId },
+      { collaborators: { $elemMatch: { userId: participantId, status: 'active' } } },
+    ];
   } else {
-    if (customerId) filter.customerId = customerId;
-    if (vendorId) filter.vendorId = vendorId;
+    if (!authUserId) throw new ExpressError('Unauthorized', 401);
+    if (customerId) {
+      if (String(customerId) !== String(authUserId)) throw new ExpressError('Forbidden', 403);
+      filter.customerId = customerId;
+    }
+    if (vendorId) {
+      if (String(vendorId) !== String(authUserId)) throw new ExpressError('Forbidden', 403);
+      filter.vendorId = vendorId;
+    }
+    if (!customerId && !vendorId) {
+      // Default: projects where the caller participates
+      filter.$or = [
+        { customerId: authUserId },
+        { vendorId: authUserId },
+        { collaborators: { $elemMatch: { userId: authUserId, status: 'active' } } },
+      ];
+    }
   }
   if (studioId) filter.studioId = studioId;
   if (status) filter.status = status;
@@ -240,11 +269,15 @@ const getProjectById = handleRequest(async (req: Request) => {
     .populate('itemId', 'name imgUrl acceptedFileTypes maxFileSize maxFilesPerProject')
     .populate('studioId', 'name imgUrl')
     .populate('customerId', 'name email phone')
-    .populate('vendorId', 'name email');
+    .populate('vendorId', 'name email')
+    .populate('collaborators.userId', 'name email imgUrl');
 
   if (!project) {
     throw new ExpressError('Project not found', 404);
   }
+
+  const authUserId = getAuthUserId(req as AuthRequest);
+  const access = assertProjectAccess(project, authUserId, 'view');
 
   // Also get file counts
   const fileCounts = await ProjectFileModel.aggregate([
@@ -263,6 +296,19 @@ const getProjectById = handleRequest(async (req: Request) => {
   return {
     project,
     fileCounts: fileCountsByType,
+    access: {
+      side: access.side,
+      isPrimary: access.isPrimary,
+      isCollaborator: access.isCollaborator,
+      senderRole: access.senderRole,
+      canInvite: access.canInvite,
+      canPay: access.canPay,
+      canCustomerWorkflow: access.canCustomerWorkflow,
+      canVendorWorkflow: access.canVendorWorkflow,
+      canUpdateMetadata: access.canUpdateMetadata,
+      canChat: access.canChat,
+      canFiles: access.canFiles,
+    },
   };
 });
 
@@ -275,6 +321,7 @@ const acceptProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.REQUESTED) {
     throw new ExpressError(
@@ -342,12 +389,7 @@ const acceptProject = handleRequest(async (req: Request) => {
   project.deadline = deadline;
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -362,6 +404,7 @@ const declineProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.REQUESTED) {
     throw new ExpressError(
@@ -404,12 +447,7 @@ const declineProject = handleRequest(async (req: Request) => {
   project.status = PROJECT_STATUS.DECLINED;
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -423,6 +461,7 @@ const startProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.ACCEPTED) {
     throw new ExpressError(
@@ -434,12 +473,7 @@ const startProject = handleRequest(async (req: Request) => {
   project.status = PROJECT_STATUS.IN_PROGRESS;
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -454,6 +488,7 @@ const deliverProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   const allowedStatuses = [
     PROJECT_STATUS.ACCEPTED,
@@ -485,12 +520,7 @@ const deliverProject = handleRequest(async (req: Request) => {
   project.deliveredAt = new Date();
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -509,6 +539,7 @@ const requestRevision = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'customer_workflow');
 
   if (project.status !== PROJECT_STATUS.DELIVERED) {
     throw new ExpressError(
@@ -519,6 +550,9 @@ const requestRevision = handleRequest(async (req: Request) => {
 
   // Paid revision: charge if free revisions are exhausted
   const isPaidRevision = project.revisionsUsed >= project.revisionsIncluded;
+  if (isPaidRevision) {
+    assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'pay');
+  }
 
   if (isPaidRevision) {
     const revisionPrice = project.revisionPrice;
@@ -575,12 +609,7 @@ const requestRevision = handleRequest(async (req: Request) => {
   project.revisionsUsed += 1;
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -594,6 +623,7 @@ const completeProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'pay');
 
   if (project.status !== PROJECT_STATUS.DELIVERED) {
     throw new ExpressError(
@@ -659,12 +689,7 @@ const completeProject = handleRequest(async (req: Request) => {
   project.completedAt = new Date();
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -679,6 +704,12 @@ const cancelProject = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  {
+    const access = assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'view');
+    if (!access.canCustomerWorkflow && !access.canVendorWorkflow) {
+      throw new ExpressError('Forbidden', 403);
+    }
+  }
 
   const nonCancellableStatuses = [
     PROJECT_STATUS.COMPLETED,
@@ -727,12 +758,7 @@ const cancelProject = handleRequest(async (req: Request) => {
   project.status = PROJECT_STATUS.CANCELLED;
   await project.save();
 
-  emitProjectStatusUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId,
-    project.status
-  );
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return project;
 });
@@ -760,9 +786,7 @@ const updateProject = handleRequest(async (req: AuthRequest) => {
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
 
-  if (project.vendorId.toString() !== userId) {
-    throw new ExpressError('Only the project vendor can update project details', 403);
-  }
+  assertProjectAccess(project, userId, 'update_metadata');
 
   if (TERMINAL_STATUSES.some((s) => s === project.status)) {
     throw new ExpressError(

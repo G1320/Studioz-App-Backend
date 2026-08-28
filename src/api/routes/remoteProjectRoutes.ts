@@ -2,18 +2,34 @@ import express from 'express';
 import remoteProjectHandler from '../handlers/remoteProjectHandler.js';
 import projectFileHandler from '../handlers/projectFileHandler.js';
 import projectMessageHandler from '../handlers/projectMessageHandler.js';
+import projectCollaboratorHandler from '../handlers/projectCollaboratorHandler.js';
 import { verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
-// All remote project routes require authentication
+// Public invite preview (no auth) — accept still requires login
+router.get('/invites/:token', projectCollaboratorHandler.getInviteByToken);
+
+// All other remote project routes require authentication
 router.use(verifyTokenMw);
+
+router.get('/invites/pending', projectCollaboratorHandler.listPendingInvitesForUser);
+router.post('/invites/:token/accept', projectCollaboratorHandler.acceptInvite);
 
 // Remote Project CRUD
 router.post('/', remoteProjectHandler.createProject);
 router.get('/', remoteProjectHandler.getProjects);
 router.get('/:projectId', remoteProjectHandler.getProjectById);
 router.patch('/:projectId', remoteProjectHandler.updateProject);
+
+// Collaborators
+router.post('/:projectId/collaborators/invite', projectCollaboratorHandler.inviteCollaborator);
+router.get('/:projectId/collaborators', projectCollaboratorHandler.listCollaborators);
+router.delete('/:projectId/collaborators/:userId', projectCollaboratorHandler.removeCollaborator);
+router.post(
+  '/:projectId/collaborators/invites/:inviteId/revoke',
+  projectCollaboratorHandler.revokeInvite
+);
 
 // Project Workflow Actions
 router.patch('/:projectId/accept', remoteProjectHandler.acceptProject);

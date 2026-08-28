@@ -28,7 +28,8 @@ export type EmailTemplateName =
   | 'DOCUMENT_EMAIL'
   | 'PLATFORM_FEE_CHARGED'
   | 'PLATFORM_FEE_FAILED'
-  | 'NEW_PROJECT_VENDOR';
+  | 'NEW_PROJECT_VENDOR'
+  | 'PROJECT_COLLABORATOR_INVITE';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -81,3 +82,14 @@ export interface DocumentEmailProps { customerName: string; documentName: string
 
 export interface PlatformFeeChargedEmailProps { vendorName: string; period: string; totalFeeAmount: number; totalTransactionAmount: number; feeCount: number; feePercentage: number; invoiceUrl?: string; mode?: ThemeMode; }
 export interface PlatformFeeFailedEmailProps { vendorName: string; period: string; totalFeeAmount: number; failureReason?: string; retryCount: number; maxRetries: number; mode?: ThemeMode; }
+
+export interface ProjectCollaboratorInviteEmailProps {
+  inviteeEmail?: string;
+  inviterName: string;
+  projectTitle: string;
+  studioName?: string;
+  side: 'customer' | 'vendor';
+  inviteUrl: string;
+  expiresInLabel?: string;
+  mode?: ThemeMode;
+}

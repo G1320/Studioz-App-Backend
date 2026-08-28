@@ -15,7 +15,7 @@ const ProjectMessageSchema = new mongoose.Schema(
     },
     senderRole: {
       type: String,
-      enum: ['customer', 'vendor'],
+      enum: ['customer', 'vendor', 'customer_collaborator', 'vendor_collaborator'],
       required: true,
     },
 

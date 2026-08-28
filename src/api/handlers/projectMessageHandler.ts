@@ -6,6 +6,17 @@ import { RemoteProjectModel } from '../../models/remoteProjectModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { emitProjectMessageUpdate } from '../../webSockets/socket.js';
+import {
+  assertProjectAccess,
+  getAuthUserId,
+  getProjectParticipantIds,
+  oppositeSenderRoles,
+  type ProjectSenderRole
+} from '../../services/projectAccessService.js';
+
+interface AuthRequest extends Request {
+  decodedJwt?: { _id?: string; userId?: string };
+}
 
 /**
  * Get messages for a project
@@ -15,37 +26,32 @@ const getMessages = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
   const { page: pageStr, limit: limitStr, since } = req.query;
 
-  // Validate project exists
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'view');
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
 
-  // Pagination
   const page = Math.max(1, parseInt(pageStr as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 50));
   const skip = (page - 1) * limit;
 
-  // Build filter (ObjectId ensures consistent matching with stored documents)
   const filter: Record<string, unknown> = { projectId: projectObjectId };
 
-  // Optionally filter messages since a timestamp (for polling)
   if (since) {
     filter.createdAt = { $gt: new Date(since as string) };
   }
 
   const [messages, total] = await Promise.all([
     ProjectMessageModel.find(filter)
-      .sort({ createdAt: 1 }) // Oldest first for chat display
+      .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit)
       .populate('senderId', 'name imgUrl')
       .populate('attachmentIds', 'fileName fileSize mimeType')
       .populate('fileId', 'fileName fileSize mimeType'),
-    ProjectMessageModel.countDocuments(filter),
+    ProjectMessageModel.countDocuments(filter)
   ]);
-
-  console.log('[getMessages] projectId:', projectId, 'found:', messages.length, 'total:', total);
 
   return {
     messages,
@@ -53,8 +59,8 @@ const getMessages = handleRequest(async (req: Request) => {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
-    },
+      totalPages: Math.ceil(total / limit)
+    }
   };
 });
 
@@ -64,16 +70,19 @@ const getMessages = handleRequest(async (req: Request) => {
  */
 const sendMessage = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { senderId, message, attachmentIds, fileId, offsetSeconds } = req.body;
+  const { message, attachmentIds, fileId, offsetSeconds } = req.body;
+  const senderId = getAuthUserId(req as AuthRequest);
 
-  if (!senderId) throw new ExpressError('Sender ID is required', 400);
   if (!message || message.trim() === '') {
     throw new ExpressError('Message content is required', 400);
   }
 
   const hasCue =
-    fileId !== undefined && fileId !== null && fileId !== '' &&
-    offsetSeconds !== undefined && offsetSeconds !== null;
+    fileId !== undefined &&
+    fileId !== null &&
+    fileId !== '' &&
+    offsetSeconds !== undefined &&
+    offsetSeconds !== null;
 
   if (hasCue) {
     if (!mongoose.Types.ObjectId.isValid(fileId)) {
@@ -87,21 +96,12 @@ const sendMessage = handleRequest(async (req: Request) => {
     throw new ExpressError('Time-coded comments require both fileId and offsetSeconds', 400);
   }
 
-  // Validate project exists
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
 
-  // Determine sender role
-  let senderRole: 'customer' | 'vendor';
-  if (senderId === project.customerId.toString()) {
-    senderRole = 'customer';
-  } else if (senderId === project.vendorId.toString()) {
-    senderRole = 'vendor';
-  } else {
-    throw new ExpressError('Sender is not authorized for this project', 403);
-  }
+  const access = assertProjectAccess(project, senderId, 'chat');
+  const senderRole: ProjectSenderRole = access.senderRole;
 
-  // Validate attachment IDs if provided
   if (attachmentIds && attachmentIds.length > 0) {
     for (const attachmentId of attachmentIds) {
       if (!mongoose.Types.ObjectId.isValid(attachmentId)) {
@@ -115,36 +115,28 @@ const sendMessage = handleRequest(async (req: Request) => {
   if (hasCue) {
     const file = await ProjectFileModel.findOne({
       _id: fileId,
-      projectId: projectObjectId,
+      projectId: projectObjectId
     });
     if (!file) throw new ExpressError('File not found on this project', 404);
   }
 
-  // Create message
   const projectMessage = new ProjectMessageModel({
     projectId: projectObjectId,
     senderId,
     senderRole,
     message: message.trim(),
     attachmentIds: attachmentIds || [],
-    ...(hasCue
-      ? { fileId, offsetSeconds: Number(offsetSeconds) }
-      : {}),
+    ...(hasCue ? { fileId, offsetSeconds: Number(offsetSeconds) } : {})
   });
 
   await projectMessage.save();
 
-  // Populate sender info for response
   await projectMessage.populate('senderId', 'name imgUrl');
   if (hasCue) {
     await projectMessage.populate('fileId', 'fileName fileSize mimeType');
   }
 
-  emitProjectMessageUpdate(
-    project.customerId.toString(),
-    project.vendorId.toString(),
-    projectId
-  );
+  emitProjectMessageUpdate(getProjectParticipantIds(project), projectId);
 
   return projectMessage;
 });
@@ -155,69 +147,52 @@ const sendMessage = handleRequest(async (req: Request) => {
  */
 const markAsRead = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { userId, messageIds } = req.body;
+  const { messageIds } = req.body;
+  const userId = getAuthUserId(req as AuthRequest);
 
-  if (!userId) throw new ExpressError('User ID is required', 400);
-
-  // Validate project exists
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
 
+  const access = assertProjectAccess(project, userId, 'view');
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
-
-  // Determine user role to know which messages to mark as read
-  let userRole: 'customer' | 'vendor';
-  if (userId === project.customerId.toString()) {
-    userRole = 'customer';
-  } else if (userId === project.vendorId.toString()) {
-    userRole = 'vendor';
-  } else {
-    throw new ExpressError('User is not authorized for this project', 403);
-  }
-
-  // Mark messages from the OTHER party as read
-  const oppositeRole = userRole === 'customer' ? 'vendor' : 'customer';
 
   const filter: Record<string, unknown> = {
     projectId: projectObjectId,
-    senderRole: oppositeRole,
-    readAt: null, // Only unread messages
+    senderRole: { $in: oppositeSenderRoles(access.side) },
+    readAt: null
   };
 
-  // If specific message IDs provided, filter to those
   if (messageIds && messageIds.length > 0) {
     filter._id = { $in: messageIds.map((id: string) => new mongoose.Types.ObjectId(id)) };
   }
 
   const result = await ProjectMessageModel.updateMany(filter, {
-    $set: { readAt: new Date() },
+    $set: { readAt: new Date() }
   });
 
   return {
-    markedAsRead: result.modifiedCount,
+    markedAsRead: result.modifiedCount
   };
 });
 
 /**
  * Get unread message count for a user in a project
- * This is a helper that could be called from getProjectById
  */
 export async function getUnreadCount(
   projectId: string,
   userId: string,
-  userRole: 'customer' | 'vendor'
+  userRole: 'customer' | 'vendor' | ProjectSenderRole
 ): Promise<number> {
-  const oppositeRole = userRole === 'customer' ? 'vendor' : 'customer';
-
+  const side = userRole.includes('vendor') ? 'vendor' : 'customer';
   return ProjectMessageModel.countDocuments({
     projectId: new mongoose.Types.ObjectId(projectId),
-    senderRole: oppositeRole,
-    readAt: null,
+    senderRole: { $in: oppositeSenderRoles(side) },
+    readAt: null
   });
 }
 
 export default {
   getMessages,
   sendMessage,
-  markAsRead,
+  markAsRead
 };

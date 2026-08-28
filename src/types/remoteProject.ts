@@ -17,6 +17,35 @@ export type RemoteProjectPaymentStatus =
   | 'fully_paid'
   | 'refunded';
 
+export type ProjectSide = 'customer' | 'vendor';
+
+export type ProjectCollaboratorStatus = 'active' | 'removed';
+
+export interface ProjectCollaborator {
+  userId: string;
+  side: ProjectSide;
+  invitedBy: string;
+  joinedAt: Date;
+  status: ProjectCollaboratorStatus;
+}
+
+export type ProjectInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+
+export interface ProjectInvite {
+  _id: string;
+  projectId: string;
+  email: string;
+  side: ProjectSide;
+  invitedBy: string;
+  tokenHash: string;
+  status: ProjectInviteStatus;
+  expiresAt: Date;
+  acceptedUserId?: string;
+  acceptedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface RemoteProject {
   _id: string;
 
@@ -25,6 +54,7 @@ export interface RemoteProject {
   studioId: string;
   customerId: string;
   vendorId: string;
+  collaborators?: ProjectCollaborator[];
 
   // Project Details
   title: string;
@@ -98,11 +128,17 @@ export interface ProjectFile {
   updatedAt?: Date;
 }
 
+export type ProjectMessageSenderRole =
+  | 'customer'
+  | 'vendor'
+  | 'customer_collaborator'
+  | 'vendor_collaborator';
+
 export interface ProjectMessage {
   _id: string;
   projectId: string;
   senderId: string;
-  senderRole: 'customer' | 'vendor';
+  senderRole: ProjectMessageSenderRole;
 
   message: string;
   attachmentIds?: string[];

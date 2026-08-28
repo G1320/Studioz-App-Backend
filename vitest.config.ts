@@ -12,6 +12,8 @@ export default defineConfig({
       // Legacy test files using Node's built-in test runner
       'src/tests/reviewAggregates.test.ts',
       'src/tests/booking/timeSlotUtils.test.ts',
+      // Pure unit tests (no mongo) — run via vitest.unit.config.ts
+      'src/tests/unit/**',
     ],
     testTimeout: 30000,
     hookTimeout: 30000,

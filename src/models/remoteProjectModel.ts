@@ -51,6 +51,33 @@ const RemoteProjectSchema = new mongoose.Schema(
       required: true,
     },
 
+    collaborators: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        side: {
+          type: String,
+          enum: ['customer', 'vendor'],
+          required: true,
+        },
+        invitedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        joinedAt: { type: Date, required: true, default: Date.now },
+        status: {
+          type: String,
+          enum: ['active', 'removed'],
+          default: 'active',
+        },
+        _id: false,
+      },
+    ],
+
     // Project Details
     title: { type: String, required: true },
     brief: { type: String, required: true },
@@ -116,6 +143,7 @@ RemoteProjectSchema.index({ itemId: 1 });
 RemoteProjectSchema.index({ studioId: 1 });
 RemoteProjectSchema.index({ customerId: 1 });
 RemoteProjectSchema.index({ vendorId: 1 });
+RemoteProjectSchema.index({ 'collaborators.userId': 1, 'collaborators.status': 1 });
 RemoteProjectSchema.index({ deadline: 1 });
 RemoteProjectSchema.index({ createdAt: -1 });
 
