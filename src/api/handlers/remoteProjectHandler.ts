@@ -21,6 +21,25 @@ interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
 }
 
+/** Cast JWT/query user ids to ObjectId so collaborator $elemMatch matches stored refs. */
+function asUserObjectId(id: string): mongoose.Types.ObjectId | string {
+  if (/^[a-fA-F0-9]{24}$/.test(String(id))) {
+    return new mongoose.Types.ObjectId(String(id));
+  }
+  return id;
+}
+
+function participantMatchFilter(userId: string) {
+  const id = asUserObjectId(userId);
+  return {
+    $or: [
+      { customerId: id },
+      { vendorId: id },
+      { collaborators: { $elemMatch: { userId: id, status: 'active' } } },
+    ],
+  };
+}
+
 // Project status constants
 export const PROJECT_STATUS = {
   REQUESTED: 'requested',
@@ -205,29 +224,19 @@ const getProjects = handleRequest(async (req: Request) => {
     if (!authUserId || String(participantId) !== String(authUserId)) {
       throw new ExpressError('Forbidden', 403);
     }
-    // Projects where user is customer OR vendor (e.g. "My projects" list)
-    filter.$or = [
-      { customerId: participantId },
-      { vendorId: participantId },
-      { collaborators: { $elemMatch: { userId: participantId, status: 'active' } } },
-    ];
+    Object.assign(filter, participantMatchFilter(String(participantId)));
   } else {
     if (!authUserId) throw new ExpressError('Unauthorized', 401);
     if (customerId) {
       if (String(customerId) !== String(authUserId)) throw new ExpressError('Forbidden', 403);
-      filter.customerId = customerId;
+      filter.customerId = asUserObjectId(String(customerId));
     }
     if (vendorId) {
       if (String(vendorId) !== String(authUserId)) throw new ExpressError('Forbidden', 403);
-      filter.vendorId = vendorId;
+      filter.vendorId = asUserObjectId(String(vendorId));
     }
     if (!customerId && !vendorId) {
-      // Default: projects where the caller participates
-      filter.$or = [
-        { customerId: authUserId },
-        { vendorId: authUserId },
-        { collaborators: { $elemMatch: { userId: authUserId, status: 'active' } } },
-      ];
+      Object.assign(filter, participantMatchFilter(String(authUserId)));
     }
   }
   if (studioId) filter.studioId = studioId;
