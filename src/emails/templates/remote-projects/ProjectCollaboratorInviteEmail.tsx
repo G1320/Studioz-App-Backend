@@ -1,4 +1,4 @@
-import { Section, Text, Hr } from '@react-email/components';
+import { Section, Text } from '@react-email/components';
 import { EmailLayout } from '../../components/EmailLayout.js';
 import { Header } from '../../components/Header.js';
 import { Footer } from '../../components/Footer.js';
@@ -100,24 +100,6 @@ export const ProjectCollaboratorInviteEmail = ({
               ✓ {item}
             </Text>
           ))}
-          <Hr
-            style={{
-              borderColor: colors.brandYellowBorder,
-              borderTop: 'none',
-              margin: '12px 0'
-            }}
-          />
-          <Text
-            style={{
-              fontSize: '12px',
-              lineHeight: '1.6',
-              color: theme.textMuted,
-              margin: 0,
-              fontFamily
-            }}
-          >
-            תשלומים והטענת אמצעי תשלום נשארים אצל הלקוח ששילם — למשתפי פעולה אין גישה לתשלום.
-          </Text>
         </Section>
 
         <div style={{ marginTop: '8px' }}>
