@@ -378,14 +378,15 @@ const acceptInvite = handleRequest(async (req: Request) => {
     removed.invitedBy = invite.invitedBy as any;
     removed.joinedAt = new Date();
   } else {
-    if (!project.collaborators) project.collaborators = [] as any;
-    project.collaborators.push({
+    const collaborators = project.collaborators ?? [];
+    collaborators.push({
       userId: user._id as any,
       side: invite.side,
       invitedBy: invite.invitedBy as any,
       joinedAt: new Date(),
       status: 'active'
     } as any);
+    project.collaborators = collaborators as any;
   }
 
   await project.save();
