@@ -1,19 +1,11 @@
 import Joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import handleJoiError from '../../utils/joiErrorHandler.js';
-
-const TITLE_MAX = 80;
-const DESCRIPTION_MAX = 224;
-
-const translationTitleSchema = Joi.object({
-  en: Joi.string().trim().max(TITLE_MAX).optional().allow('', null),
-  he: Joi.string().trim().max(TITLE_MAX).optional().allow('', null)
-}).optional();
-
-const translationDescriptionSchema = Joi.object({
-  en: Joi.string().trim().max(DESCRIPTION_MAX).optional().allow('', null),
-  he: Joi.string().trim().max(DESCRIPTION_MAX).optional().allow('', null)
-}).optional();
+import {
+  itemNameSchema,
+  itemDescriptionSchema,
+  itemStudioNameSchema
+} from './translationSchemas.js';
 
 const availabilitySchema = Joi.object({
   date: Joi.string().required(),
@@ -44,9 +36,9 @@ const projectPricingSchema = Joi.object({
 }).optional();
 
 const schema = Joi.object({
-  name: translationTitleSchema,
-  description: translationDescriptionSchema,
-  studioName: translationTitleSchema,
+  name: itemNameSchema,
+  description: itemDescriptionSchema,
+  studioName: itemStudioNameSchema,
   category: Joi.string().optional(),
   categories: Joi.array().items(Joi.string()).optional(),
   subCategory: Joi.string().optional(),
@@ -69,20 +61,20 @@ const schema = Joi.object({
   availability: Joi.array().items(availabilitySchema).optional(),
   instantBook: Joi.boolean().optional(),
   addOnIds: Joi.array().items(Joi.string()).optional(),
-  
+
   // Booking Requirements
   minimumBookingDuration: durationSchema,
   minimumQuantity: Joi.number().positive().optional(),
   advanceBookingRequired: advanceBookingSchema,
-  
+
   // Setup & Preparation
   preparationTime: durationSchema,
-  
+
   // Remote Service
   remoteService: Joi.boolean().optional(),
   remoteAccessMethod: Joi.string().valid('zoom', 'teams', 'skype', 'custom', 'other').optional(),
   softwareRequirements: Joi.array().items(Joi.string()).optional(),
-  
+
   // Remote Project Settings
   serviceDeliveryType: Joi.string().valid('in-studio', 'remote').optional(),
   remoteWorkType: Joi.string().valid('session', 'project').optional(),
@@ -90,7 +82,7 @@ const schema = Joi.object({
   acceptedFileTypes: Joi.array().items(Joi.string()).optional(),
   maxFileSize: Joi.number().positive().optional(),
   maxFilesPerProject: Joi.number().positive().integer().optional(),
-  
+
   // Quantity Management
   maxQuantityPerBooking: Joi.number().positive().optional()
 }).unknown(true);
@@ -105,4 +97,3 @@ const validateItem = (req: Request, res: Response, next: NextFunction): void => 
 };
 
 export default validateItem;
-

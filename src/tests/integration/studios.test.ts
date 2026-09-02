@@ -101,6 +101,20 @@ describe('Studios API', () => {
       expect(updatedUser?.studios?.map(s => s.toString())).toContain(res.body._id.toString());
     });
 
+    it('should create a studio with English-only translations', async () => {
+      const user = await createTestUser();
+
+      const res = await request(app)
+        .post(`/api/studios/${user._id}/create-studio`)
+        .send(createValidStudioData({
+          name: { en: 'English Only Studio' },
+          description: { en: 'An English-only studio description.' },
+        }));
+
+      expect(res.status).toBe(200);
+      expect(res.body.name.en).toBe('English Only Studio');
+    });
+
     it('should reject studio with missing required fields', async () => {
       const user = await createTestUser();
 

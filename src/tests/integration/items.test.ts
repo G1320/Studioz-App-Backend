@@ -13,12 +13,15 @@ import { UserModel } from '../../models/userModel.js';
 describe('Items API', () => {
   const app = createTestApp();
 
+  const validItemDescription = { en: 'A test service description.' };
+
   describe('POST /api/items (Create Item)', () => {
     it('should require authentication', async () => {
       const res = await request(app)
         .post('/api/items')
         .send({
           name: { en: 'Test Item' },
+          description: validItemDescription,
           price: 100,
         });
 
@@ -42,6 +45,7 @@ describe('Items API', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Test Item', he: 'פריט בדיקה' },
+          description: validItemDescription,
           studioName: studio.name,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),
@@ -53,17 +57,14 @@ describe('Items API', () => {
       expect(res.body.name.en).toBe('Test Item');
     });
 
-    it('should block second item for free tier user (limit: 1)', async () => {
-      // Create free tier user
+    it('should allow multiple items for free tier user (unlimited listings)', async () => {
       const user = await createTestUser({ subscriptionStatus: undefined });
       const studio = await createTestStudio({ createdBy: user._id });
 
-      // Associate studio with user
       await UserModel.findByIdAndUpdate(user._id, {
         $push: { studios: studio._id }
       });
 
-      // Create first item directly in DB (simulating existing item)
       await createTestItem({
         studioId: studio._id,
         sellerId: user._id,
@@ -71,23 +72,20 @@ describe('Items API', () => {
 
       const token = generateTestToken(user._id);
 
-      // Try to create second item - should be blocked by checkListingLimit middleware
       const res = await request(app)
         .post('/api/items')
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Second Item', he: 'פריט שני' },
+          description: validItemDescription,
           studioName: studio.name,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),
           price: 150,
         });
 
-      expect(res.status).toBe(403);
-      expect(res.body.error).toBe('LIMIT_EXCEEDED');
-      expect(res.body.limitType).toBe('listings');
-      expect(res.body.currentUsage).toBe(1);
-      expect(res.body.limit).toBe(1);
+      expect(res.status).toBe(200);
+      expect(res.body.name.en).toBe('Second Item');
     });
 
     it('should allow starter tier user to create up to 3 items', async () => {
@@ -111,6 +109,7 @@ describe('Items API', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Third Item', he: 'פריט שלישי' },
+          description: validItemDescription,
           studioName: studio.name,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),
@@ -143,6 +142,7 @@ describe('Items API', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Fourth Item' },
+          description: validItemDescription,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),
           price: 200,
@@ -176,6 +176,7 @@ describe('Items API', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Third Item', he: 'פריט שלישי' },
+          description: validItemDescription,
           studioName: studio.name,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),
@@ -184,6 +185,33 @@ describe('Items API', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.name.en).toBe('Third Item');
+    });
+
+    it('should allow English-only item translations', async () => {
+      const user = await createTestUser({ subscriptionStatus: undefined });
+      const studio = await createTestStudio({ createdBy: user._id });
+
+      await UserModel.findByIdAndUpdate(user._id, {
+        $push: { studios: studio._id }
+      });
+
+      const token = generateTestToken(user._id);
+
+      const res = await request(app)
+        .post('/api/items')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: { en: 'Mixing Session' },
+          description: { en: 'Professional mixing for one song.' },
+          studioName: studio.name,
+          studioId: studio._id.toString(),
+          sellerId: user._id.toString(),
+          price: 150,
+          pricePer: 'hour',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.name.en).toBe('Mixing Session');
     });
   });
 
@@ -259,6 +287,7 @@ describe('Items API', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Replacement Item', he: 'פריט חלופי' },
+          description: validItemDescription,
           studioName: studio.name,
           studioId: studio._id.toString(),
           sellerId: user._id.toString(),

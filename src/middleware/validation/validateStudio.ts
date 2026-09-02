@@ -1,6 +1,11 @@
 import Joi from 'joi';
 import handleJoiError from '../../utils/joiErrorHandler.js';
 import { Request, Response, NextFunction } from 'express';
+import {
+  studioNameSchema,
+  studioSubtitleSchema,
+  studioDescriptionSchema
+} from './translationSchemas.js';
 
 const itemSchema = Joi.object({
   _id: Joi.string().optional(),
@@ -32,20 +37,9 @@ const socialLinksSchema = Joi.object({
 
 const schema = Joi.object({
   _id: Joi.string().optional(),
-  name: Joi.object({
-    en: Joi.string().regex(/^[a-zA-Z0-9\s.,;:!?'"()@#$%&*_+=-]*$/).min(3).max(50).required().label('English Name'),
-    he: Joi.string().min(3).max(50).required().label('Hebrew Name')
-  }).required(),
- 
-  subtitle: Joi.object({
-    en: Joi.string().max(100).optional().allow('', null).label('English Subtitle'), 
-    he: Joi.string().max(100).optional().allow('', null).label('Hebrew Subtitle')
-  }).optional(),
- 
-  description: Joi.object({
-    en: Joi.string().required().label('English Description'),
-    he: Joi.string().required().label('Hebrew Description')
-  }).required(),
+  name: studioNameSchema,
+  subtitle: studioSubtitleSchema,
+  description: studioDescriptionSchema,
  
   studioAvailability: Joi.object({
     days: Joi.array().items(
