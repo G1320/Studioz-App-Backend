@@ -5,6 +5,7 @@ import { ProjectFileModel } from '../../models/projectFileModel.js';
 import { RemoteProjectModel } from '../../models/remoteProjectModel.js';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
+import { createAndEmitNotification } from '../../utils/notificationUtils.js';
 import { emitProjectMessageUpdate } from '../../webSockets/socket.js';
 import {
   assertProjectAccess,
@@ -81,8 +82,8 @@ const getMessages = handleRequest(async (req: Request) => {
  */
 const sendMessage = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { message, attachmentIds, offsetSeconds, parentId } = req.body;
-  let { fileId } = req.body;
+  const { message, attachmentIds, parentId } = req.body;
+  let { fileId, offsetSeconds } = req.body;
   const senderId = getAuthUserId(req as AuthRequest);
 
   if (!message || message.trim() === '') {
@@ -139,9 +140,18 @@ const sendMessage = handleRequest(async (req: Request) => {
       throw new ExpressError('Reply must belong to the same track as its parent', 400);
     }
     fileId = String(parent.fileId);
+    // Replies stay attached to the exact review point established by the root comment.
+    if (typeof parent.offsetSeconds === 'number') {
+      offsetSeconds = parent.offsetSeconds;
+    }
   }
 
   const resolvedHasFile = fileId !== undefined && fileId !== null && fileId !== '';
+  const resolvedHasOffset = offsetSeconds !== undefined && offsetSeconds !== null && offsetSeconds !== '';
+
+  if (resolvedHasFile && !hasParent && !resolvedHasOffset) {
+    throw new ExpressError('Track comments require an offsetSeconds timestamp', 400);
+  }
 
   if (resolvedHasFile) {
     const file = await ProjectFileModel.findOne({
@@ -158,7 +168,7 @@ const sendMessage = handleRequest(async (req: Request) => {
     message: message.trim(),
     attachmentIds: attachmentIds || [],
     ...(resolvedHasFile ? { fileId } : {}),
-    ...(resolvedHasFile && hasOffset ? { offsetSeconds: Number(offsetSeconds) } : {}),
+    ...(resolvedHasFile && resolvedHasOffset ? { offsetSeconds: Number(offsetSeconds) } : {}),
     ...(hasParent ? { parentId } : {})
   });
 
@@ -170,6 +180,59 @@ const sendMessage = handleRequest(async (req: Request) => {
   }
 
   emitProjectMessageUpdate(getProjectParticipantIds(project), projectId);
+
+  const populatedSender = projectMessage.senderId as unknown as { name?: string };
+  const populatedFile = projectMessage.fileId as unknown as { fileName?: string } | undefined;
+  const senderName =
+    populatedSender?.name ||
+    (access.side === 'vendor' ? project.studioName?.en || 'Studio' : project.customerName || 'Customer');
+  const preview =
+    projectMessage.message.length > 140 ? `${projectMessage.message.slice(0, 137)}…` : projectMessage.message;
+  const notificationType = hasParent
+    ? 'project_comment_reply'
+    : resolvedHasFile
+      ? 'project_track_comment'
+      : 'project_chat_message';
+  const title = hasParent
+    ? 'New reply on a track comment'
+    : resolvedHasFile
+      ? 'New track comment'
+      : 'New project message';
+  const notificationMessage = resolvedHasFile
+    ? `${senderName} commented on ${populatedFile?.fileName || 'a track'}: ${preview}`
+    : `${senderName}: ${preview}`;
+  const messageId = projectMessage._id.toString();
+  const actionUrl = `/projects/${projectId}?messageId=${messageId}${
+    resolvedHasFile ? `&fileId=${String(fileId)}` : ''
+  }`;
+  const recipients = getProjectParticipantIds(project).filter((id) => id !== String(senderId));
+
+  // Notification delivery must not roll back a message that was already saved.
+  const notificationResults = await Promise.allSettled(
+    recipients.map((recipientId) =>
+      createAndEmitNotification(
+        recipientId,
+        notificationType,
+        title,
+        notificationMessage,
+        {
+          projectId,
+          messageId,
+          ...(resolvedHasFile ? { fileId: String(fileId), fileName: populatedFile?.fileName } : {}),
+          ...(hasParent ? { parentId: String(parentId) } : {}),
+          senderName,
+          projectTitle: project.title,
+          messagePreview: preview
+        },
+        actionUrl
+      )
+    )
+  );
+  for (const result of notificationResults) {
+    if (result.status === 'rejected') {
+      console.error('Failed to create project message notification:', result.reason);
+    }
+  }
 
   return projectMessage;
 });

@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
-import Notification, { NotificationType, NotificationCategory, NotificationPriority } from '../types/notification.js';
+import Notification, { NotificationType, NotificationCategory } from '../types/notification.js';
 
 const NOTIFICATION_TYPES: NotificationType[] = [
   // Bookings
@@ -26,6 +26,9 @@ const NOTIFICATION_TYPES: NotificationType[] = [
   // Activity
   'customer_message',
   'new_remote_project',
+  'project_chat_message',
+  'project_track_comment',
+  'project_comment_reply',
   'availability_alert',
 ];
 

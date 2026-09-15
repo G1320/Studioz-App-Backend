@@ -22,6 +22,9 @@ export type NotificationType =
   // Activity
   | 'customer_message'
   | 'new_remote_project'
+  | 'project_chat_message'
+  | 'project_track_comment'
+  | 'project_comment_reply'
   | 'availability_alert'
   // Legacy (kept for backwards compatibility)
   | 'system_alert';
@@ -55,6 +58,9 @@ export const NOTIFICATION_TYPE_CATEGORY: Record<NotificationType, NotificationCa
   weekly_summary: 'system',
   customer_message: 'activity',
   new_remote_project: 'projects',
+  project_chat_message: 'projects',
+  project_track_comment: 'projects',
+  project_comment_reply: 'projects',
   availability_alert: 'activity',
   system_alert: 'system',
 };
@@ -82,6 +88,10 @@ export default interface Notification {
     reservationId?: string;
     itemId?: string;
     studioId?: string;
+    projectId?: string;
+    fileId?: string;
+    messageId?: string;
+    parentId?: string;
     [key: string]: any;
   };
   read: boolean;

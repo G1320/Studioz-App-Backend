@@ -54,12 +54,13 @@ export const getUserNotifications = async (
   options: {
     read?: boolean;
     category?: NotificationCategory;
+    types?: NotificationType[];
     limit?: number;
     offset?: number;
     cursor?: string;
   } = {}
 ): Promise<Notification[]> => {
-  const { read, category, limit = 20, offset = 0, cursor } = options;
+  const { read, category, types, limit = 20, offset = 0, cursor } = options;
 
   const query: any = { userId: new mongoose.Types.ObjectId(userId) };
 
@@ -69,6 +70,10 @@ export const getUserNotifications = async (
 
   if (category) {
     query.category = category;
+  }
+
+  if (types?.length) {
+    query.type = { $in: types };
   }
 
   // Cursor-based pagination: fetch notifications older than cursor

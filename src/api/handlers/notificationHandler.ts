@@ -2,7 +2,6 @@ import { Request } from 'express';
 import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import {
-  createNotification,
   getUserNotifications,
   getUnreadCount,
   markAsRead,
@@ -14,7 +13,11 @@ import {
   getPreferences,
   updatePreferences
 } from '../../services/notificationPreferencesService.js';
-import { NotificationCategory } from '../../types/notification.js';
+import {
+  NOTIFICATION_TYPE_CATEGORY,
+  NotificationCategory,
+  NotificationType
+} from '../../types/notification.js';
 import {
   saveSubscription,
   removeSubscription,
@@ -38,6 +41,16 @@ const getNotifications = handleRequest(async (req: CustomRequest) => {
 
   const read = req.query.read === 'true' ? true : req.query.read === 'false' ? false : undefined;
   const category = req.query.category as NotificationCategory | undefined;
+  const requestedTypes =
+    typeof req.query.type === 'string'
+      ? req.query.type.split(',').filter(Boolean)
+      : [];
+  const types = requestedTypes.filter(
+    (type): type is NotificationType => type in NOTIFICATION_TYPE_CATEGORY
+  );
+  if (types.length !== requestedTypes.length) {
+    throw new ExpressError('Invalid notification type filter', 400);
+  }
   const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
   const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
   const cursor = req.query.cursor as string | undefined;
@@ -45,6 +58,7 @@ const getNotifications = handleRequest(async (req: CustomRequest) => {
   const notifications = await getUserNotifications(userId, {
     read,
     category,
+    types,
     limit,
     offset,
     cursor
