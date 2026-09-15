@@ -255,8 +255,8 @@ const setResolved = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  // Resolving review feedback is a vendor-side moderation action.
-  assertProjectAccess(project, userId, 'update_metadata');
+  // Customer-side users decide when their review feedback has been addressed.
+  assertProjectAccess(project, userId, 'customer_workflow');
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
   const msg = await ProjectMessageModel.findOne({ _id: messageId, projectId: projectObjectId });
