@@ -41,6 +41,8 @@ const projectPricingSchema = new Schema({
   estimatedDeliveryDays: { type: Number, required: false },
   revisionsIncluded: { type: Number, required: false, default: 1 },
   revisionPrice: { type: Number, required: false },
+  // Default for new projects: lock deliverable downloads until approval/payment
+  lockDownloadsUntilPaid: { type: Boolean, required: false, default: false },
 }, { _id: false });
 
 const itemSchema: Schema = new Schema({

@@ -32,7 +32,8 @@ const projectPricingSchema = Joi.object({
   depositPercentage: Joi.number().min(0).max(100).optional(),
   estimatedDeliveryDays: Joi.number().positive().integer().optional(),
   revisionsIncluded: Joi.number().min(0).integer().optional(),
-  revisionPrice: Joi.number().positive().optional()
+  revisionPrice: Joi.number().positive().optional(),
+  lockDownloadsUntilPaid: Joi.boolean().optional()
 }).optional();
 
 const schema = Joi.object({

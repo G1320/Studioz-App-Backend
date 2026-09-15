@@ -21,6 +21,8 @@ export interface ProjectPricing {
   estimatedDeliveryDays?: number;
   revisionsIncluded?: number;
   revisionPrice?: number;
+  /** Default for new projects: lock deliverable downloads until approval/payment. */
+  lockDownloadsUntilPaid?: boolean;
 }
 
 export default interface Item {

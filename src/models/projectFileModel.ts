@@ -30,6 +30,28 @@ const ProjectFileSchema = new mongoose.Schema(
     // Metadata
     description: { type: String, required: false },
     revisionNumber: { type: Number, required: false },
+
+    // Waveform peaks (0–255, mono max-abs per bucket) rendered by the player
+    waveformStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'ready', 'failed', 'unsupported'],
+      required: false,
+    },
+    waveform: {
+      type: new Schema(
+        {
+          version: { type: Number, required: true },
+          peaks: { type: [Number], required: true },
+          durationMs: { type: Number, required: false },
+          sampleRate: { type: Number, required: false },
+          channels: { type: Number, required: false },
+          generatedAt: { type: Date, required: true },
+        },
+        { _id: false }
+      ),
+      required: false,
+    },
+    waveformError: { type: String, required: false },
   },
   { timestamps: true }
 );

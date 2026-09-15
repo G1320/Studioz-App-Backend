@@ -180,6 +180,20 @@ export const emitProjectFileUpdate = (
   }
 };
 
+/** Notify project participants that a file's waveform is ready to render. */
+export const emitProjectWaveformReady = (
+  participantIds: string[],
+  projectId: string,
+  fileId: string
+) => {
+  if (io) {
+    const payload = { projectId, fileId };
+    for (const userId of participantIds) {
+      io.to(`user:${userId}`).emit('project:waveform', payload);
+    }
+  }
+};
+
 // Helper to handle user socket connections
 export const handleUserConnection = (socket: any, userId: string) => {
   // Join user-specific room for targeted notifications

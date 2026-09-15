@@ -33,6 +33,21 @@ const ProjectMessageSchema = new mongoose.Schema(
     },
     offsetSeconds: { type: Number, required: false, min: 0 },
 
+    // Threaded reply to another comment on the same track
+    parentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ProjectMessage',
+      required: false,
+    },
+
+    // Review workflow: a track comment can be marked as resolved
+    resolvedAt: { type: Date, required: false },
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+    },
+
     readAt: { type: Date, required: false },
   },
   { timestamps: true }
@@ -43,6 +58,7 @@ ProjectMessageSchema.index({ projectId: 1 });
 ProjectMessageSchema.index({ senderId: 1 });
 ProjectMessageSchema.index({ projectId: 1, createdAt: 1 });
 ProjectMessageSchema.index({ projectId: 1, fileId: 1, createdAt: 1 });
+ProjectMessageSchema.index({ parentId: 1 });
 
 const ProjectMessageModel: Model<ProjectMessage & Document> =
   mongoose.models.ProjectMessage ||

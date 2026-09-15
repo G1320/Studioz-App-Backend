@@ -15,6 +15,7 @@ import {
   assertProjectAccess,
   getAuthUserId,
   getProjectParticipantIds,
+  isDeliverableDownloadLocked,
 } from '../../services/projectAccessService.js';
 
 interface AuthRequest extends Request {
@@ -139,6 +140,11 @@ const createProject = handleRequest(async (req: Request) => {
 
     // Status
     status: PROJECT_STATUS.REQUESTED,
+
+    // Deliverable download lock — default from the service's settings
+    downloadLock: {
+      enabled: Boolean(projectPricing.lockDownloadsUntilPaid),
+    },
 
     // Customer info
     customerName,
@@ -302,9 +308,12 @@ const getProjectById = handleRequest(async (req: Request) => {
     { source: 0, deliverable: 0, revision: 0 }
   );
 
+  const deliverablesLocked = isDeliverableDownloadLocked(project);
+
   return {
     project,
     fileCounts: fileCountsByType,
+    deliverablesLocked,
     access: {
       side: access.side,
       isPrimary: access.isPrimary,
@@ -317,6 +326,8 @@ const getProjectById = handleRequest(async (req: Request) => {
       canUpdateMetadata: access.canUpdateMetadata,
       canChat: access.canChat,
       canFiles: access.canFiles,
+      canDownloadDeliverables: access.side === 'vendor' || !deliverablesLocked,
+      canManageDownloadLock: access.canUpdateMetadata,
     },
   };
 });
@@ -836,6 +847,66 @@ const updateProject = handleRequest(async (req: AuthRequest) => {
   return project;
 });
 
+/**
+ * Toggle the deliverable download lock (vendor action)
+ * PATCH /api/remote-projects/:projectId/download-lock  { enabled: boolean }
+ */
+const setDownloadLock = handleRequest(async (req: Request) => {
+  const { projectId } = req.params;
+  const { enabled } = req.body;
+
+  if (typeof enabled !== 'boolean') {
+    throw new ExpressError('enabled must be a boolean', 400);
+  }
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'update_metadata');
+
+  if (TERMINAL_STATUSES.some((s) => s === project.status)) {
+    throw new ExpressError(`Cannot change download lock for a ${project.status} project`, 400);
+  }
+
+  // Re-enabling clears any previous manual release.
+  project.downloadLock = { enabled, releasedAt: undefined, releasedBy: undefined };
+  await project.save();
+
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
+
+  return { downloadLock: project.downloadLock, deliverablesLocked: isDeliverableDownloadLocked(project) };
+});
+
+/**
+ * Release deliverable downloads early (vendor action)
+ * POST /api/remote-projects/:projectId/download-lock/release
+ */
+const releaseDownloads = handleRequest(async (req: Request) => {
+  const { projectId } = req.params;
+  const userId = getAuthUserId(req as AuthRequest);
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, userId, 'update_metadata');
+
+  if (!project.downloadLock?.enabled) {
+    throw new ExpressError('Download lock is not enabled on this project', 400);
+  }
+  if (!isDeliverableDownloadLocked(project)) {
+    return { downloadLock: project.downloadLock, deliverablesLocked: false };
+  }
+
+  project.downloadLock = {
+    enabled: true,
+    releasedAt: new Date(),
+    releasedBy: userId,
+  };
+  await project.save();
+
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
+
+  return { downloadLock: project.downloadLock, deliverablesLocked: false };
+});
+
 export default {
   createProject,
   getProjects,
@@ -848,4 +919,6 @@ export default {
   completeProject,
   cancelProject,
   updateProject,
+  setDownloadLock,
+  releaseDownloads,
 };

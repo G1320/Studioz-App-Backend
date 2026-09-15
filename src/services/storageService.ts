@@ -109,10 +109,43 @@ export async function getUploadUrl(
   return { uploadUrl, storageKey };
 }
 
+export interface DownloadUrlOptions {
+  /** Override the signed URL lifetime (seconds). */
+  expiresIn?: number;
+  /** Force `Content-Disposition: inline` so browsers stream instead of saving. */
+  inline?: boolean;
+}
+
 /**
  * Generate a presigned URL for downloading a file from R2
  */
-export async function getDownloadUrl(storageKey: string): Promise<string> {
+export async function getDownloadUrl(
+  storageKey: string,
+  options: DownloadUrlOptions = {}
+): Promise<string> {
+  if (!isStorageConfigured()) {
+    throw new Error('R2 storage is not configured');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: storageKey,
+    ...(options.inline ? { ResponseContentDisposition: 'inline' } : {}),
+  });
+
+  const downloadUrl = await getSignedUrl(r2Client, command, {
+    expiresIn: options.expiresIn ?? DOWNLOAD_URL_EXPIRY,
+  });
+
+  return downloadUrl;
+}
+
+export { DOWNLOAD_URL_EXPIRY };
+
+/**
+ * Open a readable stream over a whole R2 object (used for streaming waveform analysis).
+ */
+export async function getObjectStream(storageKey: string): Promise<NodeJS.ReadableStream> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
@@ -122,11 +155,34 @@ export async function getDownloadUrl(storageKey: string): Promise<string> {
     Key: storageKey,
   });
 
-  const downloadUrl = await getSignedUrl(r2Client, command, {
-    expiresIn: DOWNLOAD_URL_EXPIRY,
+  const response = await r2Client.send(command);
+  if (!response.Body) {
+    throw new Error('Empty object body from R2');
+  }
+
+  return response.Body as unknown as NodeJS.ReadableStream;
+}
+
+/**
+ * Read a whole R2 object into memory. Caller must enforce a size cap first.
+ */
+export async function getObjectBuffer(storageKey: string): Promise<Buffer> {
+  if (!isStorageConfigured()) {
+    throw new Error('R2 storage is not configured');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: storageKey,
   });
 
-  return downloadUrl;
+  const response = await r2Client.send(command);
+  if (!response.Body) {
+    throw new Error('Empty object body from R2');
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return Buffer.from(bytes);
 }
 
 /**

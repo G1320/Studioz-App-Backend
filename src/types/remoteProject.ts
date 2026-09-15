@@ -46,6 +46,14 @@ export interface ProjectInvite {
   updatedAt?: Date;
 }
 
+export interface ProjectDownloadLock {
+  /** When true, customer-side downloads of deliverables are gated. */
+  enabled: boolean;
+  /** Vendor released downloads manually (bypasses the lock while set). */
+  releasedAt?: Date;
+  releasedBy?: string;
+}
+
 export interface RemoteProject {
   _id: string;
 
@@ -96,6 +104,9 @@ export interface RemoteProject {
   paymentStatus?: RemoteProjectPaymentStatus;
   paymentDetails?: PaymentDetails;
 
+  // Deliverable download lock (vendor-controlled)
+  downloadLock?: ProjectDownloadLock;
+
   // Customer Info
   customerName?: string;
   customerEmail?: string;
@@ -124,8 +135,30 @@ export interface ProjectFile {
   description?: string;
   revisionNumber?: number;
 
+  // Waveform peaks for the player
+  waveformStatus?: ProjectFileWaveformStatus;
+  waveform?: ProjectFileWaveform;
+  waveformError?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export type ProjectFileWaveformStatus =
+  | 'pending'
+  | 'processing'
+  | 'ready'
+  | 'failed'
+  | 'unsupported';
+
+export interface ProjectFileWaveform {
+  version: number;
+  /** Normalized peaks, 0–255, one per bucket across the whole track. */
+  peaks: number[];
+  durationMs?: number;
+  sampleRate?: number;
+  channels?: number;
+  generatedAt: Date;
 }
 
 export type ProjectMessageSenderRole =
@@ -143,10 +176,15 @@ export interface ProjectMessage {
   message: string;
   attachmentIds?: string[];
 
-  /** Project file this cue refers to (time-coded comment). */
+  /** Project file this comment belongs to (per-track thread). */
   fileId?: string;
-  /** Playback offset in seconds. */
+  /** Playback offset in seconds (time-coded comment). */
   offsetSeconds?: number;
+  /** Parent comment when this is a threaded reply. */
+  parentId?: string;
+  /** Set when a track comment has been marked as resolved. */
+  resolvedAt?: Date;
+  resolvedBy?: string;
 
   readAt?: Date;
   createdAt?: Date;

@@ -40,11 +40,16 @@ router.patch('/:projectId/request-revision', remoteProjectHandler.requestRevisio
 router.patch('/:projectId/complete', remoteProjectHandler.completeProject);
 router.patch('/:projectId/cancel', remoteProjectHandler.cancelProject);
 
+// Deliverable download lock (vendor)
+router.patch('/:projectId/download-lock', remoteProjectHandler.setDownloadLock);
+router.post('/:projectId/download-lock/release', remoteProjectHandler.releaseDownloads);
+
 // Project Files
 router.post('/:projectId/files/upload-url', projectFileHandler.getUploadUrl);
 router.post('/:projectId/files', projectFileHandler.registerFile);
 router.get('/:projectId/files', projectFileHandler.getProjectFiles);
 router.get('/:projectId/files/:fileId/download', projectFileHandler.getDownloadUrl);
+router.get('/:projectId/files/:fileId/waveform', projectFileHandler.getWaveform);
 router.get('/:projectId/files/:fileId/audio-meta', projectFileHandler.getAudioMeta);
 router.delete('/:projectId/files/:fileId', projectFileHandler.deleteFile);
 
@@ -52,5 +57,6 @@ router.delete('/:projectId/files/:fileId', projectFileHandler.deleteFile);
 router.get('/:projectId/messages', projectMessageHandler.getMessages);
 router.post('/:projectId/messages', projectMessageHandler.sendMessage);
 router.patch('/:projectId/messages/read', projectMessageHandler.markAsRead);
+router.patch('/:projectId/messages/:messageId/resolve', projectMessageHandler.setResolved);
 
 export default router;

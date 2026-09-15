@@ -24,7 +24,7 @@ interface AuthRequest extends Request {
  */
 const getMessages = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { page: pageStr, limit: limitStr, since } = req.query;
+  const { page: pageStr, limit: limitStr, since, fileId: fileIdFilter } = req.query;
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
@@ -33,13 +33,24 @@ const getMessages = handleRequest(async (req: Request) => {
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
 
   const page = Math.max(1, parseInt(pageStr as string) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 50));
+  const limit = Math.min(500, Math.max(1, parseInt(limitStr as string) || 50));
   const skip = (page - 1) * limit;
 
   const filter: Record<string, unknown> = { projectId: projectObjectId };
 
   if (since) {
     filter.createdAt = { $gt: new Date(since as string) };
+  }
+
+  // Per-track thread: `fileId=<id>`; general chat only: `fileId=none`
+  if (typeof fileIdFilter === 'string' && fileIdFilter) {
+    if (fileIdFilter === 'none') {
+      filter.fileId = { $exists: false };
+    } else if (mongoose.Types.ObjectId.isValid(fileIdFilter)) {
+      filter.fileId = new mongoose.Types.ObjectId(fileIdFilter);
+    } else {
+      throw new ExpressError('Invalid file ID filter', 400);
+    }
   }
 
   const [messages, total] = await Promise.all([
@@ -70,30 +81,32 @@ const getMessages = handleRequest(async (req: Request) => {
  */
 const sendMessage = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
-  const { message, attachmentIds, fileId, offsetSeconds } = req.body;
+  const { message, attachmentIds, offsetSeconds, parentId } = req.body;
+  let { fileId } = req.body;
   const senderId = getAuthUserId(req as AuthRequest);
 
   if (!message || message.trim() === '') {
     throw new ExpressError('Message content is required', 400);
   }
 
-  const hasCue =
-    fileId !== undefined &&
-    fileId !== null &&
-    fileId !== '' &&
-    offsetSeconds !== undefined &&
-    offsetSeconds !== null;
+  const hasFile = fileId !== undefined && fileId !== null && fileId !== '';
+  const hasOffset = offsetSeconds !== undefined && offsetSeconds !== null && offsetSeconds !== '';
+  const hasParent = parentId !== undefined && parentId !== null && parentId !== '';
 
-  if (hasCue) {
-    if (!mongoose.Types.ObjectId.isValid(fileId)) {
-      throw new ExpressError('Invalid file ID', 400);
+  if (hasFile && !mongoose.Types.ObjectId.isValid(fileId)) {
+    throw new ExpressError('Invalid file ID', 400);
+  }
+  if (hasOffset) {
+    if (!hasFile && !hasParent) {
+      throw new ExpressError('Time-coded comments require a fileId', 400);
     }
     const offset = Number(offsetSeconds);
     if (!Number.isFinite(offset) || offset < 0) {
       throw new ExpressError('offsetSeconds must be a non-negative number', 400);
     }
-  } else if (fileId || offsetSeconds !== undefined) {
-    throw new ExpressError('Time-coded comments require both fileId and offsetSeconds', 400);
+  }
+  if (hasParent && !mongoose.Types.ObjectId.isValid(parentId)) {
+    throw new ExpressError('Invalid parent message ID', 400);
   }
 
   const project = await RemoteProjectModel.findById(projectId);
@@ -112,7 +125,25 @@ const sendMessage = handleRequest(async (req: Request) => {
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
 
-  if (hasCue) {
+  // Replies inherit the parent's track so a thread never straddles files.
+  if (hasParent) {
+    const parent = await ProjectMessageModel.findOne({ _id: parentId, projectId: projectObjectId });
+    if (!parent) throw new ExpressError('Parent message not found on this project', 404);
+    if (parent.parentId) {
+      throw new ExpressError('Replies can only be one level deep', 400);
+    }
+    if (!parent.fileId) {
+      throw new ExpressError('Only track comments can have threaded replies', 400);
+    }
+    if (hasFile && String(parent.fileId) !== String(fileId)) {
+      throw new ExpressError('Reply must belong to the same track as its parent', 400);
+    }
+    fileId = String(parent.fileId);
+  }
+
+  const resolvedHasFile = fileId !== undefined && fileId !== null && fileId !== '';
+
+  if (resolvedHasFile) {
     const file = await ProjectFileModel.findOne({
       _id: fileId,
       projectId: projectObjectId
@@ -126,19 +157,66 @@ const sendMessage = handleRequest(async (req: Request) => {
     senderRole,
     message: message.trim(),
     attachmentIds: attachmentIds || [],
-    ...(hasCue ? { fileId, offsetSeconds: Number(offsetSeconds) } : {})
+    ...(resolvedHasFile ? { fileId } : {}),
+    ...(resolvedHasFile && hasOffset ? { offsetSeconds: Number(offsetSeconds) } : {}),
+    ...(hasParent ? { parentId } : {})
   });
 
   await projectMessage.save();
 
   await projectMessage.populate('senderId', 'name imgUrl');
-  if (hasCue) {
+  if (resolvedHasFile) {
     await projectMessage.populate('fileId', 'fileName fileSize mimeType');
   }
 
   emitProjectMessageUpdate(getProjectParticipantIds(project), projectId);
 
   return projectMessage;
+});
+
+/**
+ * Mark a track comment as resolved / unresolved
+ * PATCH /api/remote-projects/:projectId/messages/:messageId/resolve  { resolved: boolean }
+ */
+const setResolved = handleRequest(async (req: Request) => {
+  const { projectId, messageId } = req.params;
+  const { resolved } = req.body;
+  const userId = getAuthUserId(req as AuthRequest);
+
+  if (typeof resolved !== 'boolean') {
+    throw new ExpressError('resolved must be a boolean', 400);
+  }
+  if (!mongoose.Types.ObjectId.isValid(messageId)) {
+    throw new ExpressError('Invalid message ID', 400);
+  }
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  // Resolving review feedback is a vendor-side moderation action.
+  assertProjectAccess(project, userId, 'update_metadata');
+
+  const projectObjectId = new mongoose.Types.ObjectId(projectId);
+  const msg = await ProjectMessageModel.findOne({ _id: messageId, projectId: projectObjectId });
+  if (!msg) throw new ExpressError('Message not found', 404);
+  if (!msg.fileId) throw new ExpressError('Only track comments can be resolved', 400);
+  if (msg.parentId) throw new ExpressError('Resolve the top-level comment instead', 400);
+
+  if (resolved) {
+    msg.resolvedAt = new Date();
+    msg.resolvedBy = userId;
+  } else {
+    msg.resolvedAt = undefined;
+    msg.resolvedBy = undefined;
+  }
+  await msg.save();
+
+  emitProjectMessageUpdate(getProjectParticipantIds(project), projectId);
+
+  return {
+    _id: msg._id,
+    resolvedAt: msg.resolvedAt ?? null,
+    resolvedBy: msg.resolvedBy ?? null
+  };
 });
 
 /**
@@ -194,5 +272,6 @@ export async function getUnreadCount(
 export default {
   getMessages,
   sendMessage,
+  setResolved,
   markAsRead
 };

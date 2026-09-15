@@ -129,6 +129,21 @@ const RemoteProjectSchema = new mongoose.Schema(
     },
     paymentDetails: { type: paymentDetailsSchema, required: false },
 
+    // Deliverable download lock (vendor-controlled). While locked, customer-side
+    // users can stream deliverables but cannot download them until the project
+    // is completed/paid or the vendor releases them manually.
+    downloadLock: {
+      type: new Schema(
+        {
+          enabled: { type: Boolean, default: false },
+          releasedAt: { type: Date, required: false },
+          releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+        },
+        { _id: false }
+      ),
+      required: false,
+    },
+
     // Customer Info
     customerName: { type: String, required: false },
     customerEmail: { type: String, required: false },

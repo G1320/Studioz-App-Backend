@@ -196,3 +196,43 @@ export function sameSideSenderRoles(side: ProjectSide): ProjectSenderRole[] {
 
 export const COLLABORATOR_CAP_PER_SIDE = 10;
 export const INVITE_TTL_DAYS = 14;
+
+// ============================================================
+// Deliverable download lock
+// ============================================================
+
+type DownloadLockProjectLike = {
+  status?: string;
+  paymentStatus?: string;
+  downloadLock?: { enabled?: boolean; releasedAt?: Date | string | null } | null;
+};
+
+/** File types the lock applies to (customer source uploads are never locked). */
+export const LOCKABLE_FILE_TYPES = ['deliverable', 'revision'] as const;
+
+/**
+ * True while the vendor's lock is in force: enabled, not manually released,
+ * and the project has not been approved (completed) or fully paid.
+ */
+export function isDeliverableDownloadLocked(project: DownloadLockProjectLike): boolean {
+  const lock = project.downloadLock;
+  if (!lock?.enabled) return false;
+  if (lock.releasedAt) return false;
+  if (project.status === 'completed') return false;
+  if (project.paymentStatus === 'fully_paid') return false;
+  return true;
+}
+
+/**
+ * Whether this user may download a given file. Vendor-side users always can;
+ * customer-side users are gated on deliverables/revisions while the lock is active.
+ */
+export function canDownloadProjectFile(
+  project: DownloadLockProjectLike,
+  access: Pick<ProjectAccess, 'side'>,
+  fileType: string
+): boolean {
+  if (access.side === 'vendor') return true;
+  if (!(LOCKABLE_FILE_TYPES as readonly string[]).includes(fileType)) return true;
+  return !isDeliverableDownloadLocked(project);
+}
