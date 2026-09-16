@@ -12,10 +12,12 @@ import { FRONTEND_URL } from '../../config/index.js';
 import {
   assertProjectAccess,
   getAuthUserId,
+  getProjectParticipantIds,
   COLLABORATOR_CAP_PER_SIDE,
   INVITE_TTL_DAYS,
   type ProjectSide
 } from '../../services/projectAccessService.js';
+import { emitProjectStatusUpdate } from '../../webSockets/socket.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -165,6 +167,7 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
     side,
     token: rawToken
   });
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return {
     invite: {
@@ -236,8 +239,10 @@ const removeCollaborator = handleRequest(async (req: Request) => {
     throw new ExpressError('Forbidden', 403);
   }
 
+  const participants = getProjectParticipantIds(project);
   target.status = 'removed';
   await project.save();
+  emitProjectStatusUpdate(participants, projectId, project.status);
 
   return { removed: true };
 });
@@ -265,6 +270,7 @@ const revokeInvite = handleRequest(async (req: Request) => {
 
   invite.status = 'revoked';
   await invite.save();
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
 
   return { revoked: true };
 });
@@ -358,6 +364,7 @@ const acceptInvite = handleRequest(async (req: Request) => {
     invite.acceptedUserId = user._id as any;
     invite.acceptedAt = new Date();
     await invite.save();
+    emitProjectStatusUpdate(getProjectParticipantIds(project), String(project._id), project.status);
     return { projectId: project._id, alreadyMember: true };
   }
 
@@ -395,6 +402,7 @@ const acceptInvite = handleRequest(async (req: Request) => {
   invite.acceptedUserId = user._id as any;
   invite.acceptedAt = new Date();
   await invite.save();
+  emitProjectStatusUpdate(getProjectParticipantIds(project), String(project._id), project.status);
 
   return { projectId: project._id, alreadyMember: false };
 });
