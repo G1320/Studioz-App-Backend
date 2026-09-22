@@ -21,15 +21,14 @@ router.post('/', remoteProjectHandler.createProject);
 router.get('/', remoteProjectHandler.getProjects);
 router.get('/:projectId', remoteProjectHandler.getProjectById);
 router.patch('/:projectId', remoteProjectHandler.updateProject);
+router.post('/:projectId/artwork/upload-url', remoteProjectHandler.getArtworkUploadUrl);
+router.patch('/:projectId/artwork', remoteProjectHandler.updateProjectArtwork);
 
 // Collaborators
 router.post('/:projectId/collaborators/invite', projectCollaboratorHandler.inviteCollaborator);
 router.get('/:projectId/collaborators', projectCollaboratorHandler.listCollaborators);
 router.delete('/:projectId/collaborators/:userId', projectCollaboratorHandler.removeCollaborator);
-router.post(
-  '/:projectId/collaborators/invites/:inviteId/revoke',
-  projectCollaboratorHandler.revokeInvite
-);
+router.post('/:projectId/collaborators/invites/:inviteId/revoke', projectCollaboratorHandler.revokeInvite);
 
 // Project Workflow Actions
 router.patch('/:projectId/accept', remoteProjectHandler.acceptProject);

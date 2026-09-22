@@ -4,7 +4,7 @@ import { RemoteProject } from '../types/remoteProject.js';
 const translationSchema = new Schema(
   {
     en: { type: String, required: false },
-    he: { type: String, required: false },
+    he: { type: String, required: false }
   },
   { _id: false }
 );
@@ -22,7 +22,7 @@ const paymentDetailsSchema = new mongoose.Schema(
     failureReason: { type: String },
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     refundId: { type: String },
-    refundedAt: { type: Date },
+    refundedAt: { type: Date }
   },
   { _id: false }
 );
@@ -33,22 +33,22 @@ const RemoteProjectSchema = new mongoose.Schema(
     itemId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Item',
-      required: true,
+      required: true
     },
     studioId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Studio',
-      required: true,
+      required: true
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: true
     },
     vendorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: true
     },
 
     collaborators: [
@@ -56,32 +56,33 @@ const RemoteProjectSchema = new mongoose.Schema(
         userId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
-          required: true,
+          required: true
         },
         side: {
           type: String,
           enum: ['customer', 'vendor'],
-          required: true,
+          required: true
         },
         invitedBy: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
-          required: true,
+          required: true
         },
         joinedAt: { type: Date, required: true, default: Date.now },
         status: {
           type: String,
           enum: ['active', 'removed'],
-          default: 'active',
+          default: 'active'
         },
-        _id: false,
-      },
+        _id: false
+      }
     ],
 
     // Project Details
     title: { type: String, required: true },
     brief: { type: String, required: true },
     referenceLinks: [{ type: String }],
+    artworkStorageKey: { type: String, required: false },
 
     // Item snapshot (for historical accuracy)
     itemName: { type: translationSchema, required: false },
@@ -116,16 +117,16 @@ const RemoteProjectSchema = new mongoose.Schema(
         'revision_requested',
         'completed',
         'cancelled',
-        'declined',
+        'declined'
       ],
-      default: 'requested',
+      default: 'requested'
     },
 
     // Payment (reuse existing structure from reservations)
     paymentStatus: {
       type: String,
       enum: ['pending', 'card_saved', 'deposit_paid', 'fully_paid', 'refunded'],
-      required: false,
+      required: false
     },
     paymentDetails: { type: paymentDetailsSchema, required: false },
 
@@ -137,17 +138,17 @@ const RemoteProjectSchema = new mongoose.Schema(
         {
           enabled: { type: Boolean, default: false },
           releasedAt: { type: Date, required: false },
-          releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+          releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }
         },
         { _id: false }
       ),
-      required: false,
+      required: false
     },
 
     // Customer Info
     customerName: { type: String, required: false },
     customerEmail: { type: String, required: false },
-    customerPhone: { type: String, required: false },
+    customerPhone: { type: String, required: false }
   },
   { timestamps: true }
 );
@@ -163,7 +164,6 @@ RemoteProjectSchema.index({ deadline: 1 });
 RemoteProjectSchema.index({ createdAt: -1 });
 
 const RemoteProjectModel: Model<RemoteProject & Document> =
-  mongoose.models.RemoteProject ||
-  mongoose.model<RemoteProject & Document>('RemoteProject', RemoteProjectSchema);
+  mongoose.models.RemoteProject || mongoose.model<RemoteProject & Document>('RemoteProject', RemoteProjectSchema);
 
 export { RemoteProjectModel };

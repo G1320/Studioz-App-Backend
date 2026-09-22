@@ -10,14 +10,11 @@ export type ProjectAccessAction =
   | 'customer_workflow'
   | 'vendor_workflow'
   | 'update_metadata'
+  | 'update_artwork'
   | 'invite'
   | 'pay';
 
-export type ProjectSenderRole =
-  | 'customer'
-  | 'vendor'
-  | 'customer_collaborator'
-  | 'vendor_collaborator';
+export type ProjectSenderRole = 'customer' | 'vendor' | 'customer_collaborator' | 'vendor_collaborator';
 
 export interface ProjectAccess {
   userId: string;
@@ -31,6 +28,7 @@ export interface ProjectAccess {
   canCustomerWorkflow: boolean;
   canVendorWorkflow: boolean;
   canUpdateMetadata: boolean;
+  canUpdateArtwork: boolean;
   canInvite: boolean;
   canPay: boolean;
 }
@@ -55,9 +53,7 @@ function idStr(value: unknown): string {
 /** Active collaborator entry for this user, if any. */
 export function findActiveCollaborator(project: ProjectLike, userId: string) {
   const uid = String(userId);
-  return (project.collaborators || []).find(
-    (c) => c.status !== 'removed' && idStr(c.userId) === uid
-  );
+  return (project.collaborators || []).find((c) => c.status !== 'removed' && idStr(c.userId) === uid);
 }
 
 /** Resolve access for a user on a project. Throws 403 if not a participant. */
@@ -83,6 +79,7 @@ export function resolveProjectAccess(project: ProjectLike, userId: string): Proj
       canCustomerWorkflow: true,
       canVendorWorkflow: false,
       canUpdateMetadata: false,
+      canUpdateArtwork: true,
       canInvite: true,
       canPay: true
     };
@@ -101,6 +98,7 @@ export function resolveProjectAccess(project: ProjectLike, userId: string): Proj
       canCustomerWorkflow: false,
       canVendorWorkflow: true,
       canUpdateMetadata: true,
+      canUpdateArtwork: true,
       canInvite: true,
       canPay: false
     };
@@ -122,6 +120,7 @@ export function resolveProjectAccess(project: ProjectLike, userId: string): Proj
       canCustomerWorkflow: isCustomerSide,
       canVendorWorkflow: !isCustomerSide,
       canUpdateMetadata: !isCustomerSide,
+      canUpdateArtwork: true,
       canInvite: false,
       canPay: false
     };
@@ -144,6 +143,7 @@ export function assertProjectAccess(
     (action === 'customer_workflow' && access.canCustomerWorkflow) ||
     (action === 'vendor_workflow' && access.canVendorWorkflow) ||
     (action === 'update_metadata' && access.canUpdateMetadata) ||
+    (action === 'update_artwork' && access.canUpdateArtwork) ||
     (action === 'invite' && access.canInvite) ||
     (action === 'pay' && access.canPay);
 

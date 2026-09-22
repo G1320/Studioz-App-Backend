@@ -4,7 +4,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
-  ListObjectsV2Command,
+  ListObjectsV2Command
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -26,11 +26,11 @@ const r2Client = new S3Client({
   endpoint: R2_ENDPOINT,
   credentials: {
     accessKeyId: R2_ACCESS_KEY_ID || '',
-    secretAccessKey: R2_SECRET_ACCESS_KEY || '',
+    secretAccessKey: R2_SECRET_ACCESS_KEY || ''
   },
   // Disable SDK checksums for R2 compatibility (prevents CORS issues)
   requestChecksumCalculation: 'WHEN_REQUIRED',
-  responseChecksumValidation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED'
 });
 
 /**
@@ -62,22 +62,19 @@ export function generateStorageKey(
 /**
  * Storage key for a public studio portfolio exhibit file.
  */
-export function generateStudioPortfolioStorageKey(
-  studioId: string,
-  fileName: string,
-  fileId: string
-): string {
+export function generateStudioPortfolioStorageKey(studioId: string, fileName: string, fileId: string): string {
   const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
   return `studios/${studioId}/portfolio/${fileId}-${sanitizedName}`;
 }
 
-export function generateStudioPortfolioCoverKey(
-  studioId: string,
-  fileId: string,
-  extension: string
-): string {
+export function generateStudioPortfolioCoverKey(studioId: string, fileId: string, extension: string): string {
   const ext = extension.replace(/^\./, '').toLowerCase() || 'jpg';
   return `studios/${studioId}/portfolio/${fileId}-cover.${ext}`;
+}
+
+export function generateProjectArtworkStorageKey(projectId: string, fileId: string, extension: string): string {
+  const ext = extension.replace(/^\./, '').toLowerCase() || 'jpg';
+  return `${projectId}/artwork/${fileId}.${ext}`;
 }
 
 /**
@@ -99,11 +96,11 @@ export async function getUploadUrl(
   // Simple PUT command without content constraints for better R2 CORS compatibility
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
-    Key: storageKey,
+    Key: storageKey
   });
 
   const uploadUrl = await getSignedUrl(r2Client, command, {
-    expiresIn: UPLOAD_URL_EXPIRY,
+    expiresIn: UPLOAD_URL_EXPIRY
   });
 
   return { uploadUrl, storageKey };
@@ -119,10 +116,7 @@ export interface DownloadUrlOptions {
 /**
  * Generate a presigned URL for downloading a file from R2
  */
-export async function getDownloadUrl(
-  storageKey: string,
-  options: DownloadUrlOptions = {}
-): Promise<string> {
+export async function getDownloadUrl(storageKey: string, options: DownloadUrlOptions = {}): Promise<string> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
@@ -130,11 +124,11 @@ export async function getDownloadUrl(
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
-    ...(options.inline ? { ResponseContentDisposition: 'inline' } : {}),
+    ...(options.inline ? { ResponseContentDisposition: 'inline' } : {})
   });
 
   const downloadUrl = await getSignedUrl(r2Client, command, {
-    expiresIn: options.expiresIn ?? DOWNLOAD_URL_EXPIRY,
+    expiresIn: options.expiresIn ?? DOWNLOAD_URL_EXPIRY
   });
 
   return downloadUrl;
@@ -152,7 +146,7 @@ export async function getObjectStream(storageKey: string): Promise<NodeJS.Readab
 
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
-    Key: storageKey,
+    Key: storageKey
   });
 
   const response = await r2Client.send(command);
@@ -173,7 +167,7 @@ export async function getObjectBuffer(storageKey: string): Promise<Buffer> {
 
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
-    Key: storageKey,
+    Key: storageKey
   });
 
   const response = await r2Client.send(command);
@@ -196,7 +190,7 @@ export async function fileExists(storageKey: string): Promise<boolean> {
   try {
     const command = new HeadObjectCommand({
       Bucket: R2_BUCKET_NAME,
-      Key: storageKey,
+      Key: storageKey
     });
     await r2Client.send(command);
     return true;
@@ -218,17 +212,13 @@ export async function deleteFile(storageKey: string): Promise<void> {
 
   const command = new DeleteObjectCommand({
     Bucket: R2_BUCKET_NAME,
-    Key: storageKey,
+    Key: storageKey
   });
 
   await r2Client.send(command);
 }
 
-export async function putObject(
-  storageKey: string,
-  body: Buffer,
-  contentType: string
-): Promise<void> {
+export async function putObject(storageKey: string, body: Buffer, contentType: string): Promise<void> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
@@ -237,7 +227,7 @@ export async function putObject(
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
     Body: body,
-    ContentType: contentType,
+    ContentType: contentType
   });
 
   await r2Client.send(command);
@@ -259,7 +249,7 @@ export async function deleteProjectFiles(projectId: string): Promise<void> {
     const command = new ListObjectsV2Command({
       Bucket: R2_BUCKET_NAME,
       Prefix: prefix,
-      ContinuationToken: continuationToken,
+      ContinuationToken: continuationToken
     });
 
     const response = await r2Client.send(command);
@@ -288,12 +278,12 @@ export async function getFileMetadata(
   try {
     const command = new HeadObjectCommand({
       Bucket: R2_BUCKET_NAME,
-      Key: storageKey,
+      Key: storageKey
     });
     const response = await r2Client.send(command);
     return {
       contentLength: response.ContentLength || 0,
-      contentType: response.ContentType || 'application/octet-stream',
+      contentType: response.ContentType || 'application/octet-stream'
     };
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'name' in error && error.name === 'NotFound') {
@@ -306,11 +296,7 @@ export async function getFileMetadata(
 /**
  * Fetch a byte range from an R2 object (for audio header / metadata parsing).
  */
-export async function getObjectByteRange(
-  storageKey: string,
-  start: number,
-  end: number
-): Promise<Buffer> {
+export async function getObjectByteRange(storageKey: string, start: number, end: number): Promise<Buffer> {
   if (!isStorageConfigured()) {
     throw new Error('R2 storage is not configured');
   }
@@ -318,7 +304,7 @@ export async function getObjectByteRange(
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
-    Range: `bytes=${start}-${end}`,
+    Range: `bytes=${start}-${end}`
   });
 
   const response = await r2Client.send(command);

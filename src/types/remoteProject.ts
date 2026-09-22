@@ -10,12 +10,7 @@ export type RemoteProjectStatus =
   | 'cancelled'
   | 'declined';
 
-export type RemoteProjectPaymentStatus =
-  | 'pending'
-  | 'card_saved'
-  | 'deposit_paid'
-  | 'fully_paid'
-  | 'refunded';
+export type RemoteProjectPaymentStatus = 'pending' | 'card_saved' | 'deposit_paid' | 'fully_paid' | 'refunded';
 
 export type ProjectSide = 'customer' | 'vendor';
 
@@ -68,6 +63,8 @@ export interface RemoteProject {
   title: string;
   brief: string;
   referenceLinks?: string[];
+  artworkStorageKey?: string;
+  artworkUrl?: string;
 
   // Item snapshot (for historical accuracy)
   itemName?: {
@@ -144,12 +141,7 @@ export interface ProjectFile {
   updatedAt?: Date;
 }
 
-export type ProjectFileWaveformStatus =
-  | 'pending'
-  | 'processing'
-  | 'ready'
-  | 'failed'
-  | 'unsupported';
+export type ProjectFileWaveformStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'unsupported';
 
 export interface ProjectFileWaveform {
   version: number;
@@ -161,11 +153,7 @@ export interface ProjectFileWaveform {
   generatedAt: Date;
 }
 
-export type ProjectMessageSenderRole =
-  | 'customer'
-  | 'vendor'
-  | 'customer_collaborator'
-  | 'vendor_collaborator';
+export type ProjectMessageSenderRole = 'customer' | 'vendor' | 'customer_collaborator' | 'vendor_collaborator';
 
 export interface ProjectMessage {
   _id: string;

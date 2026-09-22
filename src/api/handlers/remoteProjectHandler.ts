@@ -15,8 +15,21 @@ import {
   assertProjectAccess,
   getAuthUserId,
   getProjectParticipantIds,
-  isDeliverableDownloadLocked,
+  isDeliverableDownloadLocked
 } from '../../services/projectAccessService.js';
+import {
+  deleteFile as deleteStorageFile,
+  fileExists,
+  generateProjectArtworkStorageKey,
+  getDownloadUrl as getStorageDownloadUrl,
+  getUploadUrl as getStorageUploadUrl,
+  isStorageConfigured
+} from '../../services/storageService.js';
+import {
+  REMOTE_PROJECT_ARTWORK_MAX_FILE_SIZE_MB,
+  REMOTE_PROJECT_ARTWORK_MIME_TYPES,
+  REMOTE_PROJECT_ARTWORK_TYPES
+} from '../../constants/remoteProjectArtworkLimits.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -33,12 +46,26 @@ function asUserObjectId(id: string): mongoose.Types.ObjectId | string {
 function participantMatchFilter(userId: string) {
   const id = asUserObjectId(userId);
   return {
-    $or: [
-      { customerId: id },
-      { vendorId: id },
-      { collaborators: { $elemMatch: { userId: id, status: 'active' } } },
-    ],
+    $or: [{ customerId: id }, { vendorId: id }, { collaborators: { $elemMatch: { userId: id, status: 'active' } } }]
   };
+}
+
+async function attachArtworkUrl(project: { artworkStorageKey?: string; toObject?: () => Record<string, unknown> }) {
+  const payload = (typeof project.toObject === 'function' ? project.toObject() : { ...project }) as Record<
+    string,
+    unknown
+  > & { artworkStorageKey?: string; artworkUrl?: string };
+
+  if (payload.artworkStorageKey && isStorageConfigured()) {
+    try {
+      payload.artworkUrl = await getStorageDownloadUrl(payload.artworkStorageKey, { inline: true });
+    } catch (error) {
+      console.error('Failed to sign project artwork URL:', error);
+    }
+  }
+
+  delete payload.artworkStorageKey;
+  return payload;
 }
 
 // Project status constants
@@ -50,7 +77,7 @@ export const PROJECT_STATUS = {
   REVISION_REQUESTED: 'revision_requested',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
-  DECLINED: 'declined',
+  DECLINED: 'declined'
 } as const;
 
 /**
@@ -71,7 +98,7 @@ const createProject = handleRequest(async (req: Request) => {
     customerPhone,
     singleUseToken,
     useSavedCard,
-    sumitCustomerId,
+    sumitCustomerId
   } = req.body;
 
   if (!itemId) throw new ExpressError('Item ID is required', 400);
@@ -143,13 +170,13 @@ const createProject = handleRequest(async (req: Request) => {
 
     // Deliverable download lock — default from the service's settings
     downloadLock: {
-      enabled: Boolean(projectPricing.lockDownloadsUntilPaid),
+      enabled: Boolean(projectPricing.lockDownloadsUntilPaid)
     },
 
     // Customer info
     customerName,
     customerEmail,
-    customerPhone,
+    customerPhone
   });
 
   // Handle payment: save card for later charging on vendor accept
@@ -163,14 +190,14 @@ const createProject = handleRequest(async (req: Request) => {
         customerInfo: {
           name: customerName || 'Customer',
           email: customerEmail || '',
-          phone: customerPhone || '',
+          phone: customerPhone || ''
         },
         vendorId: vendorId.toString(),
         userId: customerId,
         amount: depositAmount || projectPricing.basePrice,
         itemName: title,
         instantCharge: false,
-        studioId: studio._id?.toString(),
+        studioId: studio._id?.toString()
       });
 
       if (paymentResult) {
@@ -188,7 +215,7 @@ const createProject = handleRequest(async (req: Request) => {
         sumitCustomerId: resolvedSumitId,
         amount: depositAmount || projectPricing.basePrice,
         currency: 'ILS',
-        vendorId: vendorId.toString(),
+        vendorId: vendorId.toString()
       };
     }
   }
@@ -209,15 +236,7 @@ const getProjects = handleRequest(async (req: Request) => {
   const jwtPayload = authReq.decodedJwt as { _id?: string; userId?: string; sub?: string } | undefined;
   const authUserId = jwtPayload?.userId || jwtPayload?._id || jwtPayload?.sub;
 
-  const {
-    customerId,
-    vendorId,
-    participantId,
-    studioId,
-    status,
-    page: pageStr,
-    limit: limitStr,
-  } = req.query;
+  const { customerId, vendorId, participantId, studioId, status, page: pageStr, limit: limitStr } = req.query;
 
   // Pagination
   const page = Math.max(1, parseInt(pageStr as string) || 1);
@@ -255,17 +274,18 @@ const getProjects = handleRequest(async (req: Request) => {
       .limit(limit)
       .populate('itemId', 'name imgUrl')
       .populate('studioId', 'name'),
-    RemoteProjectModel.countDocuments(filter),
+    RemoteProjectModel.countDocuments(filter)
   ]);
+  const projectsWithArtwork = await Promise.all(projects.map((project) => attachArtworkUrl(project)));
 
   return {
-    projects,
+    projects: projectsWithArtwork,
     pagination: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
-    },
+      totalPages: Math.ceil(total / limit)
+    }
   };
 });
 
@@ -297,7 +317,7 @@ const getProjectById = handleRequest(async (req: Request) => {
   // Also get file counts
   const fileCounts = await ProjectFileModel.aggregate([
     { $match: { projectId: new mongoose.Types.ObjectId(projectId) } },
-    { $group: { _id: '$type', count: { $sum: 1 } } },
+    { $group: { _id: '$type', count: { $sum: 1 } } }
   ]);
 
   const fileCountsByType = fileCounts.reduce(
@@ -309,9 +329,10 @@ const getProjectById = handleRequest(async (req: Request) => {
   );
 
   const deliverablesLocked = isDeliverableDownloadLocked(project);
+  const projectWithArtwork = await attachArtworkUrl(project);
 
   return {
-    project,
+    project: projectWithArtwork,
     fileCounts: fileCountsByType,
     deliverablesLocked,
     access: {
@@ -324,11 +345,12 @@ const getProjectById = handleRequest(async (req: Request) => {
       canCustomerWorkflow: access.canCustomerWorkflow,
       canVendorWorkflow: access.canVendorWorkflow,
       canUpdateMetadata: access.canUpdateMetadata,
+      canUpdateArtwork: access.canUpdateArtwork,
       canChat: access.canChat,
       canFiles: access.canFiles,
       canDownloadDeliverables: access.side === 'vendor' || !deliverablesLocked,
-      canManageDownloadLock: access.canUpdateMetadata,
-    },
+      canManageDownloadLock: access.canUpdateMetadata
+    }
   };
 });
 
@@ -344,19 +366,12 @@ const acceptProject = handleRequest(async (req: Request) => {
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.REQUESTED) {
-    throw new ExpressError(
-      `Cannot accept project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot accept project with status: ${project.status}`, 400);
   }
 
   // Charge deposit if card was saved and there's an amount to charge
   const chargeAmount = project.depositAmount || project.price;
-  if (
-    project.paymentStatus === 'card_saved' &&
-    project.paymentDetails?.sumitCustomerId &&
-    chargeAmount > 0
-  ) {
+  if (project.paymentStatus === 'card_saved' && project.paymentDetails?.sumitCustomerId && chargeAmount > 0) {
     const credentials = await paymentService.getVendorCredentials(project.vendorId.toString());
     if (!credentials) {
       throw new ExpressError('Vendor payment credentials not configured', 402);
@@ -371,15 +386,12 @@ const acceptProject = handleRequest(async (req: Request) => {
       {
         email: project.customerEmail || customer?.email,
         name: project.customerName || customer?.name,
-        phone: project.customerPhone || (customer as any)?.phone,
+        phone: project.customerPhone || (customer as any)?.phone
       }
     );
 
     if (!chargeResult.success) {
-      throw new ExpressError(
-        `Deposit charge failed: ${chargeResult.error || 'Payment declined'}`,
-        402
-      );
+      throw new ExpressError(`Deposit charge failed: ${chargeResult.error || 'Payment declined'}`, 402);
     }
 
     project.paymentStatus = 'deposit_paid';
@@ -388,7 +400,7 @@ const acceptProject = handleRequest(async (req: Request) => {
       ...project.paymentDetails,
       sumitPaymentId: chargeResult.paymentId,
       chargedAt: new Date(),
-      amount: chargeAmount,
+      amount: chargeAmount
     } as any;
 
     platformFeeService.recordFee({
@@ -396,7 +408,7 @@ const acceptProject = handleRequest(async (req: Request) => {
       transactionAmount: chargeAmount,
       transactionType: 'remote_project',
       studioId: project.studioId?.toString(),
-      sumitPaymentId: chargeResult.paymentId,
+      sumitPaymentId: chargeResult.paymentId
     });
   }
 
@@ -427,10 +439,7 @@ const declineProject = handleRequest(async (req: Request) => {
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.REQUESTED) {
-    throw new ExpressError(
-      `Cannot decline project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot decline project with status: ${project.status}`, 400);
   }
 
   // Refund deposit if it was charged
@@ -439,9 +448,7 @@ const declineProject = handleRequest(async (req: Request) => {
     project.paymentDetails?.sumitPaymentId &&
     project.paymentDetails?.vendorId
   ) {
-    const credentials = await paymentService.getVendorCredentials(
-      project.paymentDetails.vendorId.toString()
-    );
+    const credentials = await paymentService.getVendorCredentials(project.paymentDetails.vendorId.toString());
     if (credentials) {
       const refundResult = await paymentService.refundPayment(
         project.paymentDetails.sumitPaymentId,
@@ -454,7 +461,7 @@ const declineProject = handleRequest(async (req: Request) => {
         project.paymentDetails = {
           ...project.paymentDetails,
           refundId: refundResult.refundId,
-          refundedAt: new Date(),
+          refundedAt: new Date()
         } as any;
 
         if (project.paymentDetails?.sumitPaymentId) {
@@ -484,10 +491,7 @@ const startProject = handleRequest(async (req: Request) => {
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
   if (project.status !== PROJECT_STATUS.ACCEPTED) {
-    throw new ExpressError(
-      `Cannot start project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot start project with status: ${project.status}`, 400);
   }
 
   project.status = PROJECT_STATUS.IN_PROGRESS;
@@ -510,30 +514,20 @@ const deliverProject = handleRequest(async (req: Request) => {
   if (!project) throw new ExpressError('Project not found', 404);
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'vendor_workflow');
 
-  const allowedStatuses = [
-    PROJECT_STATUS.ACCEPTED,
-    PROJECT_STATUS.IN_PROGRESS,
-    PROJECT_STATUS.REVISION_REQUESTED,
-  ];
+  const allowedStatuses = [PROJECT_STATUS.ACCEPTED, PROJECT_STATUS.IN_PROGRESS, PROJECT_STATUS.REVISION_REQUESTED];
 
-  if (!allowedStatuses.includes(project.status as typeof allowedStatuses[number])) {
-    throw new ExpressError(
-      `Cannot deliver project with status: ${project.status}`,
-      400
-    );
+  if (!allowedStatuses.includes(project.status as (typeof allowedStatuses)[number])) {
+    throw new ExpressError(`Cannot deliver project with status: ${project.status}`, 400);
   }
 
   // Check that there are deliverable files
   const deliverableCount = await ProjectFileModel.countDocuments({
     projectId: project._id,
-    type: { $in: ['deliverable', 'revision'] },
+    type: { $in: ['deliverable', 'revision'] }
   });
 
   if (deliverableCount === 0) {
-    throw new ExpressError(
-      'Please upload deliverable files before marking as delivered',
-      400
-    );
+    throw new ExpressError('Please upload deliverable files before marking as delivered', 400);
   }
 
   project.status = PROJECT_STATUS.DELIVERED;
@@ -562,10 +556,7 @@ const requestRevision = handleRequest(async (req: Request) => {
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'customer_workflow');
 
   if (project.status !== PROJECT_STATUS.DELIVERED) {
-    throw new ExpressError(
-      `Cannot request revision for project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot request revision for project with status: ${project.status}`, 400);
   }
 
   // Paid revision: charge if free revisions are exhausted
@@ -605,15 +596,12 @@ const requestRevision = handleRequest(async (req: Request) => {
       {
         email: project.customerEmail || customer?.email,
         name: project.customerName || customer?.name,
-        phone: project.customerPhone || (customer as any)?.phone,
+        phone: project.customerPhone || (customer as any)?.phone
       }
     );
 
     if (!chargeResult.success) {
-      throw new ExpressError(
-        `Revision payment failed: ${chargeResult.error || 'Payment declined'}`,
-        402
-      );
+      throw new ExpressError(`Revision payment failed: ${chargeResult.error || 'Payment declined'}`, 402);
     }
 
     platformFeeService.recordFee({
@@ -621,7 +609,7 @@ const requestRevision = handleRequest(async (req: Request) => {
       transactionAmount: revisionPrice,
       transactionType: 'remote_project',
       studioId: project.studioId?.toString(),
-      sumitPaymentId: chargeResult.paymentId,
+      sumitPaymentId: chargeResult.paymentId
     });
   }
 
@@ -646,17 +634,11 @@ const completeProject = handleRequest(async (req: Request) => {
   assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'pay');
 
   if (project.status !== PROJECT_STATUS.DELIVERED) {
-    throw new ExpressError(
-      `Cannot complete project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot complete project with status: ${project.status}`, 400);
   }
 
   // Charge the remaining balance if deposit was already paid
-  if (
-    project.paymentStatus === 'deposit_paid' &&
-    project.paymentDetails?.sumitCustomerId
-  ) {
+  if (project.paymentStatus === 'deposit_paid' && project.paymentDetails?.sumitCustomerId) {
     const balance = project.price - (project.depositAmount || 0);
 
     if (balance > 0) {
@@ -674,15 +656,12 @@ const completeProject = handleRequest(async (req: Request) => {
         {
           email: project.customerEmail || customer?.email,
           name: project.customerName || customer?.name,
-          phone: project.customerPhone || (customer as any)?.phone,
+          phone: project.customerPhone || (customer as any)?.phone
         }
       );
 
       if (!chargeResult.success) {
-        throw new ExpressError(
-          `Balance charge failed: ${chargeResult.error || 'Payment declined'}`,
-          402
-        );
+        throw new ExpressError(`Balance charge failed: ${chargeResult.error || 'Payment declined'}`, 402);
       }
 
       project.paymentStatus = 'fully_paid';
@@ -693,7 +672,7 @@ const completeProject = handleRequest(async (req: Request) => {
         transactionAmount: balance,
         transactionType: 'remote_project',
         studioId: project.studioId?.toString(),
-        sumitPaymentId: chargeResult.paymentId,
+        sumitPaymentId: chargeResult.paymentId
       });
     } else {
       // Deposit covered the full price
@@ -731,17 +710,10 @@ const cancelProject = handleRequest(async (req: Request) => {
     }
   }
 
-  const nonCancellableStatuses = [
-    PROJECT_STATUS.COMPLETED,
-    PROJECT_STATUS.CANCELLED,
-    PROJECT_STATUS.DECLINED,
-  ];
+  const nonCancellableStatuses = [PROJECT_STATUS.COMPLETED, PROJECT_STATUS.CANCELLED, PROJECT_STATUS.DECLINED];
 
-  if (nonCancellableStatuses.includes(project.status as typeof nonCancellableStatuses[number])) {
-    throw new ExpressError(
-      `Cannot cancel project with status: ${project.status}`,
-      400
-    );
+  if (nonCancellableStatuses.includes(project.status as (typeof nonCancellableStatuses)[number])) {
+    throw new ExpressError(`Cannot cancel project with status: ${project.status}`, 400);
   }
 
   // Refund deposit if it was charged
@@ -750,9 +722,7 @@ const cancelProject = handleRequest(async (req: Request) => {
     project.paymentDetails?.sumitPaymentId &&
     project.paymentDetails?.vendorId
   ) {
-    const credentials = await paymentService.getVendorCredentials(
-      project.paymentDetails.vendorId.toString()
-    );
+    const credentials = await paymentService.getVendorCredentials(project.paymentDetails.vendorId.toString());
     if (credentials) {
       const refundResult = await paymentService.refundPayment(
         project.paymentDetails.sumitPaymentId,
@@ -765,7 +735,7 @@ const cancelProject = handleRequest(async (req: Request) => {
         project.paymentDetails = {
           ...project.paymentDetails,
           refundId: refundResult.refundId,
-          refundedAt: new Date(),
+          refundedAt: new Date()
         } as any;
 
         if (project.paymentDetails?.sumitPaymentId) {
@@ -783,11 +753,7 @@ const cancelProject = handleRequest(async (req: Request) => {
   return project;
 });
 
-const TERMINAL_STATUSES = [
-  PROJECT_STATUS.COMPLETED,
-  PROJECT_STATUS.CANCELLED,
-  PROJECT_STATUS.DECLINED,
-] as const;
+const TERMINAL_STATUSES = [PROJECT_STATUS.COMPLETED, PROJECT_STATUS.CANCELLED, PROJECT_STATUS.DECLINED] as const;
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_REFERENCE_LINKS = 5;
@@ -809,10 +775,7 @@ const updateProject = handleRequest(async (req: AuthRequest) => {
   assertProjectAccess(project, userId, 'update_metadata');
 
   if (TERMINAL_STATUSES.some((s) => s === project.status)) {
-    throw new ExpressError(
-      `Cannot update project with status: ${project.status}`,
-      400
-    );
+    throw new ExpressError(`Cannot update project with status: ${project.status}`, 400);
   }
 
   const { title, referenceLinks } = req.body;
@@ -845,6 +808,93 @@ const updateProject = handleRequest(async (req: AuthRequest) => {
   await project.save();
 
   return project;
+});
+
+/**
+ * Create a presigned upload URL for project artwork.
+ * POST /api/remote-projects/:projectId/artwork/upload-url
+ */
+const getArtworkUploadUrl = handleRequest(async (req: Request) => {
+  const { projectId } = req.params;
+  const { fileName, fileSize, mimeType } = req.body;
+
+  if (!isStorageConfigured()) {
+    throw new ExpressError('File storage is not configured', 503);
+  }
+  if (typeof fileName !== 'string' || !fileName) {
+    throw new ExpressError('File name is required', 400);
+  }
+  if (typeof fileSize !== 'number' || fileSize <= 0) {
+    throw new ExpressError('Valid file size is required', 400);
+  }
+  if (typeof mimeType !== 'string' || !(REMOTE_PROJECT_ARTWORK_MIME_TYPES as readonly string[]).includes(mimeType)) {
+    throw new ExpressError('Artwork must be a JPEG, PNG, or WebP image', 400);
+  }
+
+  const extension = '.' + fileName.split('.').pop()?.toLowerCase();
+  if (!(REMOTE_PROJECT_ARTWORK_TYPES as readonly string[]).includes(extension)) {
+    throw new ExpressError(`Artwork type not allowed. Accepted types: ${REMOTE_PROJECT_ARTWORK_TYPES.join(', ')}`, 400);
+  }
+
+  const maxBytes = REMOTE_PROJECT_ARTWORK_MAX_FILE_SIZE_MB * 1024 * 1024;
+  if (fileSize > maxBytes) {
+    throw new ExpressError(`Artwork exceeds the ${REMOTE_PROJECT_ARTWORK_MAX_FILE_SIZE_MB}MB limit`, 400);
+  }
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'update_artwork');
+
+  const fileId = new mongoose.Types.ObjectId().toString();
+  const storageKey = generateProjectArtworkStorageKey(projectId, fileId, extension);
+  const { uploadUrl } = await getStorageUploadUrl(storageKey, mimeType, fileSize);
+
+  return { uploadUrl, storageKey, fileId, expiresIn: 3600 };
+});
+
+/**
+ * Finalize, replace, or remove project artwork.
+ * PATCH /api/remote-projects/:projectId/artwork
+ */
+const updateProjectArtwork = handleRequest(async (req: Request) => {
+  const { projectId } = req.params;
+  const { storageKey } = req.body as { storageKey?: unknown };
+
+  if (storageKey !== null && typeof storageKey !== 'string') {
+    throw new ExpressError('storageKey must be a string or null', 400);
+  }
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'update_artwork');
+
+  if (typeof storageKey === 'string') {
+    const expectedPrefix = `${projectId}/artwork/`;
+    if (!storageKey.startsWith(expectedPrefix)) {
+      throw new ExpressError('Invalid artwork storage key', 400);
+    }
+    if (!isStorageConfigured()) {
+      throw new ExpressError('File storage is not configured', 503);
+    }
+    if (!(await fileExists(storageKey))) {
+      throw new ExpressError('Uploaded artwork was not found', 400);
+    }
+  }
+
+  const previousStorageKey = project.artworkStorageKey;
+  project.artworkStorageKey = typeof storageKey === 'string' ? storageKey : undefined;
+  await project.save();
+
+  if (previousStorageKey && previousStorageKey !== project.artworkStorageKey && isStorageConfigured()) {
+    try {
+      await deleteStorageFile(previousStorageKey);
+    } catch (error) {
+      console.error('Failed to delete previous project artwork:', error);
+    }
+  }
+
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
+  return attachArtworkUrl(project);
 });
 
 /**
@@ -898,7 +948,7 @@ const releaseDownloads = handleRequest(async (req: Request) => {
   project.downloadLock = {
     enabled: true,
     releasedAt: new Date(),
-    releasedBy: userId,
+    releasedBy: userId
   };
   await project.save();
 
@@ -919,6 +969,8 @@ export default {
   completeProject,
   cancelProject,
   updateProject,
+  getArtworkUploadUrl,
+  updateProjectArtwork,
   setDownloadLock,
-  releaseDownloads,
+  releaseDownloads
 };

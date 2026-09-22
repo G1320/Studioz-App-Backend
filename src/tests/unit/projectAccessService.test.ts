@@ -68,6 +68,14 @@ describe('projectAccessService', () => {
     expect(() => resolveProjectAccess(baseProject, 'removed')).toThrow();
   });
 
+  it('allows every active participant to update project artwork', () => {
+    for (const userId of ['cust1', 'vend1', 'collab-c', 'collab-v']) {
+      expect(assertProjectAccess(baseProject, userId, 'update_artwork').canUpdateArtwork).toBe(true);
+    }
+    expect(() => assertProjectAccess(baseProject, 'stranger', 'update_artwork')).toThrow();
+    expect(() => assertProjectAccess(baseProject, 'removed', 'update_artwork')).toThrow();
+  });
+
   it('includes active collaborators in participant ids', () => {
     const ids = getProjectParticipantIds(baseProject);
     expect(ids.sort()).toEqual(['collab-c', 'collab-v', 'cust1', 'vend1'].sort());
