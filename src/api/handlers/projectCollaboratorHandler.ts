@@ -190,7 +190,7 @@ const listCollaborators = handleRequest(async (req: Request) => {
   const userId = getAuthUserId(req as AuthRequest);
 
   const project = await RemoteProjectModel.findById(projectId)
-    .populate('collaborators.userId', 'name email imgUrl')
+    .populate('collaborators.userId', 'name email picture avatar')
     .populate('collaborators.invitedBy', 'name email');
   if (!project) throw new ExpressError('Project not found', 404);
   assertProjectAccess(project, userId, 'view');

@@ -305,7 +305,7 @@ const getProjectById = handleRequest(async (req: Request) => {
     .populate('studioId', 'name imgUrl')
     .populate('customerId', 'name email phone')
     .populate('vendorId', 'name email')
-    .populate('collaborators.userId', 'name email imgUrl');
+    .populate('collaborators.userId', 'name email picture avatar');
 
   if (!project) {
     throw new ExpressError('Project not found', 404);
