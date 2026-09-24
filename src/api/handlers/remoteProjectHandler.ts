@@ -277,7 +277,22 @@ const getProjects = handleRequest(async (req: Request) => {
       .populate('collaborators.userId', 'name email picture avatar'),
     RemoteProjectModel.countDocuments(filter)
   ]);
-  const projectsWithArtwork = await Promise.all(projects.map((project) => attachArtworkUrl(project)));
+  const projectsWithArtwork = await Promise.all(
+    projects.map(async (project) => {
+      const payload = await attachArtworkUrl(project);
+      // Map from the mongoose doc (not toObject payload) so populated userId stays intact.
+      payload.collaborators = (project.collaborators || [])
+        .filter((collaborator) => collaborator.status !== 'removed')
+        .map((collaborator) => ({
+          userId: collaborator.userId,
+          side: collaborator.side,
+          invitedBy: collaborator.invitedBy,
+          joinedAt: collaborator.joinedAt,
+          status: collaborator.status || 'active'
+        }));
+      return payload;
+    })
+  );
 
   return {
     projects: projectsWithArtwork,
