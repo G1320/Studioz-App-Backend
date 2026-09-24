@@ -273,7 +273,8 @@ const getProjects = handleRequest(async (req: Request) => {
       .skip(skip)
       .limit(limit)
       .populate('itemId', 'name imgUrl')
-      .populate('studioId', 'name'),
+      .populate('studioId', 'name')
+      .populate('collaborators.userId', 'name email picture avatar'),
     RemoteProjectModel.countDocuments(filter)
   ]);
   const projectsWithArtwork = await Promise.all(projects.map((project) => attachArtworkUrl(project)));
