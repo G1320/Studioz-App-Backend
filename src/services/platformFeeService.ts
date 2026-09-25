@@ -8,9 +8,11 @@ import { saveSumitInvoice } from '../utils/sumitUtils.js';
 import { sendPlatformFeeCharged, sendPlatformFeeFailed } from '../api/handlers/emailHandler.js';
 import {
   PLATFORM_FEE_TIERS,
-  calculateTieredFee,
+  PLATFORM_FEE_FLAT_RATE,
+  calculatePlatformFee,
   getNextTierNudge,
-  type TierBreakdownItem,
+  getActiveFeeModel,
+  isProgressivePlatformFeesEnabled,
 } from '../config/platformFeeTiers.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
@@ -44,7 +46,7 @@ export const platformFeeService = {
 
   /**
    * Record a platform fee after a successful payment.
-   * Uses marginal tier calculation based on the vendor's current-month revenue.
+   * Flat 9% by default; marginal progressive tiers when PROGRESSIVE_PLATFORM_FEES is enabled.
    * Called from paymentService / paymentHandler after every charge.
    */
   async recordFee(params: RecordFeeParams): Promise<void> {
@@ -58,12 +60,12 @@ export const platformFeeService = {
       ]);
       const priorRevenue = existingVolume[0]?.total || 0;
 
-      // Compute marginal fee for this transaction by calculating total fee
-      // at (prior + new) and subtracting total fee at (prior).
-      const feeWithNew = calculateTieredFee(priorRevenue + params.transactionAmount);
-      const feePrior = calculateTieredFee(priorRevenue);
+      // Marginal delta works for both flat and tiered (flat delta === amount × rate).
+      const feeWithNew = calculatePlatformFee(priorRevenue + params.transactionAmount);
+      const feePrior = calculatePlatformFee(priorRevenue);
       const feeAmount = parseFloat((feeWithNew.totalFeeAmount - feePrior.totalFeeAmount).toFixed(2));
-      const effectiveRate = params.transactionAmount > 0 ? feeAmount / params.transactionAmount : PLATFORM_FEE_TIERS[0].rate;
+      const effectiveRate =
+        params.transactionAmount > 0 ? feeAmount / params.transactionAmount : PLATFORM_FEE_FLAT_RATE;
 
       if (feeAmount <= 0) return;
 
@@ -159,18 +161,19 @@ export const platformFeeService = {
       try {
         const sumitCustomerId = await this.getVendorSumitCustomerId(vendorId.toString());
 
-        // Use tiered calculation for the entire month's volume
-        const tierResult = calculateTieredFee(vendorAgg.totalTransactionAmount);
+        // Fee for the entire month's volume (flat or progressive per flag)
+        const feeResult = calculatePlatformFee(vendorAgg.totalTransactionAmount);
+        const feeModel = getActiveFeeModel();
 
         const cycle = await BillingCycleModel.create({
           vendorId,
           period: targetPeriod,
           totalTransactionAmount: vendorAgg.totalTransactionAmount,
-          totalFeeAmount: tierResult.totalFeeAmount,
+          totalFeeAmount: feeResult.totalFeeAmount,
           feeCount: vendorAgg.feeCount,
-          feePercentage: tierResult.effectiveRate,
-          feeModel: 'tiered',
-          tierBreakdown: tierResult.breakdown,
+          feePercentage: feeResult.effectiveRate,
+          feeModel,
+          tierBreakdown: feeModel === 'tiered' ? feeResult.breakdown : undefined,
           status: 'pending',
           sumitCustomerId: sumitCustomerId || undefined
         });
@@ -425,7 +428,7 @@ export const platformFeeService = {
 
   /**
    * Get vendor's pending (not yet billed) fees for the current period.
-   * Includes tiered calculation breakdown and next-tier nudge.
+   * Includes tier breakdown / next-tier nudge only when progressive fees are enabled.
    */
   async getVendorCurrentFees(vendorId: string) {
     const period = getCurrentPeriod();
@@ -438,25 +441,28 @@ export const platformFeeService = {
     const totalTransactionAmount = fees.reduce((sum, f) => sum + f.transactionAmount, 0);
     const count = fees.length;
 
-    // Compute tiered fee for the full month volume
-    const tierResult = calculateTieredFee(totalTransactionAmount);
+    const feeResult = calculatePlatformFee(totalTransactionAmount);
+    const progressive = isProgressivePlatformFeesEnabled();
     const nextTier = getNextTierNudge(totalTransactionAmount);
 
     return {
       period,
-      feePercentage: tierResult.effectiveRate,
+      feePercentage: feeResult.effectiveRate,
       fees,
-      totalFeeAmount: tierResult.totalFeeAmount,
+      totalFeeAmount: feeResult.totalFeeAmount,
       totalTransactionAmount,
       count,
-      feeTier: {
-        tierIndex: tierResult.tierIndex,
-        tierLabel: tierResult.tierLabel,
-        effectiveRate: tierResult.effectiveRate,
-        breakdown: tierResult.breakdown,
-      },
-      nextTier: nextTier || undefined,
-      tiers: PLATFORM_FEE_TIERS,
+      feeModel: feeResult.feeModel,
+      feeTier: progressive
+        ? {
+            tierIndex: feeResult.tierIndex,
+            tierLabel: feeResult.tierLabel,
+            effectiveRate: feeResult.effectiveRate,
+            breakdown: feeResult.breakdown,
+          }
+        : undefined,
+      nextTier: progressive ? nextTier || undefined : undefined,
+      tiers: progressive ? PLATFORM_FEE_TIERS : undefined,
     };
   },
 
