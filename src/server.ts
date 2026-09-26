@@ -120,17 +120,13 @@ app.use(cors(corsOptions));
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  // Owner manage hubs issue many GETs + section PATCHs; 300 was too low during QA
-  max: 1200,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
-  skip: (req) => {
-    // Authenticated studio writes are low-volume and must not collide with browse traffic
-    const auth = req.headers.authorization;
-    if (!auth) return false;
-    return req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
-  }
+  // Owner manage hubs poll items/notifications heavily; authenticated traffic is
+  // already gated by JWT and must not blank the UI with 429 storms.
+  skip: (req) => Boolean(req.headers.authorization || req.headers.cookie)
 }));
 
 app.use(mongoSanitize());
