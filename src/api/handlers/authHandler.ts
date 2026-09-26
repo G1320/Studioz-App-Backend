@@ -27,7 +27,34 @@ const createAndRegisterUser = handleRequest(async (req: Request, res: Response) 
       signed: true
     });
     return { accessToken: accessToken, user: user };
-  } catch (error) {
+  } catch (error: unknown) {
+    // Concurrent signup (Header + MenuDropdown) can hit unique sub/email — treat as login
+    const mongoCode = (error as { code?: number })?.code;
+    const sub = req.body?.sub;
+    if (mongoCode === 11000 && sub) {
+      const existing = await UserModel.findOne({ sub });
+      if (existing) {
+        const accessToken = jwt.sign({ _id: existing._id }, JWT_SECRET_KEY as string, {
+          expiresIn: '15m'
+        });
+        const refreshToken = jwt.sign({ _id: existing._id }, JWT_REFRESH_KEY as string, {
+          expiresIn: '7d'
+        });
+        res.cookie('accessToken', accessToken, {
+          httpOnly: true,
+          secure: NODE_ENV === 'production',
+          maxAge: 36000000,
+          signed: true
+        });
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: NODE_ENV === 'production',
+          maxAge: 604800000,
+          signed: true
+        });
+        return { accessToken, user: existing };
+      }
+    }
     console.error('Error creating and registering user:', error);
     throw new ExpressError('Error during registration', 500);
   }
