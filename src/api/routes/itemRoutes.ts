@@ -14,8 +14,8 @@ router.post('/',
 
 router.get('/', itemHandler.getItems);
 router.get('/:itemId', itemHandler.getItemById);
-router.put('/:itemId', validateItem, itemHandler.updateItemById);
-router.delete('/:itemId', itemHandler.deleteItemById);
+router.put('/:itemId', verifyTokenMw, validateItem, itemHandler.updateItemById);
+router.delete('/:itemId', verifyTokenMw, itemHandler.deleteItemById);
 
 // Add item to studio - also checks listing limit (creating new association)
 router.post('/:studioId/add-to-studio/:itemId', 
@@ -23,7 +23,7 @@ router.post('/:studioId/add-to-studio/:itemId',
   checkListingLimit, 
   itemHandler.addItemToStudio
 );
-router.delete('/:studioId/remove-from-studio/:itemId', itemHandler.removeItemFromStudio);
+router.delete('/:studioId/remove-from-studio/:itemId', verifyTokenMw, itemHandler.removeItemFromStudio);
 
 router.post('/:wishlistId/add-to-wishlist/:itemId', itemHandler.addItemToWishlist);
 router.delete('/:wishlistId/remove-from-wishlist/:itemId', itemHandler.removeItemFromWishlist);

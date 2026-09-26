@@ -7,7 +7,39 @@ import ExpressError from '../../utils/expressError.js';
 import handleRequest from '../../utils/requestHandler.js';
 import { escapeRegex } from '../../utils/escapeRegex.js';
 
+interface AuthRequest extends Request {
+  decodedJwt?: { _id?: string; userId?: string };
+}
+
+function getAuthUserId(req: Request): string {
+  const authReq = req as AuthRequest;
+  const userId = authReq.decodedJwt?._id || authReq.decodedJwt?.userId;
+  if (!userId) {
+    throw new ExpressError('Authentication required', 401);
+  }
+  return String(userId);
+}
+
+async function assertStudioOwner(studioId: string, userId: string) {
+  const studio = await StudioModel.findById(studioId);
+  if (!studio) throw new ExpressError('Studio not found', 404);
+  if (studio.createdBy?.toString() !== userId) {
+    throw new ExpressError('You do not have permission to manage this studio', 403);
+  }
+  return studio;
+}
+
+/** Resolve item → parent studio and assert the auth user owns that studio. */
+async function assertItemStudioOwner(itemId: string, userId: string) {
+  const item = await ItemModel.findById(itemId);
+  if (!item) throw new ExpressError('item not found', 404);
+  if (!item.studioId) throw new ExpressError('Item has no studio', 400);
+  await assertStudioOwner(item.studioId.toString(), userId);
+  return item;
+}
+
 const createItem = handleRequest(async (req: Request) => {
+  const authUserId = getAuthUserId(req);
   const itemData = { ...req.body };
 
   // Transform serviceDeliveryType from frontend to backend fields
@@ -17,25 +49,29 @@ const createItem = handleRequest(async (req: Request) => {
   }
   delete itemData.serviceDeliveryType; // Remove UI-only field
 
-  const item = new ItemModel(itemData);
-
-  await item.save();
-
-  const studioId = item.studioId;
+  const studioId = itemData.studioId;
   if (!studioId) throw new ExpressError('studio ID not provided', 400);
 
-  const itemId = item._id;
-  if (!itemId) throw new ExpressError('item ID not provided', 400);
-
-  const studio = await StudioModel.findById(studioId);
-  if (!studio) throw new ExpressError('studio not found', 404);
+  // Ownership before create so a failed assert never leaves an orphan item
+  const studio = await assertStudioOwner(String(studioId), authUserId);
   if (!studio.items) studio.items = [];
 
-  if (!item) throw new ExpressError('item not found', 404);
+  if (itemData.price != null && !(Number(itemData.price) > 0)) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
+  if (itemData.projectPricing?.basePrice != null && !(Number(itemData.projectPricing.basePrice) > 0)) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
+
+  itemData.createdBy = authUserId;
+  itemData.sellerId = studio.createdBy;
+
+  const item = new ItemModel(itemData);
+  await item.save();
+
+  if (!item._id) throw new ExpressError('item ID not provided', 400);
 
   item.updatedAt = new Date();
-
-  if (!item.studioId) item.studioId = studioId;
   if (!item.city) item.city = studio.city;
   if (studio.coverImage) item.studioImgUrl = studio.coverImage;
   
@@ -100,8 +136,8 @@ const addItemToStudio = handleRequest(async (req: Request) => {
   const itemId = req.params.itemId;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
 
-  const studio = await StudioModel.findById(studioId);
-  if (!studio) throw new ExpressError('studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  const studio = await assertStudioOwner(studioId, authUserId);
   if (!studio.items) studio.items = [];
 
   const item = await ItemModel.findById(itemId);
@@ -139,8 +175,8 @@ const removeItemFromStudio = handleRequest(async (req: Request) => {
   const itemIdToRemove = req.params.itemId;
   if (!itemIdToRemove) throw new ExpressError('item ID not provided', 400);
 
-  const studio = await StudioModel.findById(studioId);
-  if (!studio) throw new ExpressError('Studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  const studio = await assertStudioOwner(studioId, authUserId);
 
   // Find the index of the item with the specified itemId in studio.items
   const itemIndex = studio.items.findIndex(
@@ -231,7 +267,22 @@ const updateItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
 
-  const updateData = { ...req.body };
+  const authUserId = getAuthUserId(req);
+  await assertItemStudioOwner(itemId, authUserId);
+
+  const {
+    createdBy: _createdBy,
+    sellerId: _sellerId,
+    active: _active,
+    __v: _v,
+    ...rawUpdate
+  } = req.body || {};
+  void _createdBy;
+  void _sellerId;
+  void _active;
+  void _v;
+
+  const updateData = { ...rawUpdate };
 
   // Transform serviceDeliveryType from frontend to backend fields
   if (updateData.serviceDeliveryType === 'remote') {
@@ -243,6 +294,14 @@ const updateItemById = handleRequest(async (req: Request) => {
   }
   delete updateData.serviceDeliveryType; // Remove UI-only field
 
+  // Reject non-positive prices so they cannot persist (and later go public)
+  if (updateData.price != null && !(Number(updateData.price) > 0)) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
+  if (updateData.projectPricing?.basePrice != null && !(Number(updateData.projectPricing.basePrice) > 0)) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
+
   const item = await ItemModel.findByIdAndUpdate(itemId, updateData, { new: true });
   if (!item) throw new ExpressError('item not found', 404);
 
@@ -252,6 +311,9 @@ const updateItemById = handleRequest(async (req: Request) => {
 const deleteItemById = handleRequest(async (req: Request) => {
   const { itemId } = req.params;
   if (!itemId) throw new ExpressError('item ID not provided', 400);
+
+  const authUserId = getAuthUserId(req);
+  await assertItemStudioOwner(itemId, authUserId);
 
   const item = await ItemModel.findByIdAndDelete(itemId);
   if (!item) throw new ExpressError('item not found', 404);

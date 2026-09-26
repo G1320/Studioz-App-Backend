@@ -6,41 +6,40 @@ export class OTPService {
   private static MAX_ATTEMPTS = 3;
 
   static async sendVerificationOTP(phoneNumber: string): Promise<boolean> {
-    try {
-      // Generate 6-digit OTP
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
+    // Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
 
-      await OTPModel.deleteMany({ phoneNumber });
+    // Deliver SMS first — only persist if send succeeds so a 500 never leaves a usable code
+    await sendSMS({
+      phoneNumber,
+      message: `Your Studioz verification code is: ${code}`
+    });
 
-      await OTPModel.create({
-        code,
-        phoneNumber,
-        expiresAt,
-        verified: false,
-        attempts: 0
-      });
+    await OTPModel.deleteMany({ phoneNumber });
 
-      await sendSMS({
-        phoneNumber,
-        message: `Your Studioz verification code is: ${code}`
-      });
+    await OTPModel.create({
+      code,
+      phoneNumber,
+      expiresAt,
+      verified: false,
+      attempts: 0
+    });
 
-      return true;
-    } catch (error) {
-      console.error('Error sending verification code:', error);
-      throw error;
-    }
+    return true;
   }
 
   static async verifyPhoneNumber(phoneNumber: string, code: string): Promise<boolean> {
     try {
       const otpRecord = await OTPModel.findOne({ phoneNumber });
 
-      if (!otpRecord || otpRecord.verified || 
-          new Date() > otpRecord.expiresAt || 
-          otpRecord.attempts >= this.MAX_ATTEMPTS) {
+      if (
+        !otpRecord ||
+        otpRecord.verified ||
+        new Date() > otpRecord.expiresAt ||
+        otpRecord.attempts >= this.MAX_ATTEMPTS
+      ) {
         return false;
       }
 

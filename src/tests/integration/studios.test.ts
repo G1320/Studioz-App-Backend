@@ -6,6 +6,7 @@ import {
   createTestStudio,
   createTestItem,
 } from '../helpers/fixtures.js';
+import { generateTestToken } from '../helpers/authHelpers.js';
 import { UserModel } from '../../models/userModel.js';
 
 describe('Studios API', () => {
@@ -71,11 +72,23 @@ describe('Studios API', () => {
   });
 
   describe('POST /api/studios/:userId/create-studio', () => {
-    it('should create a new studio', async () => {
+    it('should require authentication', async () => {
       const user = await createTestUser();
 
       const res = await request(app)
         .post(`/api/studios/${user._id}/create-studio`)
+        .send(createValidStudioData());
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should create a new studio', async () => {
+      const user = await createTestUser();
+      const token = generateTestToken(user._id);
+
+      const res = await request(app)
+        .post(`/api/studios/${user._id}/create-studio`)
+        .set('Authorization', `Bearer ${token}`)
         .send(createValidStudioData({
           name: { en: 'New Studio', he: 'סטודיו חדש' },
         }));
@@ -87,9 +100,11 @@ describe('Studios API', () => {
 
     it('should associate studio with user', async () => {
       const user = await createTestUser();
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .post(`/api/studios/${user._id}/create-studio`)
+        .set('Authorization', `Bearer ${token}`)
         .send(createValidStudioData({
           name: { en: 'User Studio', he: 'סטודיו משתמש' },
         }));
@@ -103,9 +118,11 @@ describe('Studios API', () => {
 
     it('should create a studio with English-only translations', async () => {
       const user = await createTestUser();
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .post(`/api/studios/${user._id}/create-studio`)
+        .set('Authorization', `Bearer ${token}`)
         .send(createValidStudioData({
           name: { en: 'English Only Studio' },
           description: { en: 'An English-only studio description.' },
@@ -115,11 +132,26 @@ describe('Studios API', () => {
       expect(res.body.name.en).toBe('English Only Studio');
     });
 
+    it('should reject creating a studio for another user', async () => {
+      const owner = await createTestUser();
+      const other = await createTestUser();
+      const token = generateTestToken(other._id);
+
+      const res = await request(app)
+        .post(`/api/studios/${owner._id}/create-studio`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(createValidStudioData());
+
+      expect(res.status).toBe(403);
+    });
+
     it('should reject studio with missing required fields', async () => {
       const user = await createTestUser();
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .post(`/api/studios/${user._id}/create-studio`)
+        .set('Authorization', `Bearer ${token}`)
         .send({
           name: { en: 'Missing Fields', he: 'שדות חסרים' },
           // Missing description, coverImage, galleryImages, maxOccupancy
@@ -133,9 +165,11 @@ describe('Studios API', () => {
     it('should update studio details', async () => {
       const user = await createTestUser();
       const studio = await createTestStudio({ createdBy: user._id });
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .put(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send(createValidStudioData({
           name: { en: 'Updated Studio', he: 'סטודיו מעודכן' },
           description: { en: 'Updated description', he: 'תיאור מעודכן' },
@@ -145,11 +179,30 @@ describe('Studios API', () => {
       expect(res.body.name.en).toBe('Updated Studio');
     });
 
+    it('should reject update from non-owner', async () => {
+      const owner = await createTestUser();
+      const other = await createTestUser();
+      const studio = await createTestStudio({ createdBy: owner._id });
+      const token = generateTestToken(other._id);
+
+      const res = await request(app)
+        .put(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(createValidStudioData({
+          name: { en: 'Hijacked', he: 'חטיפה' },
+        }));
+
+      expect(res.status).toBe(403);
+    });
+
     it('should return 404 for non-existent studio', async () => {
+      const user = await createTestUser();
+      const token = generateTestToken(user._id);
       const fakeId = '507f1f77bcf86cd799439011';
 
       const res = await request(app)
         .put(`/api/studios/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`)
         .send(createValidStudioData({
           name: { en: 'Test', he: 'בדיקה' },
         }));
@@ -166,9 +219,11 @@ describe('Studios API', () => {
         name: { en: 'Original Name', he: 'שם מקורי' },
         active: true,
       });
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .patch(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({
           active: false,
         });
@@ -182,9 +237,11 @@ describe('Studios API', () => {
     it('should reject patch with non-allowed fields', async () => {
       const user = await createTestUser();
       const studio = await createTestStudio({ createdBy: user._id });
+      const token = generateTestToken(user._id);
 
       const res = await request(app)
         .patch(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({
           city: 'Jerusalem', // Not in allowed fields
         });
@@ -197,8 +254,11 @@ describe('Studios API', () => {
     it('should delete a studio', async () => {
       const user = await createTestUser();
       const studio = await createTestStudio({ createdBy: user._id });
+      const token = generateTestToken(user._id);
 
-      const deleteRes = await request(app).delete(`/api/studios/${studio._id}`);
+      const deleteRes = await request(app)
+        .delete(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`);
       expect(deleteRes.status).toBe(204);
 
       // Verify studio is deleted

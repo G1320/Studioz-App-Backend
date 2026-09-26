@@ -5,7 +5,6 @@ import { validateStudio, verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
-
 router.get('/', studioHandler.getStudios);
 
 // Portfolio exhibit files (list/download/meta are public for in-page playback)
@@ -20,11 +19,11 @@ router.patch('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.update
 router.delete('/:studioId/files/:fileId', verifyTokenMw, studioFileHandler.deleteFile);
 
 router.get('/:studioId', studioHandler.getStudioById);
-router.post('/:userId/create-studio', validateStudio, studioHandler.createStudio);
-router.put('/:studioId', validateStudio, studioHandler.updateStudioById);
-router.put('/:studioId/items', studioHandler.updateStudioItem);
-router.patch('/:studioId', studioHandler.patchStudio);
-router.patch('/:studioId/items/:itemId', studioHandler.patchItem);
-router.delete('/:studioId', studioHandler.deleteStudioById);
+router.post('/:userId/create-studio', verifyTokenMw, validateStudio, studioHandler.createStudio);
+router.put('/:studioId', verifyTokenMw, validateStudio, studioHandler.updateStudioById);
+router.put('/:studioId/items', verifyTokenMw, studioHandler.updateStudioItem);
+router.patch('/:studioId', verifyTokenMw, studioHandler.patchStudio);
+router.patch('/:studioId/items/:itemId', verifyTokenMw, studioHandler.patchItem);
+router.delete('/:studioId', verifyTokenMw, studioHandler.deleteStudioById);
 
 export default router;

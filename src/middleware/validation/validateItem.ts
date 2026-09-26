@@ -45,7 +45,7 @@ const schema = Joi.object({
   subCategory: Joi.string().optional(),
   subCategories: Joi.array().items(Joi.string()).optional(),
   genres: Joi.array().items(Joi.string()).optional(),
-  price: Joi.number().optional(),
+  price: Joi.number().positive().optional(),
   pricePer: Joi.string().valid('hour', 'session', 'unit', 'song', 'project', 'day').optional(),
   blockDiscounts: blockDiscountsSchema,
   imgUrl: Joi.string().uri().optional(),

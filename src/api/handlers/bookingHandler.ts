@@ -154,8 +154,34 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
 
     const user = await UserModel.findById(customerId);
 
+    // Reject bookings that start in the past (same rule as reschedule)
+    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!bookingDate || !dateRegex.test(bookingDate) || !startTime) {
+        throw new ExpressError('Invalid booking date or start time', 400);
+    }
+    if (hours == null || !(Number(hours) > 0) || !Number.isFinite(Number(hours))) {
+        throw new ExpressError('Invalid booking duration', 400);
+    }
+    const hoursNum = Number(hours);
+    if (item) {
+        const minVal = item.minimumBookingDuration?.value;
+        const minUnit = item.minimumBookingDuration?.unit;
+        let minHours = 1;
+        if (minVal && minUnit === 'hours') minHours = Number(minVal);
+        else if (minVal && minUnit === 'minutes') minHours = Math.ceil(Number(minVal) / 60);
+        if (hoursNum < minHours) {
+            throw new ExpressError(`Minimum booking duration is ${minHours} hour(s)`, 400);
+        }
+    }
+    const [day, month, year] = bookingDate.split('/').map(Number);
+    const [hoursPart, minutesPart] = String(startTime).split(':').map(Number);
+    const bookingStart = new Date(year, month - 1, day, hoursPart || 0, minutesPart || 0, 0, 0);
+    if (Number.isNaN(bookingStart.getTime()) || bookingStart.getTime() < Date.now()) {
+        throw new ExpressError('Cannot book a past date or time', 400);
+    }
+
     // Generate array of consecutive time slots needed
-    const timeSlots = generateTimeSlots(startTime, hours);
+    const timeSlots = generateTimeSlots(startTime, hoursNum);
 
     // For existing items, check and update item-level availability
     let dateAvailability: any = null;

@@ -9,11 +9,38 @@ import { emitAvailabilityUpdate } from '../../webSockets/socket.js';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+interface AuthRequest extends Request {
+  decodedJwt?: { _id?: string; userId?: string };
+}
+
+function getAuthUserId(req: Request): string {
+  const authReq = req as AuthRequest;
+  const userId = authReq.decodedJwt?._id || authReq.decodedJwt?.userId;
+  if (!userId) {
+    throw new ExpressError('Authentication required', 401);
+  }
+  return String(userId);
+}
+
+async function assertStudioOwner(studioId: string, userId: string) {
+  const studio = await StudioModel.findById(studioId);
+  if (!studio) throw new ExpressError('Studio not found', 404);
+  if (studio.createdBy?.toString() !== userId) {
+    throw new ExpressError('You do not have permission to manage this studio', 403);
+  }
+  return studio;
+}
+
 const createStudio = handleRequest(async (req: Request) => {
   const { userId } = req.params;
   if (!userId) throw new ExpressError('User ID not provided', 400);
 
-  const user = await UserModel.findById(userId)
+  const authUserId = getAuthUserId(req);
+  if (authUserId !== userId) {
+    throw new ExpressError('You can only create studios for your own account', 403);
+  }
+
+  const user = await UserModel.findById(userId);
 
   // Prevent duplicate studio names (English or Hebrew, case-insensitive)
   const nameEn = req.body?.name?.en?.trim();
@@ -42,7 +69,7 @@ const createStudio = handleRequest(async (req: Request) => {
     studio.paymentEnabled = true;
   }
 
-  if (user && studio){
+  if (user && studio) {
     if (!user.studios) user.studios = [];
     user.studios.push(studio._id);
   }
@@ -104,8 +131,8 @@ const updateStudioItem = handleRequest(async (req: Request) => {
   const { studioId } = req.params;
   if (!studioId) throw new ExpressError('Studio ID not found', 404);
 
-  const studio = await StudioModel.findById(studioId);
-  if (!studio) throw new ExpressError('Studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  const studio = await assertStudioOwner(studioId, authUserId);
 
   const { items } = req.body;
   if (!items || !Array.isArray(items)) throw new ExpressError('Invalid request body', 400);
@@ -125,11 +152,27 @@ const updateStudioItem = handleRequest(async (req: Request) => {
 
 const updateStudioById = handleRequest(async (req: Request) => {
   const { studioId } = req.params;
+  const authUserId = getAuthUserId(req);
+  await assertStudioOwner(studioId, authUserId);
 
-  const existingStudio = await StudioModel.findById(studioId);
-  if (!existingStudio) throw new ExpressError('Studio not found', 404);
-  
-  const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, req.body, {
+  // Never allow ownership / server fields to be overwritten via client PUT
+  const {
+    createdBy: _createdBy,
+    active: _active,
+    averageRating: _ar,
+    reviewCount: _rc,
+    totalBookings: _tb,
+    __v: _v,
+    ...safeBody
+  } = req.body || {};
+  void _createdBy;
+  void _active;
+  void _ar;
+  void _rc;
+  void _tb;
+  void _v;
+
+  const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, safeBody, {
     new: true
   });
   return updatedStudio;
@@ -137,9 +180,8 @@ const updateStudioById = handleRequest(async (req: Request) => {
 
 const deleteStudioById = handleRequest(async (req: Request) => {
   const { studioId } = req.params;
-
-  const existingStudio = await StudioModel.findById(studioId);
-  if (!existingStudio) throw new ExpressError('Studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  await assertStudioOwner(studioId, authUserId);
 
   await StudioModel.findByIdAndDelete(studioId);
   return null;
@@ -147,14 +189,13 @@ const deleteStudioById = handleRequest(async (req: Request) => {
 
 const patchStudio = handleRequest(async (req: Request) => {
   const { studioId } = req.params;
-
-  const existingStudio = await StudioModel.findById(studioId);
-  if (!existingStudio) throw new ExpressError('Studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  await assertStudioOwner(studioId, authUserId);
 
   // Only allow patching specific fields (like active status)
   const allowedFields = ['active'];
   const updateData: Record<string, unknown> = {};
-  
+
   for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       updateData[field] = req.body[field];
@@ -180,9 +221,8 @@ const patchStudio = handleRequest(async (req: Request) => {
 
 const patchItem = handleRequest(async (req: Request) => {
   const { studioId, itemId } = req.params;
-
-  const existingStudio = await StudioModel.findById(studioId);
-  if (!existingStudio) throw new ExpressError('Studio not found', 404);
+  const authUserId = getAuthUserId(req);
+  const existingStudio = await assertStudioOwner(studioId, authUserId);
 
   const existingItem = await ItemModel.findById(itemId);
   if (!existingItem) throw new ExpressError('Item not found', 404);
@@ -190,7 +230,7 @@ const patchItem = handleRequest(async (req: Request) => {
   // Only allow patching specific fields (like active status)
   const allowedFields = ['active'];
   const updateData: Record<string, unknown> = {};
-  
+
   for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       updateData[field] = req.body[field];
@@ -199,6 +239,17 @@ const patchItem = handleRequest(async (req: Request) => {
 
   if (Object.keys(updateData).length === 0) {
     throw new ExpressError('No valid fields to update', 400);
+  }
+
+  // Block publishing items with non-positive prices
+  if (updateData.active === true) {
+    const effective =
+      existingItem.remoteService || existingItem.remoteWorkType === 'project'
+        ? existingItem.projectPricing?.basePrice ?? existingItem.price
+        : existingItem.price;
+    if (effective == null || !(Number(effective) > 0)) {
+      throw new ExpressError('Cannot publish a service with an invalid price', 400);
+    }
   }
 
   // Update the Item document

@@ -74,7 +74,7 @@ const schema = Joi.object({
   isSmokingAllowed: Joi.boolean().optional(),
   city: Joi.string().optional().allow('', null),
   address: Joi.string().optional(),
-  phone: Joi.string().optional(),
+  phone: Joi.string().optional().allow('', null),
   website: Joi.string().uri().optional().allow('', null),
   socials: Joi.object({
     instagram: Joi.string().uri().optional().allow('', null),
@@ -98,10 +98,10 @@ const schema = Joi.object({
   paymentEnabled: Joi.boolean().optional().default(false),
   portfolio: Joi.array().items(portfolioItemSchema).optional(),
   socialLinks: socialLinksSchema
-});
+}).unknown(true);
 
 const validateStudio = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = schema.validate(req.body);
+  const { error } = schema.validate(req.body, { abortEarly: false, stripUnknown: false });
   if (error) {
     handleJoiError(error);
   } else {
