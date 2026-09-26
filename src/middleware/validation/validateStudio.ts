@@ -42,17 +42,19 @@ const schema = Joi.object({
   description: studioDescriptionSchema,
  
   studioAvailability: Joi.object({
+    // Mongoose may attach a subdoc _id on GET; PUT echoes must not 400
+    _id: Joi.string().hex().length(24).optional(),
     days: Joi.array().items(
       Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
-      ),
-      times: Joi.array().items(
-        Joi.object({
-          _id: Joi.string().optional(),
-          start: Joi.string().required(),
-          end: Joi.string().required()
-        })
-        )
-      }).optional(),
+    ),
+    times: Joi.array().items(
+      Joi.object({
+        _id: Joi.string().hex().length(24).optional(),
+        start: Joi.string().required(),
+        end: Joi.string().required()
+      })
+    )
+  }).optional(),
   is24Hours: Joi.boolean().optional().allow(null),
   coverImage: Joi.string().required().allow('').label('Cover image'),
   galleryImages: Joi.array().required().items(Joi.string().allow('')).label('Gallery images'),

@@ -62,6 +62,14 @@ const createItem = handleRequest(async (req: Request) => {
   if (itemData.projectPricing?.basePrice != null && !(Number(itemData.projectPricing.basePrice) > 0)) {
     throw new ExpressError('Price must be greater than zero', 400);
   }
+  // In-studio services must have a positive price at create time
+  const isRemote = itemData.remoteService === true || itemData.remoteWorkType === 'project';
+  if (!isRemote && (itemData.price == null || !(Number(itemData.price) > 0))) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
+  if (isRemote && (itemData.projectPricing?.basePrice == null || !(Number(itemData.projectPricing.basePrice) > 0))) {
+    throw new ExpressError('Price must be greater than zero', 400);
+  }
 
   itemData.createdBy = authUserId;
   itemData.sellerId = studio.createdBy;

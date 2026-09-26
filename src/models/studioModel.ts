@@ -1,17 +1,24 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import { Studio } from '../types/index.js';
 
-const StudioAvailability = new mongoose.Schema({
-  days: [{
-    type: String,
-    enum: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    required: true
-  }],
-  times: [{ 
-    start: String,
-    end: String 
-  }]
-});
+const StudioAvailability = new mongoose.Schema(
+  {
+    days: [
+      {
+        type: String,
+        enum: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        required: true
+      }
+    ],
+    times: [
+      {
+        start: String,
+        end: String
+      }
+    ]
+  },
+  { _id: false }
+);
 
 const translationSchema = new Schema({
   en: { type: String, required: false },

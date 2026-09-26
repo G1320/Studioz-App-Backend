@@ -179,6 +179,68 @@ describe('Studios API', () => {
       expect(res.body.name.en).toBe('Updated Studio');
     });
 
+    it('should accept PUT with nested studioAvailability._id from a GET echo', async () => {
+      const user = await createTestUser();
+      const studio = await createTestStudio({
+        createdBy: user._id,
+        studioAvailability: {
+          days: ['Monday'],
+          times: [{ start: '10:00', end: '18:00' }],
+        },
+        amenities: ['WiFi'],
+      });
+      const token = generateTestToken(user._id);
+
+      // Simulate manage-hub GET → mutate amenities → PUT full document
+      const getRes = await request(app).get(`/api/studios/${studio._id}`);
+      expect(getRes.status).toBe(200);
+      const full = getRes.body.currStudio;
+      // Force nested _ids even if mongoose schema no longer emits them
+      full.studioAvailability = {
+        ...(full.studioAvailability || {}),
+        _id: '507f1f77bcf86cd799439011',
+        days: full.studioAvailability?.days || ['Monday'],
+        times: (full.studioAvailability?.times || [{ start: '10:00', end: '18:00' }]).map(
+          (t: { start: string; end: string }) => ({
+            ...t,
+            _id: '507f1f77bcf86cd799439012',
+          })
+        ),
+      };
+      full.amenities = ['WiFi', 'Parking', 'AC'];
+
+      const putRes = await request(app)
+        .put(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(full);
+
+      expect(putRes.status).toBe(200);
+      expect(putRes.body.amenities).toEqual(['WiFi', 'Parking', 'AC']);
+      expect(putRes.body.studioAvailability.days).toEqual(['Monday']);
+    });
+
+    it('should persist amenities-only PATCH without touching hours', async () => {
+      const user = await createTestUser();
+      const studio = await createTestStudio({
+        createdBy: user._id,
+        studioAvailability: {
+          days: ['Tuesday'],
+          times: [{ start: '09:00', end: '17:00' }],
+        },
+      });
+      const token = generateTestToken(user._id);
+
+      const res = await request(app)
+        .patch(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amenities: ['Parking'] });
+
+      expect(res.status).toBe(200);
+      expect(res.body.amenities).toEqual(['Parking']);
+      expect(res.body.studioAvailability.days).toEqual(['Tuesday']);
+      expect(res.body.studioAvailability.times[0].start).toBe('09:00');
+    });
+
     it('should reject update from non-owner', async () => {
       const owner = await createTestUser();
       const other = await createTestUser();

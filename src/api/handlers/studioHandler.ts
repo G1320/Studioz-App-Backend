@@ -172,6 +172,18 @@ const updateStudioById = handleRequest(async (req: Request) => {
   void _tb;
   void _v;
 
+  // Strip nested Mongo subdoc _ids so GET→PUT echoes never poison availability
+  if (safeBody.studioAvailability && typeof safeBody.studioAvailability === 'object') {
+    const avail = safeBody.studioAvailability as {
+      days?: string[];
+      times?: Array<{ start?: string; end?: string; _id?: string }>;
+    };
+    safeBody.studioAvailability = {
+      days: avail.days,
+      times: (avail.times || []).map(({ start, end }) => ({ start, end }))
+    };
+  }
+
   const updatedStudio = await StudioModel.findByIdAndUpdate(studioId, safeBody, {
     new: true
   });
@@ -252,6 +264,17 @@ const patchStudio = handleRequest(async (req: Request) => {
       ...item,
       artist: item.artist == null || item.artist === '' ? '—' : item.artist
     }));
+  }
+
+  if (updateData.studioAvailability && typeof updateData.studioAvailability === 'object') {
+    const avail = updateData.studioAvailability as {
+      days?: string[];
+      times?: Array<{ start?: string; end?: string; _id?: string }>;
+    };
+    updateData.studioAvailability = {
+      days: avail.days,
+      times: (avail.times || []).map(({ start, end }) => ({ start, end }))
+    };
   }
 
   if (Object.keys(updateData).length === 0) {

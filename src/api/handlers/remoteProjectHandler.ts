@@ -233,8 +233,6 @@ const createProject = handleRequest(async (req: Request) => {
  */
 const getProjects = handleRequest(async (req: Request) => {
   const authReq = req as AuthRequest;
-  const jwtPayload = authReq.decodedJwt as { _id?: string; userId?: string; sub?: string } | undefined;
-  const authUserId = jwtPayload?.userId || jwtPayload?._id || jwtPayload?.sub;
 
   const { customerId, vendorId, participantId, studioId, status, page: pageStr, limit: limitStr } = req.query;
 
@@ -243,15 +241,16 @@ const getProjects = handleRequest(async (req: Request) => {
   const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 20));
   const skip = (page - 1) * limit;
 
-  // Build filter
+  // Build filter — prefer JWT identity; only honor participantId when it matches the caller
   const filter: Record<string, unknown> = {};
+  const authUserId = getAuthUserId(authReq);
+
   if (participantId) {
-    if (!authUserId || String(participantId) !== String(authUserId)) {
+    if (String(participantId) !== String(authUserId)) {
       throw new ExpressError('Forbidden', 403);
     }
-    Object.assign(filter, participantMatchFilter(String(participantId)));
+    Object.assign(filter, participantMatchFilter(String(authUserId)));
   } else {
-    if (!authUserId) throw new ExpressError('Unauthorized', 401);
     if (customerId) {
       if (String(customerId) !== String(authUserId)) throw new ExpressError('Forbidden', 403);
       filter.customerId = asUserObjectId(String(customerId));

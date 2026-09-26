@@ -56,7 +56,7 @@ const itemSchema: Schema = new Schema({
   subCategory: { type: String, required: false },
   subCategories: [{ type: String, required: false }],
   genres: [{ type: String, required: false }],
-  price: { type: Number, required: false },
+  price: { type: Number, required: false, min: [0.01, 'Price must be greater than zero'] },
   pricePer: { type: String, required: false },
   blockDiscounts: { type: blockDiscountsSchema, required: false },
   imgUrl: { type: String, required: false },
