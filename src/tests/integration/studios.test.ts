@@ -234,6 +234,32 @@ describe('Studios API', () => {
       expect(res.body.name.en).toBe('Original Name');
     });
 
+    it('should persist hours and amenities section patches', async () => {
+      const user = await createTestUser();
+      const studio = await createTestStudio({ createdBy: user._id });
+      const token = generateTestToken(user._id);
+
+      const hoursRes = await request(app)
+        .patch(`/api/studios/${studio._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          studioAvailability: {
+            days: ['Monday'],
+            times: [{ start: '10:00', end: '18:00' }],
+          },
+          amenities: ['WiFi', 'Parking'],
+        });
+
+      expect(hoursRes.status).toBe(200);
+      expect(hoursRes.body.studioAvailability.days).toEqual(['Monday']);
+      expect(hoursRes.body.studioAvailability.times[0].start).toBe('10:00');
+      expect(hoursRes.body.amenities).toEqual(['WiFi', 'Parking']);
+
+      const getRes = await request(app).get(`/api/studios/${studio._id}`);
+      expect(getRes.body.currStudio.studioAvailability.days).toEqual(['Monday']);
+      expect(getRes.body.currStudio.amenities).toEqual(['WiFi', 'Parking']);
+    });
+
     it('should reject patch with non-allowed fields', async () => {
       const user = await createTestUser();
       const studio = await createTestStudio({ createdBy: user._id });
@@ -243,7 +269,7 @@ describe('Studios API', () => {
         .patch(`/api/studios/${studio._id}`)
         .set('Authorization', `Bearer ${token}`)
         .send({
-          city: 'Jerusalem', // Not in allowed fields
+          createdBy: '507f1f77bcf86cd799439011',
         });
 
       expect(res.status).toBe(400);

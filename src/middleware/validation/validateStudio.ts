@@ -19,10 +19,10 @@ const itemSchema = Joi.object({
 const portfolioItemSchema = Joi.object({
   id: Joi.string().required(),
   title: Joi.string().required(),
-  artist: Joi.string().required(),
+  artist: Joi.string().required().allow(''),
   type: Joi.string().valid('audio', 'video', 'album').required(),
   coverUrl: Joi.string().uri().optional().allow('', null),
-  link: Joi.string().uri().required(),
+  link: Joi.string().uri({ allowRelative: false }).required().allow(''),
   role: Joi.string().optional().allow('', null)
 });
 
@@ -53,11 +53,11 @@ const schema = Joi.object({
         })
         )
       }).optional(),
-  is24Hours: Joi.boolean().optional(),
-  coverImage: Joi.string().required().label('Cover image'),
-  galleryImages: Joi.array().required().items(Joi.string()).label('Gallery images'),
-  coverAudioFile: Joi.string().optional().label('Cover audio'),
-  galleryAudioFiles: Joi.array().items(Joi.string()).optional().label('Gallery audio files'),
+  is24Hours: Joi.boolean().optional().allow(null),
+  coverImage: Joi.string().required().allow('').label('Cover image'),
+  galleryImages: Joi.array().required().items(Joi.string().allow('')).label('Gallery images'),
+  coverAudioFile: Joi.string().optional().allow('', null).label('Cover audio'),
+  galleryAudioFiles: Joi.array().items(Joi.string().allow('')).optional().label('Gallery audio files'),
   items: Joi.array().items(itemSchema).optional().label('Items array'),
   categories: Joi.array().items(Joi.string()),
   subCategories: Joi.array().items(Joi.string()).optional(),
@@ -69,22 +69,22 @@ const schema = Joi.object({
       items: Joi.string().optional().allow('', null) // Raw text input
     })
   ).optional(),
-  maxOccupancy: Joi.number().required(),
-  size: Joi.number().optional(),
-  isSmokingAllowed: Joi.boolean().optional(),
+  maxOccupancy: Joi.number().required().allow(null),
+  size: Joi.number().optional().allow(null),
+  isSmokingAllowed: Joi.boolean().optional().allow(null),
   city: Joi.string().optional().allow('', null),
-  address: Joi.string().optional(),
+  address: Joi.string().optional().allow('', null),
   phone: Joi.string().optional().allow('', null),
   website: Joi.string().uri().optional().allow('', null),
   socials: Joi.object({
     instagram: Joi.string().uri().optional().allow('', null),
     facebook: Joi.string().uri().optional().allow('', null)
   }).optional(),
-  lat: Joi.number().optional(),
-  lng: Joi.number().optional(),
-  isWheelchairAccessible: Joi.boolean().optional(),
-  isSelfService: Joi.boolean().optional(),
-  parking: Joi.string().valid('private', 'street', 'paid', 'none').optional().default('none'),
+  lat: Joi.number().optional().allow(null),
+  lng: Joi.number().optional().allow(null),
+  isWheelchairAccessible: Joi.boolean().optional().allow(null),
+  isSelfService: Joi.boolean().optional().allow(null),
+  parking: Joi.string().valid('private', 'street', 'paid', 'none').optional().allow(null).default('none'),
   arrivalInstructions: Joi.string().max(500).optional().allow('', null),
   cancellationPolicy: Joi.object({
     type: Joi.string().valid('flexible', 'moderate', 'strict').optional(),

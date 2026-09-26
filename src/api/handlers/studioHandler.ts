@@ -192,14 +192,66 @@ const patchStudio = handleRequest(async (req: Request) => {
   const authUserId = getAuthUserId(req);
   await assertStudioOwner(studioId, authUserId);
 
-  // Only allow patching specific fields (like active status)
-  const allowedFields = ['active'];
+  // Manage-hub section saves + status toggle — whitelist only, never ownership fields
+  const allowedFields = [
+    'active',
+    'name',
+    'subtitle',
+    'description',
+    'studioAvailability',
+    'is24Hours',
+    'coverImage',
+    'galleryImages',
+    'coverAudioFile',
+    'galleryAudioFiles',
+    'categories',
+    'subCategories',
+    'genres',
+    'amenities',
+    'equipment',
+    'maxOccupancy',
+    'size',
+    'isSmokingAllowed',
+    'city',
+    'address',
+    'phone',
+    'website',
+    'socials',
+    'lat',
+    'lng',
+    'isWheelchairAccessible',
+    'isSelfService',
+    'parking',
+    'arrivalInstructions',
+    'cancellationPolicy',
+    'portfolio',
+    'socialLinks',
+    'paymentEnabled'
+  ];
   const updateData: Record<string, unknown> = {};
 
   for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       updateData[field] = req.body[field];
     }
+  }
+
+  // Drop empty optional strings that create-Joi rejects and that mean "clear"
+  for (const key of ['coverAudioFile', 'website', 'address', 'phone', 'arrivalInstructions'] as const) {
+    if (updateData[key] === '') {
+      updateData[key] = null;
+    }
+  }
+  if (Array.isArray(updateData.galleryAudioFiles)) {
+    updateData.galleryAudioFiles = (updateData.galleryAudioFiles as unknown[]).filter(
+      (u) => typeof u === 'string' && u.trim() !== ''
+    );
+  }
+  if (Array.isArray(updateData.portfolio)) {
+    updateData.portfolio = (updateData.portfolio as Array<Record<string, unknown>>).map((item) => ({
+      ...item,
+      artist: item.artist == null || item.artist === '' ? '—' : item.artist
+    }));
   }
 
   if (Object.keys(updateData).length === 0) {
@@ -210,6 +262,14 @@ const patchStudio = handleRequest(async (req: Request) => {
 
   // Emit availability update for all items in the studio when active status changes
   if (updateData.active !== undefined) {
+    const studioItems = await ItemModel.find({ studioId });
+    for (const item of studioItems) {
+      emitAvailabilityUpdate(item._id.toString());
+    }
+  }
+
+  // Hours change should refresh bookable slots for all items
+  if (updateData.studioAvailability !== undefined || updateData.is24Hours !== undefined) {
     const studioItems = await ItemModel.find({ studioId });
     for (const item of studioItems) {
       emitAvailabilityUpdate(item._id.toString());

@@ -120,10 +120,17 @@ app.use(cors(corsOptions));
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  // Owner manage hubs issue many GETs + section PATCHs; 300 was too low during QA
+  max: 1200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later' }
+  message: { error: 'Too many requests, please try again later' },
+  skip: (req) => {
+    // Authenticated studio writes are low-volume and must not collide with browse traffic
+    const auth = req.headers.authorization;
+    if (!auth) return false;
+    return req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
+  }
 }));
 
 app.use(mongoSanitize());

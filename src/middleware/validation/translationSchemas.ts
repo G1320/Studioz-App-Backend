@@ -2,9 +2,10 @@ import Joi from 'joi';
 
 /** Mirrors Frontend/src/shared/validation/schemas/base.ts */
 export const REGEX = {
-  ENGLISH: /^[a-zA-Z0-9\s.,;:!?'"()@#$%&*_+=-]+$/,
+  // Allow slash (Recording / mixing) and en/em dashes commonly used in studio copy
+  ENGLISH: /^[a-zA-Z0-9\s.,;:!?'"()@#$%&*_+=/\-–—]+$/,
   HAS_ENGLISH: /[a-zA-Z]/,
-  HEBREW: /^[\u0590-\u05FF0-9\s.,;:!?'"()@#$%&*_+=-]+$/,
+  HEBREW: /^[\u0590-\u05FF0-9\s.,;:!?'"()@#$%&*_+=/\-–—]+$/,
   HAS_HEBREW: /[\u0590-\u05FF]/
 };
 
