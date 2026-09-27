@@ -8,6 +8,7 @@ import { saveSumitInvoice } from '../../../utils/sumitUtils.js';
 import { paymentService } from '../../../services/paymentService.js';
 import { usageService } from '../../../services/usageService.js';
 import { platformFeeService } from '../../../services/platformFeeService.js';
+import { isValidIsraeliPhone } from '../../../utils/phoneUtils.js';
 
 const SUMIT_API_URL = 'https://api.sumit.co.il';
 const COMPANY_ID = process.env.SUMIT_COMPANY_ID;
@@ -422,11 +423,18 @@ export const paymentHandler = {
         vendorId
       } = req.body;
 
-      // Validate required fields
-      if (!singleUseToken || !customerInfo?.name || !customerInfo?.email) {
+      // Validate required fields — phone required, email optional (matches FE manual booking)
+      if (!singleUseToken || !customerInfo?.name || !customerInfo?.phone) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: singleUseToken, customerInfo.name, customerInfo.email'
+          error: 'Missing required fields: singleUseToken, customerInfo.name, customerInfo.phone'
+        });
+      }
+
+      if (!isValidIsraeliPhone(customerInfo.phone)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Enter a valid Israeli phone number'
         });
       }
 
@@ -458,8 +466,8 @@ export const paymentHandler = {
           SingleUseToken: singleUseToken,
           Customer: {
             Name: customerInfo.name,
-            EmailAddress: customerInfo.email,
-            Phone: customerInfo.phone || undefined,
+            EmailAddress: customerInfo.email || undefined,
+            Phone: customerInfo.phone,
             SearchMode: 0
           },
           Items: items.map((item: { description: string; price: number; quantity: number }) => ({
@@ -473,7 +481,7 @@ export const paymentHandler = {
             Description: item.description
           })),
           VATIncluded: true,
-          SendDocumentByEmail: true,
+          SendDocumentByEmail: Boolean(customerInfo.email),
           DocumentLanguage: 'Hebrew',
           Credentials: {
             CompanyID: vendor.sumitCompanyId,
@@ -492,7 +500,7 @@ export const paymentHandler = {
       // Save Sumit invoice record to our DB
       await saveSumitInvoice(response.data.Data, {
         customerName: customerInfo.name,
-        customerEmail: customerInfo.email,
+        customerEmail: customerInfo.email || '',
         description: description || 'Quick Charge',
         relatedEntity: undefined // Manual charge, no related entity
       });

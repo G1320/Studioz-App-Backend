@@ -1,15 +1,6 @@
 import { Request, Response } from 'express';
 import { OTPService } from '../../services/otpService.js';
-
-function isValidIsraeliPhone(phoneNumber: string): boolean {
-  const digits = String(phoneNumber).replace(/\D/g, '');
-  const normalized = digits.startsWith('972')
-    ? `0${digits.slice(3)}`
-    : digits.startsWith('00972')
-      ? `0${digits.slice(5)}`
-      : digits;
-  return /^0\d{8,9}$/.test(normalized);
-}
+import { isValidIsraeliPhone } from '../../utils/phoneUtils.js';
 
 export class OTPHandler {
   static async sendOTP(req: Request, res: Response) {

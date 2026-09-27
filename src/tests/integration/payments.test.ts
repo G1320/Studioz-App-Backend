@@ -82,7 +82,7 @@ describe('Payment Endpoints', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           singleUseToken: 'test-token',
-          customerInfo: { name: 'Test Customer', email: 'test@test.com' },
+          customerInfo: { name: 'Test Customer', email: 'test@test.com', phone: '0501234567' },
           items: [{ description: 'Recording session', price: 200, quantity: 1 }],
           vendorId: user._id.toString(),
         });
@@ -118,7 +118,7 @@ describe('Payment Endpoints', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           singleUseToken: 'test-token',
-          customerInfo: { name: 'Test', email: 'test@test.com' },
+          customerInfo: { name: 'Test', email: 'test@test.com', phone: '0501234567' },
           items: [{ description: 'Test item', price: 100, quantity: 1 }],
           vendorId: user._id.toString(),
         });

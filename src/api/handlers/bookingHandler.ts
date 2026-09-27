@@ -21,6 +21,7 @@ import { StudioModel } from '../../models/studioModel.js';
 import { RESERVATION_STATUS } from '../../services/reservationService.js';
 import Reservation from '../../types/reservation.js';
 import { notifyVendorNewReservation, notifyCustomerReservationConfirmed, notifyVendorReservationCancelled } from '../../utils/notificationUtils.js';
+import { isValidIsraeliPhone } from '../../utils/phoneUtils.js';
 import {
     releaseItemTimeSlots as releaseItemSlots,
     releaseStudioWideTimeSlots,
@@ -162,6 +163,17 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
     if (hours == null || !(Number(hours) > 0) || !Number.isFinite(Number(hours))) {
         throw new ExpressError('Invalid booking duration', 400);
     }
+
+    const phone = typeof customerPhone === 'string' ? customerPhone.trim() : '';
+    if (!phone || !isValidIsraeliPhone(phone)) {
+        throw new ExpressError('A valid Israeli phone number is required', 400);
+    }
+
+    const email = typeof customerEmail === 'string' ? customerEmail.trim() : '';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new ExpressError('Invalid email address', 400);
+    }
+
     const hoursNum = Number(hours);
     if (item) {
         const minVal = item.minimumBookingDuration?.value;
@@ -212,8 +224,8 @@ const reserveItemTimeSlots = handleRequest(async (req: Request) => {
         studioId: resolvedStudioId,
         customerId,
         customerName,
-        customerPhone,
-        customerEmail: customerEmail || user?.email || '',
+        customerPhone: phone,
+        customerEmail: email || user?.email || '',
         comment,
         status: reservationStatus,
         addOnIds: addOnIds || [],
