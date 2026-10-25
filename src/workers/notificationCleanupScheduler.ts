@@ -20,16 +20,17 @@ export class NotificationCleanupScheduler {
         cutoffDate.setDate(cutoffDate.getDate() - NOTIFICATION_TTL_DAYS);
 
         const result = await NotificationModel.deleteMany({
-          createdAt: { $lt: cutoffDate }
+          createdAt: { $lt: cutoffDate },
+          archivedAt: null
         });
 
-        console.log(`Notification cleanup completed: deleted ${result.deletedCount} old notifications`);
+        console.log(`Notification cleanup completed: deleted ${result.deletedCount} old non-archived notifications`);
       } catch (error) {
         console.error('Error in notification cleanup job:', error);
       }
     });
 
-    console.log(`Notification cleanup scheduler initialized (${NOTIFICATION_TTL_DAYS}-day TTL, runs daily at 3:00 AM)`);
+    console.log(`Notification cleanup scheduler initialized (${NOTIFICATION_TTL_DAYS}-day TTL for active notifications, runs daily at 3:00 AM)`);
   }
 
   stop(): void {
@@ -42,7 +43,8 @@ export class NotificationCleanupScheduler {
     cutoffDate.setDate(cutoffDate.getDate() - NOTIFICATION_TTL_DAYS);
 
     const result = await NotificationModel.deleteMany({
-      createdAt: { $lt: cutoffDate }
+      createdAt: { $lt: cutoffDate },
+      archivedAt: null
     });
 
     return result.deletedCount;

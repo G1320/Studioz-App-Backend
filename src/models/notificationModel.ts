@@ -82,6 +82,12 @@ const NotificationSchema = new Schema(
       type: Date,
       required: false
     },
+    archivedAt: {
+      type: Date,
+      required: false,
+      default: null,
+      index: true
+    },
     priority: {
       type: String,
       enum: ['low', 'medium', 'high'],
@@ -107,6 +113,7 @@ const NotificationSchema = new Schema(
 NotificationSchema.index({ userId: 1, read: 1 });
 NotificationSchema.index({ userId: 1, createdAt: -1 });
 NotificationSchema.index({ userId: 1, category: 1, createdAt: -1 });
+NotificationSchema.index({ userId: 1, archivedAt: 1, createdAt: -1 });
 NotificationSchema.index({ createdAt: 1 }); // For cleanup jobs
 NotificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true }); // TTL index for auto-expiry
 

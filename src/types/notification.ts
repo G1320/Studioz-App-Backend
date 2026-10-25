@@ -96,6 +96,7 @@ export default interface Notification {
   };
   read: boolean;
   readAt?: Date;
+  archivedAt?: Date;
   priority: NotificationPriority;
   actionUrl?: string;
   expiresAt?: Date;

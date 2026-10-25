@@ -25,6 +25,9 @@ export interface CreateNotificationData {
   groupKey?: string;
 }
 
+const activeFilter = { archivedAt: null };
+const archivedFilter = { archivedAt: { $exists: true, $ne: null } };
+
 export const createNotification = async (notificationData: CreateNotificationData): Promise<Notification> => {
   const category = NOTIFICATION_TYPE_CATEGORY[notificationData.type] || 'system';
   const priority = notificationData.priority
@@ -42,7 +45,8 @@ export const createNotification = async (notificationData: CreateNotificationDat
     actionUrl: notificationData.actionUrl,
     expiresAt: notificationData.expiresAt,
     groupKey: notificationData.groupKey,
-    read: false
+    read: false,
+    archivedAt: null
   });
 
   await notification.save();
@@ -53,6 +57,7 @@ export const getUserNotifications = async (
   userId: string,
   options: {
     read?: boolean;
+    archived?: boolean;
     category?: NotificationCategory;
     types?: NotificationType[];
     limit?: number;
@@ -60,9 +65,12 @@ export const getUserNotifications = async (
     cursor?: string;
   } = {}
 ): Promise<Notification[]> => {
-  const { read, category, types, limit = 20, offset = 0, cursor } = options;
+  const { read, archived = false, category, types, limit = 20, offset = 0, cursor } = options;
 
-  const query: any = { userId: new mongoose.Types.ObjectId(userId) };
+  const query: any = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(archived ? archivedFilter : activeFilter)
+  };
 
   if (read !== undefined) {
     query.read = read;
@@ -93,7 +101,8 @@ export const getUserNotifications = async (
 export const getUnreadCount = async (userId: string): Promise<number> => {
   const count = await NotificationModel.countDocuments({
     userId: new mongoose.Types.ObjectId(userId),
-    read: false
+    read: false,
+    ...activeFilter
   });
 
   return count;
@@ -103,7 +112,8 @@ export const markAsRead = async (notificationId: string, userId: string): Promis
   const notification = await NotificationModel.findOneAndUpdate(
     {
       _id: notificationId,
-      userId: new mongoose.Types.ObjectId(userId)
+      userId: new mongoose.Types.ObjectId(userId),
+      ...activeFilter
     },
     {
       read: true,
@@ -123,7 +133,8 @@ export const markAllAsRead = async (userId: string): Promise<{ modifiedCount: nu
   const result = await NotificationModel.updateMany(
     {
       userId: new mongoose.Types.ObjectId(userId),
-      read: false
+      read: false,
+      ...activeFilter
     },
     {
       read: true,
@@ -134,21 +145,75 @@ export const markAllAsRead = async (userId: string): Promise<{ modifiedCount: nu
   return { modifiedCount: result.modifiedCount };
 };
 
+export const archiveNotification = async (
+  notificationId: string,
+  userId: string
+): Promise<Notification | null> => {
+  const notification = await NotificationModel.findOneAndUpdate(
+    {
+      _id: notificationId,
+      userId: new mongoose.Types.ObjectId(userId),
+      ...activeFilter
+    },
+    {
+      $set: { archivedAt: new Date() },
+      $unset: { expiresAt: 1 }
+    },
+    { new: true }
+  ).lean();
+
+  if (!notification) {
+    return null;
+  }
+
+  return notification as Notification;
+};
+
+export const archiveAllRead = async (userId: string): Promise<{ archivedCount: number }> => {
+  const result = await NotificationModel.updateMany(
+    {
+      userId: new mongoose.Types.ObjectId(userId),
+      read: true,
+      ...activeFilter
+    },
+    {
+      $set: { archivedAt: new Date() },
+      $unset: { expiresAt: 1 }
+    }
+  );
+
+  return { archivedCount: result.modifiedCount };
+};
+
+export const restoreNotification = async (
+  notificationId: string,
+  userId: string
+): Promise<Notification | null> => {
+  const notification = await NotificationModel.findOneAndUpdate(
+    {
+      _id: notificationId,
+      userId: new mongoose.Types.ObjectId(userId),
+      ...archivedFilter
+    },
+    {
+      $set: { archivedAt: null }
+    },
+    { new: true }
+  ).lean();
+
+  if (!notification) {
+    return null;
+  }
+
+  return notification as Notification;
+};
+
 export const deleteNotification = async (notificationId: string, userId: string): Promise<boolean> => {
   const result = await NotificationModel.deleteOne({
     _id: notificationId,
-    userId: new mongoose.Types.ObjectId(userId)
+    userId: new mongoose.Types.ObjectId(userId),
+    ...archivedFilter
   });
 
   return result.deletedCount === 1;
 };
-
-export const deleteAllRead = async (userId: string): Promise<{ deletedCount: number }> => {
-  const result = await NotificationModel.deleteMany({
-    userId: new mongoose.Types.ObjectId(userId),
-    read: true
-  });
-
-  return { deletedCount: result.deletedCount || 0 };
-};
-

@@ -6,8 +6,10 @@ import {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
-  deleteNotification,
-  deleteAllRead
+  archiveNotification,
+  archiveAllRead,
+  restoreNotification,
+  deleteNotification
 } from '../../services/notificationService.js';
 import {
   getPreferences,
@@ -40,6 +42,7 @@ const getNotifications = handleRequest(async (req: CustomRequest) => {
   }
 
   const read = req.query.read === 'true' ? true : req.query.read === 'false' ? false : undefined;
+  const archived = req.query.archived === 'true';
   const category = req.query.category as NotificationCategory | undefined;
   const requestedTypes =
     typeof req.query.type === 'string'
@@ -57,6 +60,7 @@ const getNotifications = handleRequest(async (req: CustomRequest) => {
 
   const notifications = await getUserNotifications(userId, {
     read,
+    archived,
     category,
     types,
     limit,
@@ -110,6 +114,58 @@ const markAllNotificationsAsRead = handleRequest(async (req: CustomRequest) => {
   return result;
 });
 
+const archiveNotificationById = handleRequest(async (req: CustomRequest) => {
+  const userId = req.decodedJwt?.userId || req.decodedJwt?._id || req.decodedJwt?.sub;
+
+  if (!userId) {
+    throw new ExpressError('User ID not found in token', 401);
+  }
+
+  const { id } = req.params;
+  if (!id) {
+    throw new ExpressError('Notification ID not provided', 400);
+  }
+
+  const notification = await archiveNotification(id, userId);
+
+  if (!notification) {
+    throw new ExpressError('Notification not found or unauthorized', 404);
+  }
+
+  return notification;
+});
+
+const archiveAllReadNotifications = handleRequest(async (req: CustomRequest) => {
+  const userId = req.decodedJwt?.userId || req.decodedJwt?._id || req.decodedJwt?.sub;
+
+  if (!userId) {
+    throw new ExpressError('User ID not found in token', 401);
+  }
+
+  return archiveAllRead(userId);
+});
+
+const restoreNotificationById = handleRequest(async (req: CustomRequest) => {
+  const userId = req.decodedJwt?.userId || req.decodedJwt?._id || req.decodedJwt?.sub;
+
+  if (!userId) {
+    throw new ExpressError('User ID not found in token', 401);
+  }
+
+  const { id } = req.params;
+  if (!id) {
+    throw new ExpressError('Notification ID not provided', 400);
+  }
+
+  const notification = await restoreNotification(id, userId);
+
+  if (!notification) {
+    throw new ExpressError('Notification not found or unauthorized', 404);
+  }
+
+  return notification;
+});
+
 const deleteNotificationById = handleRequest(async (req: CustomRequest) => {
   const userId = req.decodedJwt?.userId || req.decodedJwt?._id || req.decodedJwt?.sub;
   
@@ -129,17 +185,6 @@ const deleteNotificationById = handleRequest(async (req: CustomRequest) => {
   }
 
   return { message: 'Notification deleted successfully' };
-});
-
-const deleteAllReadNotifications = handleRequest(async (req: CustomRequest) => {
-  const userId = req.decodedJwt?.userId || req.decodedJwt?._id || req.decodedJwt?.sub;
-
-  if (!userId) {
-    throw new ExpressError('User ID not found in token', 401);
-  }
-
-  const result = await deleteAllRead(userId);
-  return result;
 });
 
 const getNotificationPreferences = handleRequest(async (req: CustomRequest) => {
@@ -208,12 +253,13 @@ export default {
   getUnreadNotificationCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  archiveNotificationById,
+  archiveAllReadNotifications,
+  restoreNotificationById,
   deleteNotificationById,
-  deleteAllReadNotifications,
   getNotificationPreferences,
   updateNotificationPreferences,
   subscribePush,
   unsubscribePush,
   getPushPublicKey
 };
-
