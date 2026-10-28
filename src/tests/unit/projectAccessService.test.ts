@@ -46,6 +46,15 @@ describe('projectAccessService', () => {
     expect(access.canUpdateMetadata).toBe(true);
   });
 
+  it('puts a studio owner who booked their own service on the studio side, keeping client actions', () => {
+    const access = resolveProjectAccess({ ...baseProject, customerId: 'vend1' }, 'vend1');
+    expect(access.side).toBe('vendor');
+    expect(access.senderRole).toBe('vendor');
+    expect(access.canVendorWorkflow).toBe(true);
+    expect(access.canCustomerWorkflow).toBe(true);
+    expect(access.canPay).toBe(true);
+  });
+
   it('gives customer-side editor collaborator workflow and invite, but not pay', () => {
     const access = resolveProjectAccess(baseProject, 'collab-c');
     expect(access.isCollaborator).toBe(true);

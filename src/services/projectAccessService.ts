@@ -144,13 +144,17 @@ export function resolveProjectAccess(project: ProjectLike, userId: string): Proj
   const vendorId = idStr(project.vendorId);
 
   if (uid === customerId || uid === vendorId) {
-    return buildAccess({
+    // A studio owner who booked their own service is both: they act for the studio,
+    // but keep the client's workflow and payment.
+    const isBoth = uid === customerId && uid === vendorId;
+    const access = buildAccess({
       userId: uid,
-      side: uid === customerId ? 'customer' : 'vendor',
+      side: uid === vendorId ? 'vendor' : 'customer',
       isPrimary: true,
       capabilities: [...PROJECT_CAPABILITIES],
       fileScope: null
     });
+    return isBoth ? { ...access, canCustomerWorkflow: true, canPay: true } : access;
   }
 
   const collab = findActiveCollaborator(project, uid);
