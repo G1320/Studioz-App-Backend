@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { grantWithinAccess } from '../../services/projectGrantService.js';
-import { resolveProjectAccess } from '../../services/projectAccessService.js';
+import { canManageSide, resolveProjectAccess, resolveTargetSide } from '../../services/projectAccessService.js';
 
 const owner = { capabilities: ['listen', 'comment', 'download', 'upload', 'edit'], fileScope: null };
 const scopedEditor = { capabilities: ['listen', 'comment', 'download', 'upload', 'edit'], fileScope: ['a', 'b'] };
@@ -38,5 +38,23 @@ describe('invite rights', () => {
     expect(resolveProjectAccess(project as never, 'vendor').canInvite).toBe(true);
     expect(resolveProjectAccess(project as never, 'editor').canInvite).toBe(true);
     expect(resolveProjectAccess(project as never, 'contributor').canInvite).toBe(false);
+  });
+
+  it('lets only the studio owner choose and manage either side', () => {
+    const studio = resolveProjectAccess(project as never, 'vendor');
+    const client = resolveProjectAccess(project as never, 'customer');
+    const editor = resolveProjectAccess(project as never, 'editor');
+
+    expect(resolveTargetSide(studio, 'customer')).toBe('customer');
+    expect(resolveTargetSide(studio, undefined)).toBe('vendor');
+    expect(canManageSide(studio, 'customer')).toBe(true);
+
+    expect(() => resolveTargetSide(client, 'vendor')).toThrow();
+    expect(canManageSide(client, 'vendor')).toBe(false);
+
+    expect(() => resolveTargetSide(editor, 'customer')).toThrow();
+    expect(canManageSide(editor, 'customer')).toBe(false);
+    expect(canManageSide(editor, 'vendor')).toBe(true);
+    expect(() => resolveTargetSide(studio, 'both')).toThrow();
   });
 });

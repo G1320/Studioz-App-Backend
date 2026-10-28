@@ -51,6 +51,8 @@ export interface ProjectAccess {
   canUpdateMetadata: boolean;
   canUpdateArtwork: boolean;
   canInvite: boolean;
+  /** Studio owner only: may place and manage collaborators on either side. */
+  canChooseSide: boolean;
   canPay: boolean;
 }
 
@@ -129,8 +131,26 @@ function buildAccess(params: {
     canUpdateMetadata: !isCustomerSide && canEdit,
     canUpdateArtwork: canEdit,
     canInvite: isPrimary || canEdit,
+    canChooseSide: isPrimary && !isCustomerSide,
     canPay: isPrimary && isCustomerSide
   };
+}
+
+/** Whether this user may invite to, edit, or remove people on the given side. */
+export function canManageSide(access: ProjectAccess, side: ProjectSide): boolean {
+  return access.canInvite && (access.canChooseSide || access.side === side);
+}
+
+/** The side a new or moved collaborator should land on. Only the studio owner may pick the other side. */
+export function resolveTargetSide(access: ProjectAccess, requested: unknown): ProjectSide {
+  if (requested === undefined || requested === null) return access.side;
+  if (requested !== 'customer' && requested !== 'vendor') {
+    throw new ExpressError('side must be "customer" or "vendor"', 400);
+  }
+  if (requested !== access.side && !access.canChooseSide) {
+    throw new ExpressError('Only the studio can choose the side', 403);
+  }
+  return requested;
 }
 
 /** Resolve access for a user on a project. Throws 403 if not a participant. */

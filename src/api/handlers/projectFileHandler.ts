@@ -62,7 +62,11 @@ const getUploadUrl = handleRequest(async (req: Request) => {
   const item = await ItemModel.findById(project.itemId);
   const maxFileSize = (item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB) * 1024 * 1024;
   const maxFilesPerProject = item?.maxFilesPerProject || REMOTE_PROJECT_MAX_FILES_PER_PROJECT;
-  const acceptedFileTypes = item?.acceptedFileTypes || [...REMOTE_PROJECT_ACCEPTED_FILE_TYPES];
+  // Items store a snapshot of the platform list from when they were saved; never let an
+  // older snapshot block formats the platform has since added.
+  const acceptedFileTypes = [
+    ...new Set([...REMOTE_PROJECT_ACCEPTED_FILE_TYPES, ...(item?.acceptedFileTypes ?? [])].map((t) => t.toLowerCase()))
+  ];
 
   if (fileSize > maxFileSize) {
     throw new ExpressError(

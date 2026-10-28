@@ -379,6 +379,7 @@ const getProjectById = handleRequest(async (req: Request) => {
       capabilities: access.capabilities,
       fileScope: access.fileScope,
       canInvite: access.canInvite,
+      canChooseSide: access.canChooseSide,
       canPay: access.canPay,
       canCustomerWorkflow: access.canCustomerWorkflow,
       canVendorWorkflow: access.canVendorWorkflow,
