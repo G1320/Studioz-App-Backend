@@ -46,7 +46,19 @@ function asUserObjectId(id: string): mongoose.Types.ObjectId | string {
 function participantMatchFilter(userId: string) {
   const id = asUserObjectId(userId);
   return {
-    $or: [{ customerId: id }, { vendorId: id }, { collaborators: { $elemMatch: { userId: id, status: 'active' } } }]
+    $or: [
+      { customerId: id },
+      { vendorId: id },
+      {
+        collaborators: {
+          $elemMatch: {
+            userId: id,
+            status: 'active',
+            $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: new Date() } }]
+          }
+        }
+      }
+    ]
   };
 }
 
@@ -329,9 +341,17 @@ const getProjectById = handleRequest(async (req: Request) => {
   const authUserId = getAuthUserId(req as AuthRequest);
   const access = assertProjectAccess(project, authUserId, 'view');
 
-  // Also get file counts
+  // Also get file counts (only files this user can see)
+  const scopeMatch = access.fileScope
+    ? {
+        $or: [
+          { _id: { $in: access.fileScope.map((id) => new mongoose.Types.ObjectId(id)) } },
+          { uploadedBy: asUserObjectId(access.userId) }
+        ]
+      }
+    : {};
   const fileCounts = await ProjectFileModel.aggregate([
-    { $match: { projectId: new mongoose.Types.ObjectId(projectId) } },
+    { $match: { projectId: new mongoose.Types.ObjectId(projectId), ...scopeMatch } },
     { $group: { _id: '$type', count: { $sum: 1 } } }
   ]);
 
@@ -355,6 +375,9 @@ const getProjectById = handleRequest(async (req: Request) => {
       isPrimary: access.isPrimary,
       isCollaborator: access.isCollaborator,
       senderRole: access.senderRole,
+      role: access.role,
+      capabilities: access.capabilities,
+      fileScope: access.fileScope,
       canInvite: access.canInvite,
       canPay: access.canPay,
       canCustomerWorkflow: access.canCustomerWorkflow,
@@ -363,7 +386,10 @@ const getProjectById = handleRequest(async (req: Request) => {
       canUpdateArtwork: access.canUpdateArtwork,
       canChat: access.canChat,
       canFiles: access.canFiles,
-      canDownloadDeliverables: access.side === 'vendor' || !deliverablesLocked,
+      canDownload: access.canDownload,
+      canUpload: access.canUpload,
+      canEdit: access.canEdit,
+      canDownloadDeliverables: access.canDownload && (access.side === 'vendor' || !deliverablesLocked),
       canManageDownloadLock: access.canUpdateMetadata
     }
   };

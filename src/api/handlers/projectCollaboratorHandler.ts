@@ -11,13 +11,30 @@ import { renderEmail } from '../../emails/render.js';
 import { FRONTEND_URL } from '../../config/index.js';
 import {
   assertProjectAccess,
+  findActiveCollaborator,
   getAuthUserId,
   getProjectParticipantIds,
+  isCollaboratorExpired,
   COLLABORATOR_CAP_PER_SIDE,
   INVITE_TTL_DAYS,
   type ProjectSide
 } from '../../services/projectAccessService.js';
+import {
+  assertCollaboratorCapacity,
+  parseProjectGrant,
+  serializeGrant,
+  upsertCollaborator
+} from '../../services/projectGrantService.js';
+import {
+  LEGACY_COLLABORATOR_ROLE,
+  ROLE_CAPABILITIES,
+  type ProjectRole
+} from '../../constants/projectPermissions.js';
 import { emitProjectStatusUpdate } from '../../webSockets/socket.js';
+
+const LEGACY_CAPABILITIES = ROLE_CAPABILITIES[LEGACY_COLLABORATOR_ROLE];
+/** Invites sent without an explicit role keep the historical full-access behaviour. */
+const DEFAULT_INVITE_ROLE: ProjectRole = 'editor';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
@@ -76,6 +93,10 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
   const { email } = req.body;
   const userId = getAuthUserId(req as AuthRequest);
+  const grant = await parseProjectGrant(
+    { role: req.body.role ?? DEFAULT_INVITE_ROLE, capabilities: req.body.capabilities, fileIds: req.body.fileIds },
+    projectId
+  );
 
   if (!email || typeof email !== 'string') {
     throw new ExpressError('Email is required', 400);
@@ -109,16 +130,13 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
   // Block inviting active collaborators
   const existingUser = await UserModel.findOne({ email: normalized }).select('_id');
   if (existingUser) {
-    const already = (project.collaborators || []).find(
-      (c) => c.status === 'active' && idStr(c.userId) === existingUser._id.toString()
-    );
-    if (already) {
+    if (findActiveCollaborator(project, existingUser._id.toString())) {
       throw new ExpressError('User is already a collaborator on this project', 400);
     }
   }
 
   const activeOnSide = (project.collaborators || []).filter(
-    (c) => c.status === 'active' && c.side === side
+    (c) => c.status === 'active' && c.side === side && !isCollaboratorExpired(c)
   ).length;
   const pendingOnSide = await ProjectInviteModel.countDocuments({
     projectId,
@@ -146,6 +164,8 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
     invite.expiresAt = expiresAt;
     invite.invitedBy = new mongoose.Types.ObjectId(userId) as any;
     invite.side = side;
+    invite.capabilities = grant.capabilities;
+    invite.fileIds = grant.fileIds as any;
     await invite.save();
   } else {
     invite = await ProjectInviteModel.create({
@@ -153,6 +173,8 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
       email: normalized,
       side,
       invitedBy: userId,
+      capabilities: grant.capabilities,
+      fileIds: grant.fileIds,
       tokenHash,
       status: 'pending',
       expiresAt
@@ -176,7 +198,8 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
       side: invite.side,
       status: invite.status,
       expiresAt: invite.expiresAt,
-      createdAt: invite.createdAt
+      createdAt: invite.createdAt,
+      ...serializeGrant(invite, LEGACY_CAPABILITIES)
     }
   };
 });
@@ -204,16 +227,72 @@ const listCollaborators = handleRequest(async (req: Request) => {
     .sort({ createdAt: -1 });
 
   const collaborators = (project.collaborators || [])
-    .filter((c) => c.status === 'active')
+    .filter((c) => c.status === 'active' && !isCollaboratorExpired(c))
     .map((c) => ({
       userId: c.userId,
       side: c.side,
       invitedBy: c.invitedBy,
       joinedAt: c.joinedAt,
-      status: c.status
+      status: c.status,
+      expiresAt: c.expiresAt ?? null,
+      shareLinkId: c.shareLinkId ?? null,
+      ...serializeGrant(c, LEGACY_CAPABILITIES)
     }));
 
-  return { collaborators, pendingInvites: pending };
+  const pendingInvites = pending.map((invite) => ({
+    ...invite.toObject(),
+    tokenHash: undefined,
+    ...serializeGrant(invite, LEGACY_CAPABILITIES)
+  }));
+
+  return { collaborators, pendingInvites };
+});
+
+/**
+ * Change a collaborator's role / capabilities / file scope / expiry (primary on the same side).
+ * PATCH /api/remote-projects/:projectId/collaborators/:userId
+ */
+const updateCollaborator = handleRequest(async (req: Request) => {
+  const { projectId, userId: targetUserId } = req.params;
+  const actorId = getAuthUserId(req as AuthRequest);
+
+  const project = await RemoteProjectModel.findById(projectId);
+  if (!project) throw new ExpressError('Project not found', 404);
+  const access = assertProjectAccess(project, actorId, 'invite');
+
+  const target = (project.collaborators || []).find(
+    (c) => c.status === 'active' && idStr(c.userId) === String(targetUserId)
+  );
+  if (!target) throw new ExpressError('Collaborator not found', 404);
+  if (target.side !== access.side) throw new ExpressError('Forbidden', 403);
+
+  const grant = await parseProjectGrant(req.body, projectId);
+  target.capabilities = grant.capabilities;
+  target.fileIds = grant.fileIds as any;
+
+  if (req.body.expiresAt !== undefined) {
+    if (req.body.expiresAt === null) {
+      target.expiresAt = undefined;
+    } else {
+      const expiresAt = new Date(req.body.expiresAt);
+      if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
+        throw new ExpressError('expiresAt must be a future date', 400);
+      }
+      target.expiresAt = expiresAt;
+    }
+  }
+
+  await project.save();
+  emitProjectStatusUpdate(getProjectParticipantIds(project), projectId, project.status);
+
+  return {
+    collaborator: {
+      userId: target.userId,
+      side: target.side,
+      expiresAt: target.expiresAt ?? null,
+      ...serializeGrant(target, LEGACY_CAPABILITIES)
+    }
+  };
 });
 
 /**
@@ -356,10 +435,7 @@ const acceptInvite = handleRequest(async (req: Request) => {
     throw new ExpressError('You are already a primary participant on this project', 400);
   }
 
-  const existing = (project.collaborators || []).find(
-    (c) => idStr(c.userId) === userId && c.status === 'active'
-  );
-  if (existing) {
+  if (findActiveCollaborator(project, userId)) {
     invite.status = 'accepted';
     invite.acceptedUserId = user._id as any;
     invite.acceptedAt = new Date();
@@ -368,33 +444,15 @@ const acceptInvite = handleRequest(async (req: Request) => {
     return { projectId: project._id, alreadyMember: true };
   }
 
-  // Cap check
-  const activeOnSide = (project.collaborators || []).filter(
-    (c) => c.status === 'active' && c.side === invite.side
-  ).length;
-  if (activeOnSide >= COLLABORATOR_CAP_PER_SIDE) {
-    throw new ExpressError(`Maximum ${COLLABORATOR_CAP_PER_SIDE} collaborators per side`, 400);
-  }
+  assertCollaboratorCapacity(project, invite.side);
 
-  const removed = (project.collaborators || []).find(
-    (c) => idStr(c.userId) === userId && c.status === 'removed'
-  );
-  if (removed) {
-    removed.status = 'active';
-    removed.side = invite.side;
-    removed.invitedBy = invite.invitedBy as any;
-    removed.joinedAt = new Date();
-  } else {
-    const collaborators = project.collaborators ?? [];
-    collaborators.push({
-      userId: user._id as any,
-      side: invite.side,
-      invitedBy: invite.invitedBy as any,
-      joinedAt: new Date(),
-      status: 'active'
-    } as any);
-    project.collaborators = collaborators as any;
-  }
+  upsertCollaborator(project, {
+    userId: user._id as any,
+    side: invite.side,
+    invitedBy: invite.invitedBy as any,
+    capabilities: invite.capabilities?.length ? invite.capabilities : undefined,
+    fileIds: invite.fileIds?.length ? (invite.fileIds as any) : undefined
+  });
 
   await project.save();
 
@@ -431,6 +489,7 @@ const listPendingInvitesForUser = handleRequest(async (req: Request) => {
 export default {
   inviteCollaborator,
   listCollaborators,
+  updateCollaborator,
   removeCollaborator,
   revokeInvite,
   getInviteByToken,

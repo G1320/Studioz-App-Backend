@@ -8,7 +8,9 @@ describe('project message notification types', () => {
   it.each<NotificationType>([
     'project_chat_message',
     'project_track_comment',
-    'project_comment_reply'
+    'project_comment_reply',
+    'project_access_request',
+    'project_access_granted'
   ])('categorizes %s as a project notification', (type) => {
     expect(NOTIFICATION_TYPE_CATEGORY[type]).toBe('projects');
   });

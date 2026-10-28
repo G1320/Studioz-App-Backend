@@ -31,13 +31,19 @@ describe('deliverable download lock', () => {
 
   it('never blocks the vendor side or customer source uploads', () => {
     const locked = { status: 'delivered', downloadLock: { enabled: true } };
-    expect(canDownloadProjectFile(locked, { side: 'vendor' }, 'deliverable')).toBe(true);
-    expect(canDownloadProjectFile(locked, { side: 'customer' }, 'source')).toBe(true);
+    expect(canDownloadProjectFile(locked, { side: 'vendor', canDownload: true }, 'deliverable')).toBe(true);
+    expect(canDownloadProjectFile(locked, { side: 'customer', canDownload: true }, 'source')).toBe(true);
   });
 
   it('blocks customer-side deliverable and revision downloads while locked', () => {
     const locked = { status: 'delivered', downloadLock: { enabled: true } };
-    expect(canDownloadProjectFile(locked, { side: 'customer' }, 'deliverable')).toBe(false);
-    expect(canDownloadProjectFile(locked, { side: 'customer' }, 'revision')).toBe(false);
+    expect(canDownloadProjectFile(locked, { side: 'customer', canDownload: true }, 'deliverable')).toBe(false);
+    expect(canDownloadProjectFile(locked, { side: 'customer', canDownload: true }, 'revision')).toBe(false);
+  });
+
+  it('requires the download capability regardless of the lock', () => {
+    const unlocked = { status: 'completed' };
+    expect(canDownloadProjectFile(unlocked, { side: 'vendor', canDownload: false }, 'deliverable')).toBe(false);
+    expect(canDownloadProjectFile(unlocked, { side: 'customer', canDownload: false }, 'source')).toBe(false);
   });
 });

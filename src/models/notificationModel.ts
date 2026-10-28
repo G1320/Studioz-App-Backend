@@ -29,6 +29,8 @@ const NOTIFICATION_TYPES: NotificationType[] = [
   'project_chat_message',
   'project_track_comment',
   'project_comment_reply',
+  'project_access_request',
+  'project_access_granted',
   'availability_alert',
 ];
 

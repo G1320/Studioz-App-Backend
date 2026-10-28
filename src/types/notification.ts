@@ -25,6 +25,8 @@ export type NotificationType =
   | 'project_chat_message'
   | 'project_track_comment'
   | 'project_comment_reply'
+  | 'project_access_request'
+  | 'project_access_granted'
   | 'availability_alert'
   // Legacy (kept for backwards compatibility)
   | 'system_alert';
@@ -61,6 +63,8 @@ export const NOTIFICATION_TYPE_CATEGORY: Record<NotificationType, NotificationCa
   project_chat_message: 'projects',
   project_track_comment: 'projects',
   project_comment_reply: 'projects',
+  project_access_request: 'projects',
+  project_access_granted: 'projects',
   availability_alert: 'activity',
   system_alert: 'system',
 };
@@ -68,6 +72,7 @@ export const NOTIFICATION_TYPE_CATEGORY: Record<NotificationType, NotificationCa
 export const NOTIFICATION_TYPE_PRIORITY: Partial<Record<NotificationType, NotificationPriority>> = {
   new_reservation: 'high',
   new_remote_project: 'high',
+  project_access_request: 'high',
   reservation_confirmed: 'high',
   payout_failed: 'high',
   subscription_payment_failed: 'high',

@@ -11,6 +11,7 @@ import {
   getDownloadUrl as getStorageDownloadUrl,
   deleteFile as deleteStorageFile,
   isStorageConfigured,
+  audioContentTypeForFileName,
 } from '../../services/storageService.js';
 import {
   parseAudioMetaFromStorage,
@@ -241,7 +242,9 @@ const getDownloadUrl = handleRequest(async (req: Request) => {
   const file = await StudioFileModel.findOne({ _id: fileId, studioId });
   if (!file) throw new ExpressError('File not found', 404);
 
-  const downloadUrl = await getStorageDownloadUrl(file.storageKey);
+  const downloadUrl = await getStorageDownloadUrl(file.storageKey, {
+    contentType: audioContentTypeForFileName(file.fileName),
+  });
 
   return {
     downloadUrl,

@@ -1,5 +1,6 @@
 import mongoose, { Model, Schema, Document } from 'mongoose';
 import type { ProjectInvite } from '../types/remoteProject.js';
+import { PROJECT_CAPABILITIES } from '../constants/projectPermissions.js';
 
 const ProjectInviteSchema = new mongoose.Schema(
   {
@@ -19,6 +20,15 @@ const ProjectInviteSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    // Empty = legacy invite with full (editor) access.
+    capabilities: {
+      type: [{ type: String, enum: PROJECT_CAPABILITIES }],
+      default: undefined,
+    },
+    fileIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProjectFile' }],
+      default: undefined,
     },
     tokenHash: { type: String, required: true, index: true },
     status: {

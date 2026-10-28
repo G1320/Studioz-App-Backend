@@ -8,7 +8,9 @@ import handleRequest from '../../utils/requestHandler.js';
 import { createAndEmitNotification } from '../../utils/notificationUtils.js';
 import { emitProjectMessageUpdate } from '../../webSockets/socket.js';
 import {
+  assertFileInScope,
   assertProjectAccess,
+  fileScopeFilter,
   getAuthUserId,
   getProjectParticipantIds,
   oppositeSenderRoles,
@@ -29,7 +31,7 @@ const getMessages = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'view');
+  const access = assertProjectAccess(project, getAuthUserId(req as AuthRequest), 'view');
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
 
@@ -52,6 +54,14 @@ const getMessages = handleRequest(async (req: Request) => {
     } else {
       throw new ExpressError('Invalid file ID filter', 400);
     }
+  }
+
+  if (access.fileScope) {
+    const visibleFileIds = await ProjectFileModel.find({
+      projectId: projectObjectId,
+      ...fileScopeFilter(access)
+    }).distinct('_id');
+    filter.$and = [{ $or: [{ fileId: { $exists: false } }, { fileId: { $in: visibleFileIds } }] }];
   }
 
   const [messages, total] = await Promise.all([
@@ -159,6 +169,7 @@ const sendMessage = handleRequest(async (req: Request) => {
       projectId: projectObjectId
     });
     if (!file) throw new ExpressError('File not found on this project', 404);
+    assertFileInScope(access, file);
   }
 
   const projectMessage = new ProjectMessageModel({
@@ -255,8 +266,9 @@ const setResolved = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  // Customer-side users decide when their review feedback has been addressed.
-  assertProjectAccess(project, userId, 'customer_workflow');
+  // Customer-side reviewers decide when their feedback has been addressed.
+  const access = assertProjectAccess(project, userId, 'chat');
+  if (access.side !== 'customer') throw new ExpressError('Forbidden', 403);
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
   const msg = await ProjectMessageModel.findOne({ _id: messageId, projectId: projectObjectId });

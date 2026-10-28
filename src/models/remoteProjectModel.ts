@@ -1,5 +1,6 @@
 import mongoose, { Model, Schema, Document } from 'mongoose';
 import { RemoteProject } from '../types/remoteProject.js';
+import { PROJECT_CAPABILITIES } from '../constants/projectPermissions.js';
 
 const translationSchema = new Schema(
   {
@@ -73,6 +74,22 @@ const RemoteProjectSchema = new mongoose.Schema(
           type: String,
           enum: ['active', 'removed'],
           default: 'active'
+        },
+        // Empty = legacy collaborator with full (editor) access.
+        capabilities: {
+          type: [{ type: String, enum: PROJECT_CAPABILITIES }],
+          default: undefined
+        },
+        // Empty = whole project; otherwise only these files (plus the user's own uploads).
+        fileIds: {
+          type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProjectFile' }],
+          default: undefined
+        },
+        expiresAt: { type: Date, required: false },
+        shareLinkId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'ProjectShareLink',
+          required: false
         },
         _id: false
       }

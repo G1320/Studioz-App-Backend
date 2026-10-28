@@ -111,6 +111,26 @@ export interface DownloadUrlOptions {
   expiresIn?: number;
   /** Force `Content-Disposition: inline` so browsers stream instead of saving. */
   inline?: boolean;
+  /** Override the served `Content-Type` (uploads don't pin one, so R2 may hold a generic type). */
+  contentType?: string;
+}
+
+const AUDIO_CONTENT_TYPE_BY_EXT: Record<string, string> = {
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
+  '.aif': 'audio/aiff',
+  '.aiff': 'audio/aiff'
+};
+
+/**
+ * Canonical audio MIME type for a file name, so media elements (Safari especially)
+ * don't reject a stream served as `application/octet-stream`.
+ */
+export function audioContentTypeForFileName(fileName: string): string | undefined {
+  const idx = fileName.lastIndexOf('.');
+  if (idx < 0) return undefined;
+  return AUDIO_CONTENT_TYPE_BY_EXT[fileName.slice(idx).toLowerCase()];
 }
 
 /**
@@ -124,7 +144,8 @@ export async function getDownloadUrl(storageKey: string, options: DownloadUrlOpt
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: storageKey,
-    ...(options.inline ? { ResponseContentDisposition: 'inline' } : {})
+    ...(options.inline ? { ResponseContentDisposition: 'inline' } : {}),
+    ...(options.contentType ? { ResponseContentType: options.contentType } : {})
   });
 
   const downloadUrl = await getSignedUrl(r2Client, command, {

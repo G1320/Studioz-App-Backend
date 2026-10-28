@@ -8,12 +8,11 @@ import handleRequest from '../../utils/requestHandler.js';
 import {
   generateStorageKey,
   getUploadUrl as getStorageUploadUrl,
-  getDownloadUrl as getStorageDownloadUrl,
   deleteFile as deleteStorageFile,
   isStorageConfigured
 } from '../../services/storageService.js';
 import { parseAudioMetaFromStorage } from '../../services/audioMetaService.js';
-import { lookupWaveform, scheduleWaveformGeneration } from '../../services/waveformService.js';
+import { scheduleWaveformGeneration } from '../../services/waveformService.js';
 import { emitProjectFileUpdate } from '../../webSockets/socket.js';
 import {
   REMOTE_PROJECT_ACCEPTED_FILE_TYPES,
@@ -21,20 +20,21 @@ import {
   REMOTE_PROJECT_MAX_FILES_PER_PROJECT
 } from '../../constants/remoteProjectFileLimits.js';
 import {
+  assertFileInScope,
   assertProjectAccess,
+  canDeleteProjectFile,
   canDownloadProjectFile,
+  fileScopeFilter,
   getAuthUserId,
   getProjectParticipantIds,
-  isDeliverableDownloadLocked
+  isDeliverableDownloadLocked,
+  uploadableFileTypesForSide
 } from '../../services/projectAccessService.js';
+import { buildWaveformResponse, getOriginalStreamUrl } from '../../services/projectFileStreamService.js';
 
 interface AuthRequest extends Request {
   decodedJwt?: { _id?: string; userId?: string };
 }
-
-/** Streaming URLs for locked deliverables are short-lived and inline-only. */
-const LOCKED_STREAM_URL_EXPIRY = 15 * 60;
-const DEFAULT_DOWNLOAD_URL_EXPIRY = 86400;
 
 const getUploadUrl = handleRequest(async (req: Request) => {
   const { projectId } = req.params;
@@ -54,7 +54,10 @@ const getUploadUrl = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'files');
+  const access = assertProjectAccess(project, userId, 'upload');
+  if (!uploadableFileTypesForSide(access.side).includes(type)) {
+    throw new ExpressError(`The ${access.side} side cannot upload ${type} files`, 403);
+  }
 
   const item = await ItemModel.findById(project.itemId);
   const maxFileSize = (item?.maxFileSize || REMOTE_PROJECT_MAX_FILE_SIZE_MB) * 1024 * 1024;
@@ -108,7 +111,13 @@ const registerFile = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'files');
+  const access = assertProjectAccess(project, userId, 'upload');
+  if (!uploadableFileTypesForSide(access.side).includes(type)) {
+    throw new ExpressError(`The ${access.side} side cannot upload ${type} files`, 403);
+  }
+  if (typeof storageKey !== 'string' || !storageKey.startsWith(`${projectId}/`)) {
+    throw new ExpressError('Storage key does not belong to this project', 400);
+  }
 
   const file = new ProjectFileModel({
     _id: fileId ? new mongoose.Types.ObjectId(fileId) : new mongoose.Types.ObjectId(),
@@ -140,9 +149,9 @@ const getProjectFiles = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'view');
+  const access = assertProjectAccess(project, userId, 'files');
 
-  const filter: Record<string, unknown> = { projectId };
+  const filter: Record<string, unknown> = { projectId, ...fileScopeFilter(access) };
   if (type && ['source', 'deliverable', 'revision'].includes(type as string)) {
     filter.type = type;
   }
@@ -177,18 +186,21 @@ const getDownloadUrl = handleRequest(async (req: Request) => {
 
   const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
+  assertFileInScope(access, file);
 
   const allowedToDownload = canDownloadProjectFile(project, access, file.type);
 
   if (!allowedToDownload && intent === 'download') {
-    throw new ExpressError('Downloads are locked until the project is approved or paid', 403);
+    throw new ExpressError(
+      access.canDownload
+        ? 'Downloads are locked until the project is approved or paid'
+        : 'You do not have permission to download files on this project',
+      403
+    );
   }
 
-  const restrictedStream = !allowedToDownload && intent === 'stream';
-  const expiresIn = restrictedStream ? LOCKED_STREAM_URL_EXPIRY : DEFAULT_DOWNLOAD_URL_EXPIRY;
-  const downloadUrl = await getStorageDownloadUrl(file.storageKey, {
-    expiresIn,
-    inline: restrictedStream
+  const { downloadUrl, expiresIn, quality } = await getOriginalStreamUrl(file, {
+    restricted: !allowedToDownload
   });
 
   return {
@@ -198,6 +210,7 @@ const getDownloadUrl = handleRequest(async (req: Request) => {
     mimeType: file.mimeType,
     expiresIn,
     locked: !allowedToDownload,
+    quality,
     intent
   };
 });
@@ -212,34 +225,17 @@ const getWaveform = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'view');
+  const access = assertProjectAccess(project, userId, 'files');
 
   const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
+  assertFileInScope(access, file);
 
   if (!isStorageConfigured()) {
     return { fileId: file._id, status: 'unsupported', reason: 'storage_unavailable' };
   }
 
-  const result = lookupWaveform(file);
-  if (result.status === 'ready') {
-    return {
-      fileId: file._id,
-      status: 'ready',
-      peaks: result.waveform.peaks,
-      durationMs: result.waveform.durationMs ?? null,
-      sampleRate: result.waveform.sampleRate ?? null,
-      channels: result.waveform.channels ?? null,
-      version: result.waveform.version
-    };
-  }
-
-  return {
-    fileId: file._id,
-    status: result.status,
-    reason: 'reason' in result ? result.reason : undefined,
-    locked: isDeliverableDownloadLocked(project)
-  };
+  return buildWaveformResponse(file, { locked: isDeliverableDownloadLocked(project) });
 });
 
 const getAudioMeta = handleRequest(async (req: Request) => {
@@ -252,10 +248,11 @@ const getAudioMeta = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'view');
+  const access = assertProjectAccess(project, userId, 'files');
 
   const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
+  assertFileInScope(access, file);
 
   const meta = await parseAudioMetaFromStorage(
     file.storageKey,
@@ -283,10 +280,13 @@ const deleteFile = handleRequest(async (req: Request) => {
 
   const project = await RemoteProjectModel.findById(projectId);
   if (!project) throw new ExpressError('Project not found', 404);
-  assertProjectAccess(project, userId, 'files');
+  const access = assertProjectAccess(project, userId, 'files');
 
   const file = await ProjectFileModel.findOne({ _id: fileId, projectId });
   if (!file) throw new ExpressError('File not found', 404);
+  if (!canDeleteProjectFile(access, file)) {
+    throw new ExpressError('You do not have permission to delete this file', 403);
+  }
 
   if (isStorageConfigured()) {
     try {

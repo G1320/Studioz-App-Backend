@@ -1,4 +1,5 @@
 import { PaymentDetails, PaymentStatus } from './reservation.js';
+import type { ProjectCapability } from '../constants/projectPermissions.js';
 
 export type RemoteProjectStatus =
   | 'requested'
@@ -22,6 +23,13 @@ export interface ProjectCollaborator {
   invitedBy: string;
   joinedAt: Date;
   status: ProjectCollaboratorStatus;
+  /** Empty/missing = legacy collaborator with full (editor) access. */
+  capabilities?: ProjectCapability[];
+  /** Empty/missing = whole project. */
+  fileIds?: string[];
+  expiresAt?: Date;
+  /** Set when the user joined through a share link (revoking the link removes them). */
+  shareLinkId?: string;
 }
 
 export type ProjectInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
@@ -32,11 +40,51 @@ export interface ProjectInvite {
   email: string;
   side: ProjectSide;
   invitedBy: string;
+  capabilities?: ProjectCapability[];
+  fileIds?: string[];
   tokenHash: string;
   status: ProjectInviteStatus;
   expiresAt: Date;
   acceptedUserId?: string;
   acceptedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface ProjectShareLink {
+  _id: string;
+  projectId: string;
+  createdBy: string;
+  side: ProjectSide;
+  label?: string;
+  token: string;
+  capabilities: ProjectCapability[];
+  fileIds?: string[];
+  expiresAt?: Date;
+  passwordHash?: string;
+  disabledAt?: Date;
+  maxJoins?: number;
+  revokedAt?: Date;
+  revokedBy?: string;
+  viewCount: number;
+  joinCount: number;
+  lastAccessedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type ProjectAccessRequestStatus = 'pending' | 'approved' | 'denied';
+
+export interface ProjectAccessRequest {
+  _id: string;
+  projectId: string;
+  userId: string;
+  message?: string;
+  status: ProjectAccessRequestStatus;
+  decidedBy?: string;
+  decidedAt?: Date;
+  side?: ProjectSide;
+  capabilities?: ProjectCapability[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -153,13 +201,24 @@ export interface ProjectFileWaveform {
   generatedAt: Date;
 }
 
-export type ProjectMessageSenderRole = 'customer' | 'vendor' | 'customer_collaborator' | 'vendor_collaborator';
+export type ProjectMessageSenderRole =
+  | 'customer'
+  | 'vendor'
+  | 'customer_collaborator'
+  | 'vendor_collaborator'
+  | 'customer_guest'
+  | 'vendor_guest';
 
 export interface ProjectMessage {
   _id: string;
   projectId: string;
-  senderId: string;
+  /** Absent for guests commenting through a share link. */
+  senderId?: string;
   senderRole: ProjectMessageSenderRole;
+  /** Display name a share-link guest typed in. */
+  guestName?: string;
+  /** Share link a guest comment was posted through. */
+  shareLinkId?: string;
 
   message: string;
   attachmentIds?: string[];

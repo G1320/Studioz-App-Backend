@@ -82,8 +82,8 @@ describe('projectAccessService', () => {
   });
 
   it('maps opposite roles for unread', () => {
-    expect(oppositeSenderRoles('customer')).toEqual(['vendor', 'vendor_collaborator']);
-    expect(oppositeSenderRoles('vendor')).toEqual(['customer', 'customer_collaborator']);
+    expect(oppositeSenderRoles('customer')).toEqual(['vendor', 'vendor_collaborator', 'vendor_guest']);
+    expect(oppositeSenderRoles('vendor')).toEqual(['customer', 'customer_collaborator', 'customer_guest']);
   });
 
   it('exposes collaborator cap', () => {
