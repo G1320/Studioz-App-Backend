@@ -8,6 +8,7 @@ import handleErrorMw from './errorHandling/handleErrorMw.js';
 import verifyTokenMw from './auth/verifyTokenMw.js';
 import verifyAdminMw from './auth/verifyAdminMw.js';
 import { requireSumitSetup } from './requireSumitSetup.js';
+export { rateLimitKey } from './rateLimitKey.js';
 
 // Subscription middleware
 export {

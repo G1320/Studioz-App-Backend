@@ -2,10 +2,12 @@
 import express from 'express';
 import { sendBookingConfirmation } from '../handlers/smsHandler.js'
 import rateLimit from 'express-rate-limit';
+import { rateLimitKey } from '../../middleware/rateLimitKey.js';
 
 const smsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // limit each IP to 5 SMS requests per windowMs
+  keyGenerator: rateLimitKey,
   message: 'Too many SMS requests from this IP, please try again after 15 minutes'
 });
 

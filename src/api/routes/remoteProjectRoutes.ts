@@ -6,7 +6,7 @@ import projectMessageHandler from '../handlers/projectMessageHandler.js';
 import projectCollaboratorHandler from '../handlers/projectCollaboratorHandler.js';
 import projectShareLinkHandler from '../handlers/projectShareLinkHandler.js';
 import projectAccessRequestHandler from '../handlers/projectAccessRequestHandler.js';
-import { verifyTokenMw } from '../../middleware/index.js';
+import { rateLimitKey, verifyTokenMw } from '../../middleware/index.js';
 
 const router = express.Router();
 
@@ -18,18 +18,21 @@ const sharePasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   skipSuccessfulRequests: true,
+  keyGenerator: rateLimitKey,
   message: { message: 'Too many password attempts. Please try again in 15 minutes.' }
 });
 
 const accessRequestLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
+  keyGenerator: rateLimitKey,
   message: { message: 'Too many access requests. Please try again later.' }
 });
 
 const guestCommentLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 30,
+  keyGenerator: rateLimitKey,
   message: { message: 'Too many comments. Please wait a few minutes.' }
 });
 

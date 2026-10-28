@@ -48,8 +48,10 @@ export async function parseAudioMetaFromStorage(
     size: fileSize,
   }, { duration: true });
 
+  // music-metadata labels WAVE_FORMAT_EXTENSIBLE (most 24-bit WAVs) as "Non-PCM (65534)".
+  const rawCodec = metadata.format.codec;
   const codec =
-    metadata.format.codec ||
+    (rawCodec && /\(65534\)/.test(rawCodec) ? 'WAV' : rawCodec) ||
     metadata.format.container ||
     extensionOf(fileName).toUpperCase() ||
     null;

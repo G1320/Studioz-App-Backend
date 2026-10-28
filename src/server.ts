@@ -2,7 +2,7 @@
 import "./instrument.js";
 import * as Sentry from "@sentry/node";
 import { PORT, ALLOWED_ORIGINS, JWT_SECRET_KEY } from './config/index.js';
-import { handleErrorMw, handleDbErrorMw, logRequestsMw } from './middleware/index.js';
+import { handleErrorMw, handleDbErrorMw, logRequestsMw, rateLimitKey } from './middleware/index.js';
 import connectToDb from './db/mongoose.js';
 
 import authRoutes from './api/routes/authRoutes.js';
@@ -123,6 +123,7 @@ app.use(rateLimit({
   max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKey,
   message: { error: 'Too many requests, please try again later' },
   // Owner manage hubs poll items/notifications heavily; authenticated traffic is
   // already gated by JWT and must not blank the UI with 429 storms.

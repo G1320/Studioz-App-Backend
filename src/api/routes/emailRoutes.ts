@@ -42,6 +42,7 @@ import { formatOrderDetails } from '../../utils/orderFormatter.js';
 import { formatInvoiceData } from '../../utils/invoiceFormatter.js';
 
 import rateLimit from 'express-rate-limit';
+import { rateLimitKey } from '../../middleware/rateLimitKey.js';
 import { CreateInvoiceData, createInvoice, createPayoutInvoice } from '../handlers/invoiceHandler.js';
 import { calculateMarketplaceFee } from '../handlers/paypalHandlers/orderHandler.js';
 import { NODE_ENV } from '../../config/index.js';
@@ -49,6 +50,7 @@ import { NODE_ENV } from '../../config/index.js';
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // limit each IP to 5 requests per windowMs
+  keyGenerator: rateLimitKey,
   message: 'Too many email requests from this IP, please try again after 15 minutes'
 });
 

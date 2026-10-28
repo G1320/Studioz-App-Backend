@@ -218,8 +218,8 @@ const sendMessage = handleRequest(async (req: Request) => {
   }`;
   const recipients = getProjectParticipantIds(project).filter((id) => id !== String(senderId));
 
-  // Notification delivery must not roll back a message that was already saved.
-  const notificationResults = await Promise.allSettled(
+  // Notification delivery must not roll back or delay a message that was already saved.
+  void Promise.allSettled(
     recipients.map((recipientId) =>
       createAndEmitNotification(
         recipientId,
@@ -238,12 +238,13 @@ const sendMessage = handleRequest(async (req: Request) => {
         actionUrl
       )
     )
-  );
-  for (const result of notificationResults) {
-    if (result.status === 'rejected') {
-      console.error('Failed to create project message notification:', result.reason);
+  ).then((notificationResults) => {
+    for (const result of notificationResults) {
+      if (result.status === 'rejected') {
+        console.error('Failed to create project message notification:', result.reason);
+      }
     }
-  }
+  });
 
   return projectMessage;
 });
