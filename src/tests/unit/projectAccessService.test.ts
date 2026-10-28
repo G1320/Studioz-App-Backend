@@ -46,13 +46,13 @@ describe('projectAccessService', () => {
     expect(access.canUpdateMetadata).toBe(true);
   });
 
-  it('gives customer-side collaborator workflow without pay/invite', () => {
+  it('gives customer-side editor collaborator workflow and invite, but not pay', () => {
     const access = resolveProjectAccess(baseProject, 'collab-c');
     expect(access.isCollaborator).toBe(true);
     expect(access.side).toBe('customer');
     expect(access.canCustomerWorkflow).toBe(true);
     expect(access.canPay).toBe(false);
-    expect(access.canInvite).toBe(false);
+    expect(access.canInvite).toBe(true);
     expect(access.senderRole).toBe('customer_collaborator');
   });
 

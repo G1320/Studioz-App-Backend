@@ -139,11 +139,11 @@ describe('capability-based project access', () => {
     expect(() => assertProjectAccess(project, 'contributor', 'vendor_workflow')).toThrow();
   });
 
-  it('editors get their side’s workflow but never pay or invite', () => {
+  it('editors get their side’s workflow and can invite, but never pay', () => {
     const access = assertProjectAccess(project, 'cust-editor', 'customer_workflow');
     expect(access.canVendorWorkflow).toBe(false);
     expect(access.canPay).toBe(false);
-    expect(access.canInvite).toBe(false);
+    expect(access.canInvite).toBe(true);
   });
 
   it('expired collaborators lose access and stop receiving events', () => {

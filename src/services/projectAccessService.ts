@@ -128,7 +128,7 @@ function buildAccess(params: {
     canVendorWorkflow: !isCustomerSide && canEdit,
     canUpdateMetadata: !isCustomerSide && canEdit,
     canUpdateArtwork: canEdit,
-    canInvite: isPrimary,
+    canInvite: isPrimary || canEdit,
     canPay: isPrimary && isCustomerSide
   };
 }

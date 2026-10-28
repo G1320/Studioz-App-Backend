@@ -15,6 +15,7 @@ import {
 } from '../../services/projectAccessService.js';
 import {
   assertCollaboratorCapacity,
+  assertGrantWithinAccess,
   parseProjectGrant,
   serializeGrant,
   upsertCollaborator
@@ -200,6 +201,7 @@ const approveAccessRequest = handleRequest(async (req: Request) => {
     { ...body, role: body.role ?? (body.capabilities === undefined ? DEFAULT_APPROVAL_ROLE : undefined) },
     projectId
   );
+  assertGrantWithinAccess(access, grant);
 
   if (!isParticipant(project, requesterId)) {
     assertCollaboratorCapacity(project, access.side);

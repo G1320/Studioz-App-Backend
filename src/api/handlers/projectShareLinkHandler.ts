@@ -17,6 +17,7 @@ import {
 } from '../../services/projectAccessService.js';
 import {
   assertCollaboratorCapacity,
+  assertGrantWithinAccess,
   parseProjectGrant,
   serializeGrant,
   upsertCollaborator
@@ -160,8 +161,9 @@ async function loadManagedLink(req: Request) {
   const link = await ProjectShareLinkModel.findOne({ _id: linkId, projectId });
   if (!link) throw new ExpressError('Share link not found', 404);
   if (link.side !== access.side) throw new ExpressError('Forbidden', 403);
+  assertGrantWithinAccess(access, link);
 
-  return { project, link, userId, projectId };
+  return { project, link, userId, projectId, access };
 }
 
 // ============================================================
@@ -194,6 +196,7 @@ const createShareLink = handleRequest(async (req: Request) => {
   const access = assertProjectAccess(project, userId, 'invite');
 
   const grant = await parseProjectGrant(req.body, projectId);
+  assertGrantWithinAccess(access, grant);
   const settings = parseShareLinkSettings(req.body ?? {});
 
   const activeCount = await ProjectShareLinkModel.countDocuments({
@@ -226,7 +229,7 @@ const createShareLink = handleRequest(async (req: Request) => {
  * Body: any of { role?, capabilities?, fileIds?, label?, expiresAt?, password?, maxJoins?, active? }
  */
 const updateShareLink = handleRequest(async (req: Request) => {
-  const { project, link, projectId } = await loadManagedLink(req);
+  const { project, link, projectId, access } = await loadManagedLink(req);
   if (link.revokedAt) throw new ExpressError('Revoked links cannot be edited', 400);
 
   const body = (req.body ?? {}) as Record<string, unknown>;
@@ -239,6 +242,7 @@ const updateShareLink = handleRequest(async (req: Request) => {
       },
       projectId
     );
+    assertGrantWithinAccess(access, grant);
     link.capabilities = grant.capabilities;
     link.fileIds = grant.fileIds as unknown as typeof link.fileIds;
   }

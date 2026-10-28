@@ -4,6 +4,7 @@ import { ProjectFileModel } from '../models/projectFileModel.js';
 import {
   COLLABORATOR_CAP_PER_SIDE,
   isCollaboratorExpired,
+  type ProjectAccess,
   type ProjectSide
 } from './projectAccessService.js';
 import {
@@ -53,6 +54,31 @@ export async function parseProjectGrant(
   }
 
   return { capabilities, fileIds: unique.map((id) => new mongoose.Types.ObjectId(id)) };
+}
+
+/**
+ * Non-owners with invite rights (editors) can only hand out access they hold themselves:
+ * no extra capabilities and no files outside their own scope.
+ */
+export function grantWithinAccess(
+  access: Pick<ProjectAccess, 'capabilities' | 'fileScope'>,
+  grant: { capabilities?: readonly string[] | null; fileIds?: readonly unknown[] | null }
+): boolean {
+  const capabilities = grant.capabilities ?? [];
+  if (!capabilities.every((c) => (access.capabilities as readonly string[]).includes(c))) return false;
+  if (!access.fileScope) return true;
+  const fileIds = (grant.fileIds ?? []).map(String);
+  if (fileIds.length === 0) return false;
+  return fileIds.every((id) => access.fileScope!.includes(id));
+}
+
+export function assertGrantWithinAccess(
+  access: Pick<ProjectAccess, 'capabilities' | 'fileScope'>,
+  grant: { capabilities?: readonly string[] | null; fileIds?: readonly unknown[] | null }
+) {
+  if (!grantWithinAccess(access, grant)) {
+    throw new ExpressError("You can't give more access than you have", 403);
+  }
 }
 
 type MutableCollaborator = {

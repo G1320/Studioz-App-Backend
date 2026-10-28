@@ -11,6 +11,7 @@ import { renderEmail } from '../../emails/render.js';
 import { FRONTEND_URL } from '../../config/index.js';
 import {
   assertProjectAccess,
+  collaboratorCapabilities,
   findActiveCollaborator,
   getAuthUserId,
   getProjectParticipantIds,
@@ -21,6 +22,8 @@ import {
 } from '../../services/projectAccessService.js';
 import {
   assertCollaboratorCapacity,
+  assertGrantWithinAccess,
+  grantWithinAccess,
   parseProjectGrant,
   serializeGrant,
   upsertCollaborator
@@ -110,6 +113,7 @@ const inviteCollaborator = handleRequest(async (req: Request) => {
   if (!project) throw new ExpressError('Project not found', 404);
 
   const access = assertProjectAccess(project, userId, 'invite');
+  assertGrantWithinAccess(access, grant);
   const side = access.side;
 
   const inviter = await UserModel.findById(userId);
@@ -265,8 +269,10 @@ const updateCollaborator = handleRequest(async (req: Request) => {
   );
   if (!target) throw new ExpressError('Collaborator not found', 404);
   if (target.side !== access.side) throw new ExpressError('Forbidden', 403);
+  assertGrantWithinAccess(access, { capabilities: collaboratorCapabilities(target), fileIds: target.fileIds });
 
   const grant = await parseProjectGrant(req.body, projectId);
+  assertGrantWithinAccess(access, grant);
   target.capabilities = grant.capabilities;
   target.fileIds = grant.fileIds as any;
 
@@ -313,7 +319,10 @@ const removeCollaborator = handleRequest(async (req: Request) => {
   if (!target) throw new ExpressError('Collaborator not found', 404);
 
   const isSelf = actorId === String(targetUserId);
-  const canRemoveOther = access.canInvite && access.side === target.side;
+  const canRemoveOther =
+    access.canInvite &&
+    access.side === target.side &&
+    grantWithinAccess(access, { capabilities: collaboratorCapabilities(target), fileIds: target.fileIds });
   if (!isSelf && !canRemoveOther) {
     throw new ExpressError('Forbidden', 403);
   }
